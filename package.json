@@ -1,5 +1,5 @@
 {
-  "name": "@sotatek/s-wallet-core",
+  "name": "wallet-core",
   "version": "0.1.0",
   "description": "Core modules of wallet service for Crypto Exchanges",
   "main": "index.ts",
