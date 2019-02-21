@@ -1,5 +1,5 @@
 {
-  "name": "wallet-core",
+  "name": "@sotatek/s-wallet-core",
   "version": "0.1.0",
   "description": "Core modules of wallet service for Crypto Exchanges",
   "main": "index.ts",
@@ -17,14 +17,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sotatek-dev/exchange-wallet.git"
+    "url": "git+https://github.com/sotatek-dev/exchange-wallet-core.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/sotatek-dev/exchange-wallet/issues"
+    "url": "https://github.com/sotatek-dev/exchange-wallet-core/issues"
   },
-  "homepage": "https://github.com/sotatek-dev/exchange-wallet#readme",
+  "homepage": "https://github.com/sotatek-dev/exchange-wallet-core#readme",
   "devDependencies": {
     "@types/assert": "1.4.1",
     "@types/chai": "4.1.7",
