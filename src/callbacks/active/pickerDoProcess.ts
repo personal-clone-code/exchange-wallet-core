@@ -6,6 +6,7 @@ import {
   BaseGateway,
   getListTokenSymbols,
 } from 'sota-common';
+import _ from 'lodash';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
 import { WithdrawalStatus, WithdrawalEvent } from '../../Enums';
@@ -86,12 +87,20 @@ async function _pickerSubDoProcess(
 
   // Find an available hot wallet
   const vouts = records.map(w => {
-    return { toAddress: w.toAddress, amount: w.getAmount() };
+    const amount = w.getAmount();
+    if (parseFloat(amount) === 0) {
+      return null;
+    }
+
+    return { toAddress: w.toAddress, amount };
   });
+
+  // Filter out the zero-outputs. We can prevent this case from creating withdrawals
+  // But it may still happen though, so need the guarding mechanism here...
 
   let unsignedTx;
   try {
-    unsignedTx = await gateway.createRawTransaction(hotWallet.address, vouts);
+    unsignedTx = await gateway.createRawTransaction(hotWallet.address, _.compact(vouts));
   } catch (err) {
     // Most likely the fail reason is insufficient balance from hot wallet
     // Or there was problem with connection to the full node
