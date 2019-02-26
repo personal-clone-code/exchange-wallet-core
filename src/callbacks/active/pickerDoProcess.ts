@@ -95,7 +95,9 @@ async function _pickerSubDoProcess(
   } catch (err) {
     // Most likely the fail reason is insufficient balance from hot wallet
     // Or there was problem with connection to the full node
-    logger.error(`Could not create raw tx due to error: ${inspect(err)}`);
+    logger.error(
+      `Could not create raw tx address=${hotWallet.address}, vouts=${inspect(vouts)}, error=${inspect(err)}`
+    );
     return emptyResult;
   }
 
