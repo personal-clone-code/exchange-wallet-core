@@ -22,8 +22,11 @@ export async function prepareCurrencyWorker(currency: Currency, tokenType?: stri
     connection.getRepository(Config).findOne({ currency }),
   ]);
 
-  if (allTokens.length === 0 || !configData) {
-    logger.warn('Some config was missing from .ENV file and currency database table');
+  if (allTokens.length === 0) {
+    logger.warn('Cannot get any currency configurations in currency table');
+  }
+  if (!configData) {
+    throw new Error(`Cannot find ${currency.toString().toUpperCase()} configuration in config table`);
   }
   await setTokenData(allTokens.map(token => Object.assign(token)));
 
