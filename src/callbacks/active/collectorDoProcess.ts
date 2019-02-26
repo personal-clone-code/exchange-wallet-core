@@ -6,6 +6,7 @@ import {
   Utils,
   getListTokenSymbols,
   isPlatform,
+  getCurrency,
   getMinimumDepositAmount,
 } from 'sota-common';
 import { EntityManager, getConnection } from 'typeorm';
@@ -85,7 +86,7 @@ async function _collectDepositTransaction(
   collector: BaseDepositCollector,
   deposit: Deposit
 ): Promise<Transaction> {
-  const currency = deposit.currency;
+  const currency = getCurrency();
   const addressEntity = collector.getAddressEntity();
   const gateway = collector.getGateway(currency);
 
