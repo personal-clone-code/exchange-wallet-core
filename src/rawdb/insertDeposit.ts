@@ -2,7 +2,7 @@ import { EntityManager } from 'typeorm';
 import { TransferOutput, getLogger, Utils } from 'sota-common';
 import * as rawdb from './';
 import { Deposit, Address, Wallet, WalletBalance } from '../entities';
-import { WebhookType, DepositEvent, WalletEvent } from '../Enums';
+import { WebhookType, DepositEvent, WalletEvent, CollectStatus } from '../Enums';
 
 const logger = getLogger('rawdb::insertDeposit');
 
@@ -44,6 +44,11 @@ export async function insertDeposit(manager: EntityManager, output: TransferOutp
 
   if (deposit.amount.search(/-/g) !== -1) {
     return;
+  }
+
+  if (address.isExternal) {
+    deposit.collectStatus = CollectStatus.COLLECTED;
+    deposit.collectedTxid = 'NO_COLLECT_EXTERNAL_ADDRESS_' + Utils.now();
   }
 
   // Persist deposit data in main table
