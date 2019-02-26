@@ -88,7 +88,7 @@ async function _collectDepositTransaction(
 ): Promise<Transaction> {
   const currency = getCurrency();
   const addressEntity = collector.getAddressEntity();
-  const gateway = collector.getGateway(currency);
+  const gateway = collector.getGateway(deposit.currency);
 
   const address: any = await manager.getRepository(addressEntity).findOne({ address: deposit.toAddress });
   if (!address) {
