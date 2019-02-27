@@ -1,4 +1,4 @@
-import { BaseCrawler, getFamily, getListTokenSymbols, Transactions, Utils } from 'sota-common';
+import { Transaction, BaseCrawler, getFamily, getListTokenSymbols, Transactions, Utils } from 'sota-common';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
 
@@ -32,8 +32,10 @@ async function _onCrawlingTxs(manager: EntityManager, crawler: BaseCrawler, allT
     return memo.concat(txsByAddress.get(watchingAddress));
   }, new Transactions());
 
+  const uniqueListTxs = Array.from(new Set(watchingTxs.map((tx: Transaction) => tx)));
+
   // Process every single deposit transaction
-  const tasks = watchingTxs.map(async watchingTx => {
+  const tasks = uniqueListTxs.map(async watchingTx => {
     if (!watchingTx) {
       return;
     }
