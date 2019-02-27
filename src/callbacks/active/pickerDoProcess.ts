@@ -84,6 +84,7 @@ async function _pickerSubDoProcess(
     logger.info(`No more withdrawal need to be picked up. Will try in the next tick...`);
     return emptyResult;
   }
+  const withdrawalIds = records.map(w => w.id);
 
   // Find an available hot wallet
   const vouts = records.map(w => {
@@ -107,6 +108,11 @@ async function _pickerSubDoProcess(
     logger.error(
       `Could not create raw tx address=${hotWallet.address}, vouts=${inspect(vouts)}, error=${inspect(err)}`
     );
+    // update withdrawal record
+    const failedUpdateValue = {
+      updatedAt: Utils.nowInMillis(),
+    };
+    await manager.update(Withdrawal, withdrawalIds, failedUpdateValue);
     return emptyResult;
   }
 
@@ -123,14 +129,15 @@ async function _pickerSubDoProcess(
     unsignedRaw: unsignedTx.unsignedRaw,
     unsignedTxid: unsignedTx.txid,
     createdAt: Utils.nowInMillis(),
+    updatedAt: Utils.nowInMillis(),
   });
 
   // update withdrawal record
-  const withdrawalIds = records.map(w => w.id);
   const updatedValue = {
     withdrawalTxId: withdrawalTx.id,
     status: WithdrawalStatus.SIGNING,
     fromAddress: hotWallet.address,
+    updatedAt: Utils.nowInMillis(),
   };
 
   await Utils.PromiseAll([

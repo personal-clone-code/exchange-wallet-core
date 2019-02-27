@@ -11,11 +11,13 @@ export async function findWithdrawalsByStatus(
   limit: number
 ): Promise<Withdrawal[]> {
   // Find wallet of record
-  const options = {
-    where: { currency, status },
+  return manager.getRepository(Withdrawal).find({
+    order: {
+      updatedAt: 'ASC',
+    },
     take: limit,
-  };
-  return manager.getRepository(Withdrawal).find(options);
+    where: { currency, status },
+  });
 }
 
 export default findWithdrawalsByStatus;
