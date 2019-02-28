@@ -27,6 +27,9 @@ export class Config {
   @Column({ name: 'explorer_endpoint', nullable: false })
   public explorerEndpoint: string;
 
+  @Column({ name: 'internal_api_endpoint', nullable: false })
+  public internalApiEndpoint: string;
+
   @Column({ name: 'rpc', nullable: false })
   public rpc: string;
 
