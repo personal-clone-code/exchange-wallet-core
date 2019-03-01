@@ -11,8 +11,13 @@ export class WebhookProcessor extends BaseIntervalWorker {
   protected _nextTickTimer: number = 10000;
 
   protected async doProcess(): Promise<void> {
-    getConnection().transaction(async manager => {
-      await this._doProcess(manager);
+    return getConnection().transaction(async manager => {
+      try {
+        await this._doProcess(manager);
+      } catch (e) {
+        logger.error(`WebhookProcessor do process failed with error`);
+        logger.error(e);
+      }
     });
   }
 
