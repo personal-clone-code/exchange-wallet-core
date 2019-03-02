@@ -1,6 +1,7 @@
 export * from './filterWatchingAddresses';
 export * from './findAvailableHotWallet';
 export * from './insertDeposit';
+export * from './insertDepositLog';
 export * from './increaseWalletBalance';
 export * from './insertDepositSubRecord';
 export * from './insertWebhookLog';
@@ -19,7 +20,6 @@ export * from './insertWithdrawalTx';
 export * from './findDepositByCollectStatus';
 export * from './updateDepositCollectStatus';
 export * from './updateDepositCollectWallets';
-export * from './updateDepositCollectWebhook';
 export * from './insertInternalTransfer';
 export * from './updateInternalTransfer';
 export * from './findInternalTransferByCollectStatus';

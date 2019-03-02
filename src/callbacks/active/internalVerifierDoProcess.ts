@@ -97,7 +97,7 @@ async function _collectVerify(
   await Utils.PromiseAll(tasks);
 
   // for collectedtimestamp
-  await rawdb.updateDepositCollectWebhook(manager, collectingRecord.id, event);
+  await rawdb.insertDepositLog(manager, collectingRecord.id, event);
 
   return emptyResult;
 }

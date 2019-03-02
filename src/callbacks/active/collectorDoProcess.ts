@@ -81,6 +81,13 @@ async function _collectorDoProcess(
   return emptyResult;
 }
 
+/**
+ * Try to collect funds from every single deposit address to the hot wallet
+ *
+ * @param manager
+ * @param collector
+ * @param deposit
+ */
 async function _collectDepositTransaction(
   manager: EntityManager,
   collector: BaseDepositCollector,
@@ -95,6 +102,7 @@ async function _collectDepositTransaction(
     logger.error(`Cannot find address=${deposit.toAddress}.`);
     return null;
   }
+
   let privateKey = address.privateKey;
   if (address.kmsDataKeyId !== 0) {
     privateKey = await Kms.getInstance().decrypt(address.privateKey, address.kmsDataKeyId);
@@ -132,6 +140,7 @@ async function _collectDepositTransaction(
     }),
     manager.save(deposit),
   ]);
+
   return result;
 }
 

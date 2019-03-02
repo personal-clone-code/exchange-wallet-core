@@ -1,6 +1,7 @@
 export * from './abstracts/XDeposit';
 export * from './abstracts/XWithdrawalTx';
 export * from './Deposit';
+export * from './DepositLog';
 export * from './Erc20Token';
 export * from './Trc20Token';
 export * from './Nep5Token';
