@@ -153,6 +153,8 @@ async function _collectDepositTransaction(
 
   if (!hotWallet) {
     logger.error(`No hot wallet is available depositId=${deposit.id} userId=${userId} currency=${currency}`);
+    deposit.nextCheckAt = now + collector.getNextCheckAtAmount();
+    await manager.getRepository(Deposit).save(deposit);
     return null;
   }
 
