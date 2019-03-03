@@ -23,7 +23,6 @@ async function _onCrawlingTxs(manager: EntityManager, crawler: BaseCrawler, allT
 
   // Get all addresses that are involved in the transactions
   const allAddresses: string[] = Array.from(txsByAddress.keys());
-  const currencies: string[] = getListTokenSymbols().tokenSymbols;
 
   // Filter out related addresses
   const watchingAddresses = await rawdb.filterWatchingAddresses(manager, getFamily(), allAddresses);

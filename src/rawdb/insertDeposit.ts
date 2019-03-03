@@ -2,7 +2,7 @@ import { EntityManager } from 'typeorm';
 import { TransferOutput, getLogger, Utils } from 'sota-common';
 import * as rawdb from './';
 import { Deposit, Address, Wallet, WalletBalance } from '../entities';
-import { WebhookType, DepositEvent, WalletEvent, CollectStatus } from '../Enums';
+import { DepositEvent, WalletEvent, CollectStatus } from '../Enums';
 
 const logger = getLogger('rawdb::insertDeposit');
 
@@ -60,7 +60,7 @@ export async function insertDeposit(manager: EntityManager, output: TransferOutp
 
   if (address.isExternal) {
     logger.info(`External Address ${address.address}, Only Webhook`);
-    await rawdb.insertWebhookProgress(manager, wallet.userId, WebhookType.DEPOSIT, depositId, DepositEvent.CREATED);
+    await rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId);
     return;
   }
 
@@ -68,6 +68,7 @@ export async function insertDeposit(manager: EntityManager, output: TransferOutp
   if (!walletBalance) {
     throw new Error(`Wallet balance doesn't exist: walletId=${walletId} coin=${coin}`);
   }
+
   await Utils.PromiseAll([
     // Update wallet balance
     rawdb.increaseWalletBalance(manager, walletId, coin, output.amount),
@@ -81,8 +82,8 @@ export async function insertDeposit(manager: EntityManager, output: TransferOutp
     }),
     // Persist deposit data in sub table
     rawdb.insertDepositSubRecord(manager, depositId, output),
-    // Create webhook progress for deposit creation
-    rawdb.insertWebhookProgress(manager, wallet.userId, WebhookType.DEPOSIT, depositId, DepositEvent.CREATED),
+    // Create deposit log and webhook progress
+    rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId),
   ]);
 }
 
