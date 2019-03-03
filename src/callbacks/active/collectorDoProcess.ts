@@ -14,7 +14,7 @@ import BN from 'bignumber.js';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
 import { CollectStatus, InternalTransferType, WithdrawalStatus, DepositEvent } from '../../Enums';
-import { Deposit, Wallet } from '../../entities';
+import { Deposit, Wallet, Address } from '../../entities';
 import Kms from '../../encrypt/Kms';
 
 const logger = getLogger('collectorDoProcess');
@@ -127,7 +127,8 @@ async function _collectDepositTransaction(
     return null;
   }
 
-  if (address.isExternal) {
+  const genericAddress = await manager.getRepository(Address).findOne({ address: deposit.toAddress });
+  if (genericAddress.isExternal) {
     logger.error(`Does not collect external address' deposit: id=${deposit.id} address=${deposit.toAddress}`);
     deposit.collectStatus = CollectStatus.COLLECTED;
     deposit.collectedTxid = 'NO_COLLECT_EXTERNAL_ADDRESS';
