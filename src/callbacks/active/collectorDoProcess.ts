@@ -124,7 +124,7 @@ async function _collectDepositTransaction(
     return null;
   }
 
-  const isCollectable = await collector.isCollectable(deposit.txid, deposit.toAddress);
+  const isCollectable = await collector.isCollectable(deposit.txid, deposit.toAddress, deposit.amount);
   if (!isCollectable) {
     logger.error(`Deposit is already collected id=${deposit.id} txid=${deposit.txid} address=${deposit.toAddress}`);
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
