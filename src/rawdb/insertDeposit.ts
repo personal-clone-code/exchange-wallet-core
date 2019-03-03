@@ -47,8 +47,8 @@ export async function insertDeposit(manager: EntityManager, output: TransferOutp
   }
 
   if (address.isExternal) {
-    deposit.collectStatus = CollectStatus.COLLECTED;
-    deposit.collectedTxid = 'NO_COLLECT_EXTERNAL_ADDRESS_' + Utils.now();
+    deposit.collectStatus = CollectStatus.NOTCOLLECT;
+    deposit.collectedTxid = 'NO_COLLECT_EXTERNAL_ADDRESS';
   }
 
   // Persist deposit data in main table

@@ -127,6 +127,14 @@ async function _collectDepositTransaction(
     return null;
   }
 
+  if (address.isExternal) {
+    logger.error(`Does not collect external address' deposit: id=${deposit.id} address=${deposit.toAddress}`);
+    deposit.collectStatus = CollectStatus.COLLECTED;
+    deposit.collectedTxid = 'NO_COLLECT_EXTERNAL_ADDRESS';
+    await manager.getRepository(Deposit).save(deposit);
+    return null;
+  }
+
   const isCollectable = await collector.isCollectable(deposit.txid, deposit.toAddress, deposit.amount);
   if (!isCollectable) {
     logger.error(`Deposit is already collected id=${deposit.id} txid=${deposit.txid} address=${deposit.toAddress}`);
