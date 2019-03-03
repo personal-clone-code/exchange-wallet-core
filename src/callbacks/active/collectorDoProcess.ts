@@ -158,7 +158,10 @@ async function _collectDepositTransaction(
 
   const result = await gateway.forwardTransaction(privateKey, address.address, hotWallet.address, deposit.amount);
   if (!result) {
-    return result;
+    logger.error(`Construct collect tx failed depositId=${deposit.id} userId=${userId} currency=${currency}`);
+    deposit.nextCheckAt = now + collector.getNextCheckAtAmount();
+    await manager.getRepository(Deposit).save(deposit);
+    return null;
   }
 
   deposit.collectedTxid = result.txid;

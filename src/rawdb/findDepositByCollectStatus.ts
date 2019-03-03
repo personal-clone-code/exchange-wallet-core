@@ -10,6 +10,9 @@ export async function findDepositByCollectStatus(
 ): Promise<Deposit> {
   const now = Date.now();
   const unCollected = await manager.getRepository(Deposit).findOne({
+    order: {
+      updatedAt: 'ASC',
+    },
     where: {
       currency: In(currencies),
       collectStatus: In(statuses),
