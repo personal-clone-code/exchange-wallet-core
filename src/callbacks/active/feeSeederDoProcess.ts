@@ -2,7 +2,7 @@ import { IWithdrawalProcessingResult, getLogger, BaseFeeSeeder, getFamily } from
 import { getConnection, EntityManager } from 'typeorm';
 import * as rawdb from '../../rawdb';
 import { InternalTransferType, WithdrawalStatus } from '../../Enums';
-import { Address, WalletBalance } from '../../entities';
+import { Address, WalletBalance, Wallet } from '../../entities';
 import BigNumber from 'bignumber.js';
 import { InternalTransfer } from '../../entities/InternalTransfer';
 
@@ -39,23 +39,26 @@ async function _feeSeederDoProcess(
     type: InternalTransferType.SEED,
     currency: feeSeederCurrency,
   });
+
   if (seeded) {
     logger.info(`${depositId} is seeded previously`);
     return emptyResult;
   }
 
-  const [hotWallet, address] = await Promise.all([
-    rawdb.findAvailableHotWallet(manager, feeSeederCurrency, false),
-    manager.getRepository(Address).findOne({ address: toAddress }),
-  ]);
-
-  if (!hotWallet) {
-    logger.error('No internal hot wallet');
+  const address = await manager.getRepository(Address).findOne({ address: toAddress });
+  if (!address) {
+    logger.error(`${toAddress} is not a deposit address`);
     return emptyResult;
   }
 
-  if (!address) {
-    logger.error(`${toAddress} is not a deposit address`);
+  const wallet = await manager.getRepository(Wallet).findOneOrFail(address.walletId);
+  const userId = wallet.userId;
+
+  // Find internal hot wallet to seed fee for funds collector
+  const hotWallet = await rawdb.findAvailableHotWallet(manager, userId, feeSeederCurrency, false);
+
+  if (!hotWallet) {
+    logger.error(`No internal hot wallet userId=${userId} currency=${feeSeederCurrency}`);
     return emptyResult;
   }
 

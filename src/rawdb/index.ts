@@ -24,5 +24,5 @@ export * from './insertInternalTransfer';
 export * from './updateInternalTransfer';
 export * from './findInternalTransferByCollectStatus';
 export * from './updateWalletBalanceOnlyFee';
-export * from './getNextPickerCurrency';
+export * from './getNextPickedWithdrawal';
 export * from './getNextCurrencybyStatus';

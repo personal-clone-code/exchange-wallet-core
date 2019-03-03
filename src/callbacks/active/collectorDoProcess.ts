@@ -9,10 +9,11 @@ import {
   getMinimumDepositAmount,
   getFamily,
 } from 'sota-common';
+import BN from 'bignumber.js';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
-import { CollectStatus, InternalTransferType, WithdrawalStatus } from '../../Enums';
-import { Deposit } from '../../entities';
+import { CollectStatus, InternalTransferType, WithdrawalStatus, DepositEvent } from '../../Enums';
+import { Deposit, Wallet } from '../../entities';
 import Kms from '../../encrypt/Kms';
 
 const logger = getLogger('collectorDoProcess');
@@ -52,12 +53,6 @@ async function _collectorDoProcess(
     return emptyResult;
   }
 
-  const minimumDepositAmount = getMinimumDepositAmount(unCollectedDeposit.currency);
-  if (!minimumDepositAmount) {
-    logger.error(`Minimum deposit is not setted for ${unCollectedDeposit.currency}`);
-    return emptyResult;
-  }
-
   try {
     await _collectDepositTransaction(manager, collector, unCollectedDeposit);
   } catch (err) {
@@ -93,13 +88,39 @@ async function _collectDepositTransaction(
   collector: BaseDepositCollector,
   deposit: Deposit
 ): Promise<Transaction> {
+  const now = Utils.now();
   const currency = getFamily();
   const addressEntity = collector.getAddressEntity();
   const gateway = collector.getGateway(deposit.currency);
 
+  const minimumDepositAmount = getMinimumDepositAmount(deposit.currency);
+  if (!minimumDepositAmount) {
+    logger.error(`Minimum deposit is not setted for ${deposit.currency}`);
+    return null;
+  }
+
+  const minNumber = new BN(minimumDepositAmount);
+  const amountNumber = new BN(deposit.amount);
+  if (amountNumber.lt(minNumber)) {
+    logger.error(
+      `Deposit has amount less than threshold depositId=${deposit.id} amount=${deposit.amount} currency=${
+        deposit.currency
+      }`
+    );
+    deposit.collectStatus = CollectStatus.NOTCOLLECT;
+    deposit.collectedTxid = 'AMOUNT_BELOW_THRESHOLD_' + now;
+    await rawdb.insertDepositLog(manager, deposit.id, DepositEvent.NOTCOLLECT);
+    await manager.getRepository(Deposit).save(deposit);
+    return null;
+  }
+
   const address: any = await manager.getRepository(addressEntity).findOne({ address: deposit.toAddress });
   if (!address) {
-    logger.error(`Cannot find address=${deposit.toAddress}.`);
+    logger.error(`Cannot collect depositId=${deposit.id} because of address not found: ${deposit.toAddress}.`);
+    deposit.collectStatus = CollectStatus.NOTCOLLECT;
+    deposit.collectedTxid = 'INVALID_ADDRESS_' + now;
+    await rawdb.insertDepositLog(manager, deposit.id, DepositEvent.NOTCOLLECT);
+    await manager.getRepository(Deposit).save(deposit);
     return null;
   }
 
@@ -108,17 +129,20 @@ async function _collectDepositTransaction(
     privateKey = await Kms.getInstance().decrypt(address.privateKey, address.kmsDataKeyId);
   }
 
+  const wallet = await manager.getRepository(Wallet).findOneOrFail(deposit.walletId);
+  const userId = wallet.userId;
+
   // TODO: What's the right way to find hot wallet?
-  let hotWallet = await rawdb.findAvailableHotWallet(manager, currency, false);
+  let hotWallet = await rawdb.findAvailableHotWallet(manager, userId, currency, false);
   if (hotWallet) {
     logger.info(`${currency} internal hot wallet is available, internal mode`);
   } else {
     logger.info(`${currency} internal hot wallet is not available, external mode`);
-    hotWallet = await rawdb.findAvailableHotWallet(manager, currency, true);
+    hotWallet = await rawdb.findAvailableHotWallet(manager, userId, currency, true);
   }
 
   if (!hotWallet) {
-    logger.error(`${currency} hot wallet is not available`);
+    logger.error(`No hot wallet is available depositId=${deposit.id} userId=${userId} currency=${currency}`);
     return null;
   }
 
@@ -128,6 +152,7 @@ async function _collectDepositTransaction(
   }
 
   deposit.collectedTxid = result.txid;
+  deposit.nextCheckAt = 0;
   deposit.collectStatus = CollectStatus.COLLECTING;
   await Utils.PromiseAll([
     rawdb.insertInternalTransfer(manager, {

@@ -3,6 +3,9 @@ import { Entity, Column, PrimaryColumn, BeforeInsert, BeforeUpdate } from 'typeo
 
 @Entity('hot_wallet')
 export class HotWallet {
+  @Column('int', { name: 'user_id', nullable: false })
+  public userId: number;
+
   @PrimaryColumn('varchar', {
     length: 100,
     name: 'address',
