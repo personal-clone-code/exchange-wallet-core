@@ -14,6 +14,7 @@ import { Withdrawal } from '../../entities';
 import { inspect } from 'util';
 
 const logger = getLogger('pickerDoProcess');
+let hotWalletFailedCounter = 0;
 
 const emptyResult: IWithdrawalProcessingResult = {
   needNextProcess: false,
@@ -71,11 +72,22 @@ async function _pickerSubDoProcess(
   const hotWallet = await rawdb.findAvailableHotWallet(manager, userId, currency, false);
 
   if (!hotWallet) {
-    logger.info(
-      `No ${currency.toString().toUpperCase()} hot wallet is available at the moment. Will wait for the next tick...`
-    );
+    hotWalletFailedCounter += 1;
+    // Raise issue if the hot wallet is not available for too long...
+    if (hotWalletFailedCounter % 50 === 0) {
+      logger.error(
+        `No hot wallet is available userId=${userId} currency=${currency} failedCounter=${hotWalletFailedCounter}`
+      );
+    }
+    // Else just print info and continue to wait
+    else {
+      logger.info(`No ${currency.toUpperCase()} hot wallet is available at the moment. Will wait for the next tick...`);
+    }
     return emptyResult;
   }
+
+  // Reset failed counter when there's available hot wallet
+  hotWalletFailedCounter = 0;
 
   // Pick a bunch of withdrawals and create a raw transaction for them
   const status = WithdrawalStatus.UNSIGNED;
