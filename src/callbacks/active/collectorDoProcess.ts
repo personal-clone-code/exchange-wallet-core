@@ -12,7 +12,7 @@ import {
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
 import { CollectStatus, InternalTransferType, WithdrawalStatus } from '../../Enums';
-import { Deposit } from '../../entities';
+import { Deposit, Wallet } from '../../entities';
 import Kms from '../../encrypt/Kms';
 
 const logger = getLogger('collectorDoProcess');
@@ -108,17 +108,20 @@ async function _collectDepositTransaction(
     privateKey = await Kms.getInstance().decrypt(address.privateKey, address.kmsDataKeyId);
   }
 
+  const wallet = await manager.getRepository(Wallet).findOneOrFail(deposit.walletId);
+  const userId = wallet.userId;
+
   // TODO: What's the right way to find hot wallet?
-  let hotWallet = await rawdb.findAvailableHotWallet(manager, currency, false);
+  let hotWallet = await rawdb.findAvailableHotWallet(manager, userId, currency, false);
   if (hotWallet) {
     logger.info(`${currency} internal hot wallet is available, internal mode`);
   } else {
     logger.info(`${currency} internal hot wallet is not available, external mode`);
-    hotWallet = await rawdb.findAvailableHotWallet(manager, currency, true);
+    hotWallet = await rawdb.findAvailableHotWallet(manager, userId, currency, true);
   }
 
   if (!hotWallet) {
-    logger.error(`${currency} hot wallet is not available`);
+    logger.error(`No hot wallet is available depositId=${deposit.id} userId=${userId} currency=${currency}`);
     return null;
   }
 

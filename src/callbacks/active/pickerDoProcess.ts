@@ -38,25 +38,25 @@ async function _pickerDoProcess(
   manager: EntityManager,
   picker: BaseWithdrawalPicker
 ): Promise<IWithdrawalProcessingResult> {
-  let gateway: BaseGateway;
   const limit = picker.getLimitPickingOnce();
+  const currencies: string[] = getListTokenSymbols().tokenSymbols;
+  const withdrawal = await rawdb.getNextPickedWithdrawal(manager, currencies);
 
-  const nextCurrency = await rawdb.getNextPickerCurrency(manager, getListTokenSymbols().tokenSymbols);
-
-  if (!nextCurrency) {
-    logger.info(
-      `There are not unsigned ${getListTokenSymbols().tokenSymbolsBuilder.toUpperCase()} withdrawals to process`
-    );
+  if (!withdrawal) {
+    logger.info(`There are not unsigned withdrawals to process currencies=${currencies}`);
     return emptyResult;
   }
 
-  const currency = nextCurrency;
-  gateway = picker.getGateway(currency);
-  return _pickerSubDoProcess(manager, currency, limit, gateway);
+  const userId = withdrawal.userId;
+  const currency = withdrawal.currency;
+  const gateway = picker.getGateway(currency);
+
+  return _pickerSubDoProcess(manager, userId, currency, limit, gateway);
 }
 
 async function _pickerSubDoProcess(
   manager: EntityManager,
+  userId: number,
   currency: string,
   limit: number,
   gateway: BaseGateway
@@ -67,8 +67,8 @@ async function _pickerSubDoProcess(
     return emptyResult;
   }
 
-  // Find an available hot wallet
-  const hotWallet = await rawdb.findAvailableHotWallet(manager, currency, false);
+  // Find an available internal hot wallet
+  const hotWallet = await rawdb.findAvailableHotWallet(manager, userId, currency, false);
 
   if (!hotWallet) {
     logger.info(

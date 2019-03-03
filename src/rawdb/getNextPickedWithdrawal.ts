@@ -3,7 +3,13 @@ import _ from 'lodash';
 import { Withdrawal } from '../entities';
 import { WithdrawalStatus } from '../Enums';
 
-export async function getNextPickerCurrency(manager: EntityManager, currencies: string[]): Promise<string> {
+/**
+ * Determine which withdrawal record will be picked in this round
+ *
+ * @param manager
+ * @param currencies
+ */
+export async function getNextPickedWithdrawal(manager: EntityManager, currencies: string[]): Promise<Withdrawal> {
   const pendingStatuses = [WithdrawalStatus.SENT, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING];
   const pending = await manager
     .getRepository(Withdrawal)
@@ -25,8 +31,5 @@ export async function getNextPickerCurrency(manager: EntityManager, currencies: 
     status: WithdrawalStatus.UNSIGNED,
   });
 
-  if (!result) {
-    return null;
-  }
-  return result.currency;
+  return result;
 }

@@ -1,4 +1,3 @@
-import { Const, Currency } from 'sota-common';
 import { WithdrawalTx } from '../entities';
 import { EntityManager, In } from 'typeorm';
 import { WithdrawalStatus } from '../Enums';
@@ -13,5 +12,3 @@ export async function hasPendingWithdrawal(manager: EntityManager, currency: str
 
   return !!pendingRecord;
 }
-
-export default hasPendingWithdrawal;
