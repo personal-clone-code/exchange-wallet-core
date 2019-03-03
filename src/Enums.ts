@@ -3,6 +3,7 @@ export enum DepositEvent {
   CONFIRMED = 'confirmed',
   COLLECTED = 'collected',
   COLLECTED_FAILED = 'collected_failed',
+  NOTCOLLECT = 'notcollect',
 }
 
 export enum WalletEvent {
@@ -57,4 +58,5 @@ export enum CollectStatus {
   UNCOLLECTED = 'uncollected',
   COLLECTING = 'collecting',
   COLLECTED = 'collected',
+  NOTCOLLECT = 'notcollect',
 }
