@@ -108,7 +108,7 @@ async function _collectDepositTransaction(
       }`
     );
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
-    deposit.collectedTxid = 'AMOUNT_BELOW_THRESHOLD_' + now;
+    deposit.collectedTxid = 'AMOUNT_BELOW_THRESHOLD';
     await rawdb.insertDepositLog(manager, deposit.id, DepositEvent.NOTCOLLECT);
     await manager.getRepository(Deposit).save(deposit);
     return null;
@@ -118,7 +118,17 @@ async function _collectDepositTransaction(
   if (!address) {
     logger.error(`Cannot collect depositId=${deposit.id} because of address not found: ${deposit.toAddress}.`);
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
-    deposit.collectedTxid = 'INVALID_ADDRESS_' + now;
+    deposit.collectedTxid = 'INVALID_ADDRESS';
+    await rawdb.insertDepositLog(manager, deposit.id, DepositEvent.NOTCOLLECT);
+    await manager.getRepository(Deposit).save(deposit);
+    return null;
+  }
+
+  const isCollectable = await collector.isCollectable(deposit.txid, deposit.toAddress);
+  if (!isCollectable) {
+    logger.error(`Deposit is already collected id=${deposit.id} txid=${deposit.txid} address=${deposit.toAddress}`);
+    deposit.collectStatus = CollectStatus.NOTCOLLECT;
+    deposit.collectedTxid = 'COLLECTED_SOMEWHERE_ALREADY';
     await rawdb.insertDepositLog(manager, deposit.id, DepositEvent.NOTCOLLECT);
     await manager.getRepository(Deposit).save(deposit);
     return null;
