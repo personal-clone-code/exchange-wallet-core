@@ -7,6 +7,7 @@ import {
   getListTokenSymbols,
   isPlatform,
   getMinimumDepositAmount,
+  getCurrencyDecimal,
   getFamily,
 } from 'sota-common';
 import BN from 'bignumber.js';
@@ -99,13 +100,15 @@ async function _collectDepositTransaction(
     return null;
   }
 
-  const minNumber = new BN(minimumDepositAmount);
+  const factor = new BN(10).pow(getCurrencyDecimal(deposit.currency));
+  const minNumber = new BN(minimumDepositAmount).multipliedBy(factor);
   const amountNumber = new BN(deposit.amount);
   if (amountNumber.lt(minNumber)) {
     logger.error(
-      `Deposit has amount less than threshold depositId=${deposit.id} amount=${deposit.amount} currency=${
-        deposit.currency
-      }`
+      `Deposit amount less than threshold \
+      depositId=${deposit.id} \
+      currency=${deposit.currency} \
+      amount=${deposit.amount} < threshold=${minNumber}`
     );
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
     deposit.collectedTxid = 'AMOUNT_BELOW_THRESHOLD';
