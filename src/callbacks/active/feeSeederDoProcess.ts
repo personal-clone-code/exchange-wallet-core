@@ -51,14 +51,13 @@ async function _feeSeederDoProcess(
     return emptyResult;
   }
 
-  const wallet = await manager.getRepository(Wallet).findOneOrFail(address.walletId);
-  const userId = wallet.userId;
+  const walletId = address.walletId;
 
   // Find internal hot wallet to seed fee for funds collector
-  const hotWallet = await rawdb.findAvailableHotWallet(manager, userId, feeSeederCurrency, false);
+  const hotWallet = await rawdb.findAvailableHotWallet(manager, walletId, feeSeederCurrency, false);
 
   if (!hotWallet) {
-    logger.error(`No internal hot wallet userId=${userId} currency=${feeSeederCurrency}`);
+    logger.error(`No internal hot wallet walletId=${walletId} currency=${feeSeederCurrency}`);
     return emptyResult;
   }
 

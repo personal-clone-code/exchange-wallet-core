@@ -151,20 +151,19 @@ async function _collectDepositTransaction(
     privateKey = await Kms.getInstance().decrypt(address.privateKey, address.kmsDataKeyId);
   }
 
-  const wallet = await manager.getRepository(Wallet).findOneOrFail(deposit.walletId);
-  const userId = wallet.userId;
+  const walletId = deposit.walletId;
 
   // TODO: What's the right way to find hot wallet?
-  let hotWallet = await rawdb.findAvailableHotWallet(manager, userId, currency, false);
+  let hotWallet = await rawdb.findAvailableHotWallet(manager, walletId, currency, false);
   if (hotWallet) {
     logger.info(`${currency} internal hot wallet is available, internal mode`);
   } else {
     logger.info(`${currency} internal hot wallet is not available, external mode`);
-    hotWallet = await rawdb.findAvailableHotWallet(manager, userId, currency, true);
+    hotWallet = await rawdb.findAvailableHotWallet(manager, walletId, currency, true);
   }
 
   if (!hotWallet) {
-    logger.error(`No hot wallet is available depositId=${deposit.id} userId=${userId} currency=${currency}`);
+    logger.error(`No hot wallet is available depositId=${deposit.id} walletId=${walletId} currency=${currency}`);
     deposit.nextCheckAt = now + collector.getNextCheckAtAmount();
     await manager.getRepository(Deposit).save(deposit);
     return null;
@@ -172,7 +171,7 @@ async function _collectDepositTransaction(
 
   const result = await gateway.forwardTransaction(privateKey, address.address, hotWallet.address, deposit.amount);
   if (!result) {
-    logger.error(`Construct collect tx failed depositId=${deposit.id} userId=${userId} currency=${currency}`);
+    logger.error(`Construct collect tx failed depositId=${deposit.id} walletId=${walletId} currency=${currency}`);
     deposit.nextCheckAt = now + collector.getNextCheckAtAmount();
     await manager.getRepository(Deposit).save(deposit);
     return null;

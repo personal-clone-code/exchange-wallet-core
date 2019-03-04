@@ -48,16 +48,16 @@ async function _pickerDoProcess(
     return emptyResult;
   }
 
-  const userId = withdrawal.userId;
+  const walletId = withdrawal.walletId;
   const currency = withdrawal.currency;
   const gateway = picker.getGateway(currency);
 
-  return _pickerSubDoProcess(manager, userId, currency, limit, gateway);
+  return _pickerSubDoProcess(manager, walletId, currency, limit, gateway);
 }
 
 async function _pickerSubDoProcess(
   manager: EntityManager,
-  userId: number,
+  walletId: number,
   currency: string,
   limit: number,
   gateway: BaseGateway
@@ -69,14 +69,14 @@ async function _pickerSubDoProcess(
   }
 
   // Find an available internal hot wallet
-  const hotWallet = await rawdb.findAvailableHotWallet(manager, userId, currency, false);
+  const hotWallet = await rawdb.findAvailableHotWallet(manager, walletId, currency, false);
 
   if (!hotWallet) {
     hotWalletFailedCounter += 1;
     // Raise issue if the hot wallet is not available for too long...
     if (hotWalletFailedCounter % 50 === 0) {
       logger.error(
-        `No hot wallet is available userId=${userId} currency=${currency} failedCounter=${hotWalletFailedCounter}`
+        `No hot wallet is available walletId=${walletId} currency=${currency} failedCounter=${hotWalletFailedCounter}`
       );
     }
     // Else just print info and continue to wait

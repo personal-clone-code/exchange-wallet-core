@@ -10,15 +10,16 @@ import { EntityManager } from 'typeorm';
  */
 export async function findAvailableHotWallet(
   manager: EntityManager,
-  userId: number,
+  walletId: number,
   currency: string,
   isExternal: boolean
 ): Promise<HotWallet> {
   // TODO: find available hot wallet only
   const hotWallet = await manager.findOne(HotWallet, {
-    userId,
+    walletId,
     currency,
     isExternal,
   });
+
   return hotWallet;
 }

@@ -6,6 +6,9 @@ export class HotWallet {
   @Column('int', { name: 'user_id', nullable: false })
   public userId: number;
 
+  @Column('int', { name: 'wallet_id', nullable: false })
+  public walletId: number;
+
   @PrimaryColumn('varchar', {
     length: 100,
     name: 'address',
