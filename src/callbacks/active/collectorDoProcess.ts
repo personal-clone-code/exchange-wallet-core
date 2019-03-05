@@ -144,7 +144,7 @@ async function _collectDepositTransaction(
     return null;
   }
 
-  let kmsDataKeyId: number;
+  let kmsDataKeyId: number = 0;
   let privateKey: string;
 
   try {
