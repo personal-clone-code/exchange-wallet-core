@@ -32,12 +32,20 @@ async function _onCrawlingTxs(manager: EntityManager, crawler: BaseCrawler, allT
   }, new Transactions());
 
   const uniqueListTxs = Array.from(new Set(watchingTxs.map((tx: Transaction) => tx)));
+  const txProcessed = new Map<string, boolean>();
 
   // Process every single deposit transaction
   const tasks = uniqueListTxs.map(async watchingTx => {
     if (!watchingTx) {
       return;
     }
+
+    // Prevent process one transaction multiple times
+    if (txProcessed.get(watchingTx.txid)) {
+      return;
+    }
+
+    txProcessed.set(watchingTx.txid, true);
 
     return rawdb.processOneDepositTransaction(manager, crawler, watchingTx, watchingAddresses);
   });
