@@ -12,6 +12,9 @@ export class Address {
   @PrimaryColumn({ name: 'address' })
   public address: string;
 
+  @PrimaryColumn({ name: 'secret' })
+  public secret: string;
+
   @Column({ name: 'is_external' })
   public isExternal: number;
 
