@@ -1,6 +1,6 @@
+import _ from 'lodash';
 import { EntityManager, In } from 'typeorm';
 import { Address } from '../entities';
-import { Currency } from 'sota-common';
 
 /**
  * Filter and return only the addresses that we're watching (which are currently stored in address tables)
@@ -19,7 +19,8 @@ export async function filterWatchingAddresses(
   }
 
   const watchingAddresses = await manager.getRepository(Address).find({ currency, address: In(addresses) });
-  return watchingAddresses.map(a => a.address);
+  const result = watchingAddresses.map(a => a.address);
+  return _.compact(_.uniq(result));
 }
 
 export default filterWatchingAddresses;

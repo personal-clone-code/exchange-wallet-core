@@ -1,4 +1,4 @@
-import { Transaction, BaseCrawler, getFamily, getListTokenSymbols, Transactions, Utils } from 'sota-common';
+import { Transaction, BaseCrawler, getFamily, Transactions, Utils } from 'sota-common';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
 
