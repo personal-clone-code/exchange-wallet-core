@@ -91,7 +91,6 @@ async function _collectDepositTransaction(
 ): Promise<Transaction> {
   const now = Utils.now();
   const currency = getFamily();
-  const addressEntity = collector.getAddressEntity();
   const gateway = collector.getGateway(deposit.currency);
 
   const minimumDepositAmount = getMinimumDepositAmount(deposit.currency);
@@ -117,7 +116,7 @@ async function _collectDepositTransaction(
     return null;
   }
 
-  const address: any = await manager.getRepository(addressEntity).findOne({ address: deposit.toAddress });
+  const address = await manager.getRepository(Address).findOne({ address: deposit.toAddress });
   if (!address) {
     logger.error(`Cannot collect depositId=${deposit.id} because of address not found: ${deposit.toAddress}.`);
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
@@ -127,8 +126,7 @@ async function _collectDepositTransaction(
     return null;
   }
 
-  const genericAddress = await manager.getRepository(Address).findOne({ address: deposit.toAddress });
-  if (genericAddress.isExternal) {
+  if (address.isExternal) {
     logger.error(`Does not collect external address' deposit: id=${deposit.id} address=${deposit.toAddress}`);
     deposit.collectStatus = CollectStatus.COLLECTED;
     deposit.collectedTxid = 'NO_COLLECT_EXTERNAL_ADDRESS';
@@ -146,9 +144,19 @@ async function _collectDepositTransaction(
     return null;
   }
 
-  let privateKey = address.privateKey;
-  if (address.kmsDataKeyId !== 0) {
-    privateKey = await Kms.getInstance().decrypt(address.privateKey, address.kmsDataKeyId);
+  let kmsDataKeyId: number;
+  let privateKey: string;
+
+  try {
+    const privateKeyDef = JSON.parse(address.secret);
+    privateKey = privateKeyDef.private_key;
+    kmsDataKeyId = privateKeyDef.kms_data_key_id;
+  } catch (e) {
+    privateKey = address.secret;
+  }
+
+  if (kmsDataKeyId !== 0) {
+    privateKey = await Kms.getInstance().decrypt(privateKey, kmsDataKeyId);
   }
 
   const walletId = deposit.walletId;
