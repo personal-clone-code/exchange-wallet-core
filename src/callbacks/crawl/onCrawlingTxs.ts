@@ -1,7 +1,9 @@
 import { GenericTransactions, Transaction, BaseCrawler, getFamily, Transactions, Utils } from 'sota-common';
 import { EntityManager, getConnection } from 'typeorm';
+import { getLogger } from 'sota-common';
 import * as rawdb from '../../rawdb';
 
+const logger = getLogger('onCrawlingTxs');
 /**
  * This callback is invoked to processing all transactions of crawling blocks
  * @param {BaseCrawler} crawler - the crawler that is processing
@@ -17,7 +19,12 @@ export default async function onCrawlingTxs(crawler: BaseCrawler, allTxs: Transa
     return;
   }
   await connection.transaction(async manager => {
-    await _onCrawlingTxs(manager, crawler, txsByAddress);
+    try {
+      await _onCrawlingTxs(manager, crawler, txsByAddress);
+    } catch (e) {
+      logger.error(`onCrawlingTxs failed with error`);
+      logger.error(e);
+    }
   });
 }
 
