@@ -17,21 +17,22 @@ export async function prepareCurrencyWorker(currency: Currency, tokenType?: stri
   const connection = getConnection();
 
   // same network
-  const [allTokens, configData] = await Promise.all([
+  const [allTokens, configByCurrency, configByTokenType] = await Promise.all([
     connection.getRepository(CurrencyToken).find({}),
     connection.getRepository(Config).findOne({ currency }),
+    tokenType ? connection.getRepository(Config).findOne({ currency: tokenType }) : null,
   ]);
 
   if (allTokens.length === 0) {
     logger.warn('Cannot get any currency configurations in currency table');
   }
-  if (!configData) {
+  if (!configByCurrency && !configByTokenType) {
     throw new Error(`Cannot find ${currency.toString().toUpperCase()} configuration in config table`);
   }
   await setTokenData(allTokens.map(token => Object.assign(token)));
 
   buildListTokenSymbols(currency, tokenType);
-  setCurrencyConfig(currency, configData);
+  setCurrencyConfig(currency, configByTokenType ? configByTokenType : configByCurrency);
   setBlockchainNetworkEnv();
   await updateValidApiEndpoint();
 
