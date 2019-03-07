@@ -45,9 +45,12 @@ export async function insertDeposit(manager: EntityManager, output: TransferOutp
     return;
   }
 
-  if (address.isExternal || !(await _checkDepositWithHotWallet(manager, deposit))) {
+  if (address.isExternal) {
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
-    deposit.collectedTxid = 'NO_COLLECT_EXTERNAL_ADDRESS_OR_HOT_WALLET_ADDRESS';
+    deposit.collectedTxid = 'NO_COLLECT_EXTERNAL_ADDRESS';
+  } else if (await _hasHotWallet(manager, deposit.toAddress)) {
+    deposit.collectStatus = CollectStatus.COLLECTED;
+    deposit.collectedTxid = 'COLLECT_HOT_WALLET_ADDRESS';
   }
 
   // Persist deposit data in main table
@@ -94,9 +97,9 @@ function _validateWalletDeposit(output: TransferOutput, address: Address, wallet
   return;
 }
 
-async function _checkDepositWithHotWallet(manager: EntityManager, deposit: Deposit): Promise<boolean> {
+async function _hasHotWallet(manager: EntityManager, address: string): Promise<boolean> {
   const hotWallet = await manager.findOne(HotWallet, {
-    address: deposit.toAddress,
+    address,
   });
-  return !hotWallet;
+  return !!hotWallet;
 }
