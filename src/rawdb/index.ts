@@ -1,5 +1,6 @@
 export * from './filterWatchingAddresses';
 export * from './findAvailableHotWallet';
+export * from './findHotWallet';
 export * from './insertDeposit';
 export * from './insertDepositLog';
 export * from './increaseWalletBalance';

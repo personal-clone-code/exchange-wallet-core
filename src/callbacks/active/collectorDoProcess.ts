@@ -14,8 +14,9 @@ import BN from 'bignumber.js';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
 import { CollectStatus, InternalTransferType, WithdrawalStatus, DepositEvent } from '../../Enums';
-import { Deposit, Wallet, Address } from '../../entities';
+import { Deposit, Wallet, Address, HotWallet } from '../../entities';
 import Kms from '../../encrypt/Kms';
+import { findHotWallet } from '../../rawdb';
 
 const logger = getLogger('collectorDoProcess');
 
@@ -92,6 +93,15 @@ async function _collectDepositTransaction(
   const now = Utils.now();
   const currency = getFamily();
   const gateway = collector.getGateway(deposit.currency);
+
+  if (!(await _checkDepositWithHotWallet(manager, deposit))) {
+    logger.warn(`Deposit receiver ${deposit.toAddress} is mainly hot wallet`);
+    deposit.collectStatus = CollectStatus.COLLECTED;
+    deposit.collectedTxid = 'SIMILAR_TO_HOT_WALLET';
+    await rawdb.insertDepositLog(manager, deposit.id, DepositEvent.COLLECTED);
+    await manager.getRepository(Deposit).save(deposit);
+    return null;
+  }
 
   const minimumDepositAmount = getMinimumDepositAmount(deposit.currency);
   if (!minimumDepositAmount) {
@@ -201,6 +211,11 @@ async function _collectDepositTransaction(
   ]);
 
   return result;
+}
+
+async function _checkDepositWithHotWallet(manager: EntityManager, deposit: Deposit): Promise<boolean> {
+  const hotWallet: HotWallet = await findHotWallet(manager, deposit.toAddress);
+  return !hotWallet;
 }
 
 export default collectorDoProcess;
