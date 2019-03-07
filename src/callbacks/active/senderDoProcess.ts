@@ -67,6 +67,8 @@ async function _senderSubDoProcess(manager: EntityManager, currency: string, gat
         sentResultObj
       ),
     ]);
+  } else {
+    logger.error(`Could not send raw transaction. Result is empty, please check...`);
   }
 
   return emptyResult;
