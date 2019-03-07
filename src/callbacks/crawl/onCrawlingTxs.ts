@@ -1,4 +1,4 @@
-import { Transaction, BaseCrawler, getFamily, Transactions, Utils } from 'sota-common';
+import { GenericTransactions, Transaction, BaseCrawler, getFamily, Transactions, Utils } from 'sota-common';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
 
@@ -11,16 +11,22 @@ import * as rawdb from '../../rawdb';
  */
 export default async function onCrawlingTxs(crawler: BaseCrawler, allTxs: Transactions): Promise<void> {
   const connection = getConnection();
+  // Key transactions by hash and address for looking up later
+  const txsByAddress = allTxs.groupByRecipients();
+  if (!allTxs.length || !txsByAddress.size) {
+    return;
+  }
   await connection.transaction(async manager => {
-    await _onCrawlingTxs(manager, crawler, allTxs);
+    await _onCrawlingTxs(manager, crawler, txsByAddress);
   });
 }
 
 // Proxy function behind the transaction
-async function _onCrawlingTxs(manager: EntityManager, crawler: BaseCrawler, allTxs: Transactions): Promise<void> {
-  // Key transactions by hash and address for looking up later
-  const txsByAddress = allTxs.groupByRecipients();
-
+async function _onCrawlingTxs(
+  manager: EntityManager,
+  crawler: BaseCrawler,
+  txsByAddress: Map<string, GenericTransactions<Transaction>>
+): Promise<void> {
   // Get all addresses that are involved in the transactions
   const allAddresses: string[] = Array.from(txsByAddress.keys());
 
