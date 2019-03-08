@@ -23,6 +23,10 @@ export async function findAvailableHotWallet(
     isExternal,
   });
 
+  if (!hotWallets.length) {
+    return null;
+  }
+
   const allHotWalletAddresses = hotWallets.map(h => h.address);
   const allPendingWithdrawals = await manager.find(Withdrawal, {
     fromAddress: In(allHotWalletAddresses),
