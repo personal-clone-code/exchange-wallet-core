@@ -85,7 +85,11 @@ async function _collectVerify(
   }
   const fee = tx.getNetworkFee();
   const outputs = tx.extractTransferOutputs().filter(output => output.toAddress === transfer.toAddress);
-  // asumme one out
+
+  // Handle for case: an address send amount to itself
+  if (outputs.length === 0) {
+    return emptyResult;
+  }
   const amount = outputs[0].amount;
   const timestamp = tx.timestamp;
 

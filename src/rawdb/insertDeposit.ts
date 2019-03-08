@@ -1,9 +1,8 @@
 import { EntityManager } from 'typeorm';
 import { TransferOutput, getLogger, Utils } from 'sota-common';
 import * as rawdb from './';
-import { Deposit, Address, Wallet, WalletBalance } from '../entities';
+import { Deposit, Address, Wallet, WalletBalance, HotWallet } from '../entities';
 import { DepositEvent, WalletEvent, CollectStatus } from '../Enums';
-
 const logger = getLogger('rawdb::insertDeposit');
 
 /**
@@ -49,6 +48,9 @@ export async function insertDeposit(manager: EntityManager, output: TransferOutp
   if (address.isExternal) {
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
     deposit.collectedTxid = 'NO_COLLECT_EXTERNAL_ADDRESS';
+  } else if (await _hasHotWallet(manager, deposit.toAddress)) {
+    deposit.collectStatus = CollectStatus.COLLECTED;
+    deposit.collectedTxid = 'COLLECT_HOT_WALLET_ADDRESS';
   }
 
   // Persist deposit data in main table
@@ -93,4 +95,11 @@ export default insertDeposit;
 function _validateWalletDeposit(output: TransferOutput, address: Address, wallet: Wallet): void {
   // TODO: Implement me
   return;
+}
+
+async function _hasHotWallet(manager: EntityManager, address: string): Promise<boolean> {
+  const hotWallet = await manager.findOne(HotWallet, {
+    address,
+  });
+  return !!hotWallet;
 }
