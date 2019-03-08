@@ -15,6 +15,9 @@ export class Wallet {
   @Column({ name: 'currency', nullable: false })
   public currency: string;
 
+  @Column({ name: 'meta', nullable: false })
+  public meta: string;
+
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;
 
