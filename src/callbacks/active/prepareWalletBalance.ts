@@ -50,6 +50,7 @@ export async function prepareWalletBalanceAll(currency: Currency, symbols: strin
     .insert()
     .into(WalletBalance)
     .values(values)
+    .orIgnore()
     .execute();
 
   return;
