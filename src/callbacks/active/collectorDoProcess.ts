@@ -162,12 +162,12 @@ async function _collectDepositTransaction(
   const walletId = deposit.walletId;
 
   // TODO: What's the right way to find hot wallet?
-  let hotWallet = await rawdb.findAvailableHotWallet(manager, walletId, currency, false);
+  let hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, false);
   if (hotWallet) {
     logger.info(`${currency} internal hot wallet is available, internal mode`);
   } else {
     logger.info(`${currency} internal hot wallet is not available, external mode`);
-    hotWallet = await rawdb.findAvailableHotWallet(manager, walletId, currency, true);
+    hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, true);
   }
 
   if (!hotWallet) {
