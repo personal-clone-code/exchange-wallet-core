@@ -24,6 +24,7 @@ export default async function onCrawlingTxs(crawler: BaseCrawler, allTxs: Transa
     } catch (e) {
       logger.error(`onCrawlingTxs failed with error`);
       logger.error(e);
+      throw e;
     }
   });
 }
