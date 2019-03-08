@@ -1,9 +1,8 @@
 import { EntityManager } from 'typeorm';
-import { TransferOutput, getLogger, Utils, getCurrency } from 'sota-common';
+import { TransferOutput, getLogger, Utils } from 'sota-common';
 import * as rawdb from './';
 import { Deposit, Address, Wallet, WalletBalance } from '../entities';
 import { DepositEvent, WalletEvent, CollectStatus } from '../Enums';
-import { prepareWalletBalance } from '../callbacks';
 
 const logger = getLogger('rawdb::insertDeposit');
 
@@ -67,7 +66,7 @@ export async function insertDeposit(manager: EntityManager, output: TransferOutp
 
   const walletBalance = await manager.getRepository(WalletBalance).findOne({ walletId, coin });
   if (!walletBalance) {
-    await prepareWalletBalance(getCurrency(), coin);
+    throw new Error(`Wallet balance doesn't exist: walletId=${walletId} coin=${coin}`);
   }
 
   await Utils.PromiseAll([
