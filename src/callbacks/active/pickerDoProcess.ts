@@ -91,7 +91,7 @@ async function _pickerSubDoProcess(
 
   // Pick a bunch of withdrawals and create a raw transaction for them
   const status = WithdrawalStatus.UNSIGNED;
-  const records = await rawdb.findWithdrawalsByStatus(manager, currency, status, limit);
+  const records = await rawdb.findWithdrawalsByStatus(manager, hotWallet.walletId, currency, status, limit);
   if (!records.length) {
     logger.info(`No more withdrawal need to be picked up. Will try in the next tick...`);
     return emptyResult;

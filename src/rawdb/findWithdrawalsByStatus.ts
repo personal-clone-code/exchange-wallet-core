@@ -6,6 +6,7 @@ const logger = getLogger('rawdb::findSentWithdrawal');
 
 export async function findWithdrawalsByStatus(
   manager: EntityManager,
+  walletId: number,
   currency: string,
   status: string,
   limit: number
@@ -16,7 +17,7 @@ export async function findWithdrawalsByStatus(
       updatedAt: 'ASC',
     },
     take: limit,
-    where: { currency, status },
+    where: { walletId, currency, status },
   });
 }
 
