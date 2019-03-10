@@ -16,7 +16,6 @@ export async function findAvailableHotWallet(
   isExternal: boolean
 ): Promise<HotWallet> {
   const pendingStatuses = [WithdrawalStatus.SENT, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING];
-  // TODO: find available hot wallet only
   const hotWallets = await manager.find(HotWallet, {
     walletId,
     currency,
@@ -42,7 +41,7 @@ export async function findAvailableHotWallet(
 }
 
 /**
- * Get a hot wallet that has no pending transaction
+ * Get one any hot wallet
  *
  * @param manager
  * @param currency
