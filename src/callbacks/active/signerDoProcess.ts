@@ -11,6 +11,7 @@ import {
 import { EntityManager, getConnection } from 'typeorm';
 import { WithdrawalTx, HotWallet, Withdrawal } from '../../entities';
 import { WithdrawalStatus } from '../../Enums';
+import Kms from '../../encrypt/Kms';
 import * as rawdb from '../../rawdb';
 
 const logger = getLogger('signerDoProcess');
@@ -76,7 +77,21 @@ async function _signerSubDoProcess(manager: EntityManager, currency: string, gat
     throw new Error(`Only support normal hot wallet at the moment.`);
   }
 
-  const signedTx = await gateway.signRawTxBySinglePrivateKey(withdrawalTx.unsignedRaw, hotWallet.coinKeys);
+  let rawPrivateKey = hotWallet.coinKeys;
+
+  try {
+    const coinKeys = JSON.parse(hotWallet.coinKeys);
+    if (coinKeys.private_key) {
+      rawPrivateKey = coinKeys.private_key;
+      if (coinKeys.kms_data_key_id > 0) {
+        rawPrivateKey = await Kms.getInstance().decrypt(coinKeys.private_key, coinKeys.kms_data_key_id);
+      }
+    }
+  } catch (e) {
+    //
+  }
+
+  const signedTx = await gateway.signRawTxBySinglePrivateKey(withdrawalTx.unsignedRaw, rawPrivateKey);
   const status = WithdrawalStatus.SIGNED;
   const txid = signedTx.txid;
 
