@@ -1,6 +1,7 @@
 import { HotWallet, Withdrawal } from '../entities';
 import { EntityManager, In } from 'typeorm';
 import { WithdrawalStatus } from '../Enums';
+import { getFamily } from 'sota-common';
 
 /**
  * Get a hot wallet that has no pending transaction
@@ -10,6 +11,19 @@ import { WithdrawalStatus } from '../Enums';
  * @param isExternal
  */
 export async function findAvailableHotWallet(
+  manager: EntityManager,
+  walletId: number,
+  currency: string,
+  isExternal: boolean
+): Promise<HotWallet> {
+  let hotWallet = await _findAvailableHotWallet(manager, walletId, currency, isExternal);
+  if (!hotWallet) {
+    hotWallet = await _findAvailableHotWallet(manager, walletId, getFamily(), isExternal);
+  }
+  return hotWallet;
+}
+
+export async function _findAvailableHotWallet(
   manager: EntityManager,
   walletId: number,
   currency: string,
