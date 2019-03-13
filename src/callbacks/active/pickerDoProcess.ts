@@ -68,7 +68,9 @@ async function _pickerDoProcess(
     }
     // Else just print info and continue to wait
     else {
-      logger.info(`No ${currency.toUpperCase()} hot wallet is available at the moment. Will wait for the next tick...`);
+      logger.info(
+        `No ${currency.toUpperCase()} hot wallet for wallet ${walletId} is available at the moment. Will wait for the next tick...`
+      );
     }
     await updateTimestampForWithdrawals(manager, withdrawalIds);
     return emptyResult;
@@ -94,9 +96,10 @@ async function _pickerDoProcess(
     return emptyResult;
   }
 
-  // TODO: Update timestamp of problematic withdrawals here?
   if (!unsignedTx) {
-    throw new Error(`Could not construct unsigned tx. Just wait until the next tick...`);
+    logger.error(`Could not construct unsigned tx. Just wait until the next tick...`);
+    await updateTimestampForWithdrawals(manager, withdrawalIds);
+    return emptyResult;
   }
 
   // Create withdrawal tx record
