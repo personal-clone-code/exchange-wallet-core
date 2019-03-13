@@ -20,7 +20,7 @@ export async function findAvailableHotWallet(
   if (!hotWallet) {
     hotWallet = await _findAvailableHotWallet(manager, walletId, getFamily(), isExternal);
   }
-  return hotWallet;
+  return hotWallet.length ? hotWallet[0] : null;
 }
 
 export async function _findAvailableHotWallet(
@@ -28,7 +28,7 @@ export async function _findAvailableHotWallet(
   walletId: number,
   currency: string,
   isExternal: boolean
-): Promise<HotWallet> {
+): Promise<HotWallet[]> {
   const pendingStatuses = [WithdrawalStatus.SENT, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING];
   const hotWallets = await manager.find(HotWallet, {
     walletId,
@@ -37,7 +37,7 @@ export async function _findAvailableHotWallet(
   });
 
   if (!hotWallets.length) {
-    return null;
+    return [];
   }
 
   const allHotWalletAddresses = hotWallets.map(h => h.address);
@@ -51,7 +51,7 @@ export async function _findAvailableHotWallet(
     return unavailableHotWallets.indexOf(hotWallet.address) === -1;
   });
 
-  return availableHotWallets.length > 0 ? availableHotWallets[0] : null;
+  return availableHotWallets.length > 0 ? availableHotWallets : [];
 }
 
 /**
