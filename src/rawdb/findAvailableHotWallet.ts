@@ -1,9 +1,10 @@
 import { HotWallet, Withdrawal } from '../entities';
 import { EntityManager, In } from 'typeorm';
 import { WithdrawalStatus } from '../Enums';
-import { getFamily, TransferOutput, BaseGateway } from 'sota-common';
+import { getFamily, TransferOutput, BaseGateway, getLogger } from 'sota-common';
 import BigNumber from 'bignumber.js';
 
+const logger = getLogger('findAvaiableHotWallet');
 /**
  * Get a hot wallet that has no pending transaction
  *
@@ -54,6 +55,9 @@ export async function findTransferableHotWallet(
       }
     })
   );
+  if (!foundHotWallet) {
+    logger.error(`Cannot find any hot wallet that have available balance for currency = ${currency.toUpperCase()}`);
+  }
   return foundHotWallet;
 }
 
