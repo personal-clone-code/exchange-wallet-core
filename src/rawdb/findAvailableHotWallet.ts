@@ -1,7 +1,8 @@
 import { HotWallet, Withdrawal } from '../entities';
 import { EntityManager, In } from 'typeorm';
 import { WithdrawalStatus } from '../Enums';
-import { getFamily } from 'sota-common';
+import { getFamily, TransferOutput, BaseGateway } from 'sota-common';
+import BigNumber from 'bignumber.js';
 
 /**
  * Get a hot wallet that has no pending transaction
@@ -16,14 +17,60 @@ export async function findAvailableHotWallet(
   currency: string,
   isExternal: boolean
 ): Promise<HotWallet> {
-  let hotWallet = await _findAvailableHotWallet(manager, walletId, currency, isExternal);
-  if (!hotWallet) {
-    hotWallet = await _findAvailableHotWallet(manager, walletId, getFamily(), isExternal);
-  }
+  const hotWallet = await findAvailableHotWallets(manager, walletId, currency, isExternal);
   return hotWallet.length ? hotWallet[0] : null;
 }
 
-export async function _findAvailableHotWallet(
+/**
+ * Get a hot wallet that has no pending transaction
+ *
+ * @param manager
+ * @param currency
+ * @param isExternal
+ */
+export async function findTransferableHotWallet(
+  manager: EntityManager,
+  walletId: number,
+  transferOutputs: TransferOutput[],
+  currency: string,
+  isExternal: boolean,
+  gateway: BaseGateway
+): Promise<HotWallet> {
+  let total: BigNumber = new BigNumber('0');
+  transferOutputs.forEach(transferOutput => {
+    total = total.plus(transferOutput.amount, 10);
+  });
+  let foundHotWallet: HotWallet = null;
+  const hotWallets = await findAvailableHotWallets(manager, walletId, currency, isExternal);
+  if (!hotWallets.length) {
+    return foundHotWallet;
+  }
+  await Promise.all(
+    hotWallets.map(async hotWallet => {
+      const hotWalletBalance: BigNumber = new BigNumber(await gateway.getAddressBalance(hotWallet.address), 10);
+      if (hotWalletBalance.isGreaterThan(total)) {
+        foundHotWallet = hotWallet;
+        return;
+      }
+    })
+  );
+  return foundHotWallet;
+}
+
+export async function findAvailableHotWallets(
+  manager: EntityManager,
+  walletId: number,
+  currency: string,
+  isExternal: boolean
+): Promise<HotWallet[]> {
+  let hotWallet = await _findAvailableHotWallets(manager, walletId, currency, isExternal);
+  if (!hotWallet.length) {
+    hotWallet = await _findAvailableHotWallets(manager, walletId, getFamily(), isExternal);
+  }
+  return hotWallet.length ? hotWallet : [];
+}
+
+export async function _findAvailableHotWallets(
   manager: EntityManager,
   walletId: number,
   currency: string,

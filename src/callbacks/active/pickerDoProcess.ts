@@ -53,9 +53,10 @@ async function _pickerDoProcess(
   const walletId = records[0].walletId;
   const currency = records[0].currency;
   const gateway = picker.getGateway(currency);
+  const vouts = withdrawalsToVOuts(records);
 
   // Find an available internal hot wallet
-  const hotWallet = await rawdb.findAvailableHotWallet(manager, walletId, currency, false);
+  const hotWallet = await rawdb.findTransferableHotWallet(manager, walletId, vouts, currency, false, gateway);
 
   if (!hotWallet) {
     hotWalletFailedCounter += 1;
@@ -75,7 +76,6 @@ async function _pickerDoProcess(
 
   // Reset failed counter when there's available hot wallet
   hotWalletFailedCounter = 0;
-  const vouts = withdrawalsToVOuts(records);
 
   // Filter out the zero-outputs. We can prevent this case from creating withdrawals
   // But it may still happen though, so need the guarding mechanism here...
