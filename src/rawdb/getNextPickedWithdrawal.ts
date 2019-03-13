@@ -32,8 +32,13 @@ export async function getNextPickedWithdrawals(
   }
 
   const firstRecord = await manager.getRepository(Withdrawal).findOne({
-    currency: In(notPendingCurrencies),
-    status: WithdrawalStatus.UNSIGNED,
+    order: {
+      updatedAt: 'ASC',
+    },
+    where: {
+      currency: In(notPendingCurrencies),
+      status: WithdrawalStatus.UNSIGNED,
+    },
   });
 
   if (!firstRecord) {
