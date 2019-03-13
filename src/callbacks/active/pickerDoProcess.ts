@@ -4,13 +4,14 @@ import {
   getLogger,
   Utils,
   BaseGateway,
+  IRawTransaction,
   getListTokenSymbols,
 } from 'sota-common';
 import _ from 'lodash';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
 import { WithdrawalStatus, WithdrawalEvent } from '../../Enums';
-import { Withdrawal } from '../../entities';
+import { HotWallet, Withdrawal, WithdrawalTx } from '../../entities';
 import { inspect } from 'util';
 
 const logger = getLogger('pickerDoProcess');
@@ -41,32 +42,17 @@ async function _pickerDoProcess(
 ): Promise<IWithdrawalProcessingResult> {
   const limit = picker.getLimitPickingOnce();
   const currencies: string[] = getListTokenSymbols().tokenSymbols;
-  const withdrawal = await rawdb.getNextPickedWithdrawal(manager, currencies);
-
-  if (!withdrawal) {
-    logger.info(`There are not unsigned withdrawals to process currencies=${currencies}`);
+  // Pick a bunch of withdrawals and create a raw transaction for them
+  const records = await rawdb.getNextPickedWithdrawals(manager, currencies, limit);
+  if (!records.length) {
+    logger.info(`No more withdrawal need to be picked up. Will try in the next tick...`);
     return emptyResult;
   }
 
-  const walletId = withdrawal.walletId;
-  const currency = withdrawal.currency;
+  const withdrawalIds = records.map(w => w.id);
+  const walletId = records[0].walletId;
+  const currency = records[0].currency;
   const gateway = picker.getGateway(currency);
-
-  return _pickerSubDoProcess(manager, walletId, currency, limit, gateway);
-}
-
-async function _pickerSubDoProcess(
-  manager: EntityManager,
-  walletId: number,
-  currency: string,
-  limit: number,
-  gateway: BaseGateway
-): Promise<IWithdrawalProcessingResult> {
-  const hasPendingWithdrawal = await rawdb.hasPendingWithdrawal(manager, currency);
-  if (hasPendingWithdrawal) {
-    logger.info(`There're pending withdrawal transactions right now. Will try to process later...`);
-    return emptyResult;
-  }
 
   // Find an available internal hot wallet
   const hotWallet = await rawdb.findAvailableHotWallet(manager, walletId, currency, false);
@@ -83,30 +69,13 @@ async function _pickerSubDoProcess(
     else {
       logger.info(`No ${currency.toUpperCase()} hot wallet is available at the moment. Will wait for the next tick...`);
     }
+    await updateTimestampForWithdrawals(manager, withdrawalIds);
     return emptyResult;
   }
 
   // Reset failed counter when there's available hot wallet
   hotWalletFailedCounter = 0;
-
-  // Pick a bunch of withdrawals and create a raw transaction for them
-  const status = WithdrawalStatus.UNSIGNED;
-  const records = await rawdb.findWithdrawalsByStatus(manager, hotWallet.walletId, currency, status, limit);
-  if (!records.length) {
-    logger.info(`No more withdrawal need to be picked up. Will try in the next tick...`);
-    return emptyResult;
-  }
-  const withdrawalIds = records.map(w => w.id);
-
-  // Find an available hot wallet
-  const vouts = records.map(w => {
-    const amount = w.getAmount();
-    if (parseFloat(amount) === 0) {
-      return null;
-    }
-
-    return { toAddress: w.toAddress, amount };
-  });
+  const vouts = withdrawalsToVOuts(records);
 
   // Filter out the zero-outputs. We can prevent this case from creating withdrawals
   // But it may still happen though, so need the guarding mechanism here...
@@ -121,10 +90,7 @@ async function _pickerSubDoProcess(
       `Could not create raw tx address=${hotWallet.address}, vouts=${inspect(vouts)}, error=${inspect(err)}`
     );
     // update withdrawal record
-    const failedUpdateValue = {
-      updatedAt: Utils.nowInMillis(),
-    };
-    await manager.update(Withdrawal, withdrawalIds, failedUpdateValue);
+    await updateTimestampForWithdrawals(manager, withdrawalIds);
     return emptyResult;
   }
 
@@ -134,8 +100,46 @@ async function _pickerSubDoProcess(
   }
 
   // Create withdrawal tx record
+  const withdrawalTx = await updateUnsignedWithdrawals(manager, unsignedTx, hotWallet, withdrawalIds);
+  return {
+    needNextProcess: true,
+    withdrawalTxId: withdrawalTx.id,
+  };
+}
+
+/**
+ * Convert withdrawal records to v outs
+ * @param records
+ */
+function withdrawalsToVOuts(records: Withdrawal[]): any[] {
+  // Find an available hot wallet
+  const vouts = records.map(w => {
+    const amount = w.getAmount();
+    if (parseFloat(amount) === 0) {
+      return null;
+    }
+
+    return { toAddress: w.toAddress, amount };
+  });
+  return vouts;
+}
+
+/**
+ * Update withdrawals and insert withdrawal tx by unsignedTx value
+ * @param manager
+ * @param unsignedTx
+ * @param hotWallet
+ * @param withdrawalIds
+ */
+async function updateUnsignedWithdrawals(
+  manager: EntityManager,
+  unsignedTx: IRawTransaction,
+  hotWallet: HotWallet,
+  withdrawalIds: number[]
+): Promise<WithdrawalTx> {
+  // Create withdrawal tx record
   const withdrawalTx = await rawdb.insertWithdrawalTx(manager, {
-    currency,
+    currency: hotWallet.currency,
     hotWalletAddress: hotWallet.address,
     status: WithdrawalStatus.SIGNING,
     unsignedRaw: unsignedTx.unsignedRaw,
@@ -156,11 +160,20 @@ async function _pickerSubDoProcess(
     manager.update(Withdrawal, withdrawalIds, updatedValue),
     rawdb.insertWithdrawalLogs(manager, withdrawalIds, WithdrawalEvent.PICKED, withdrawalTx.id),
   ]);
+  return withdrawalTx;
+}
 
-  return {
-    needNextProcess: true,
-    withdrawalTxId: withdrawalTx.id,
+/**
+ * Update updatedAt field for withdrawal
+ * @param manager
+ * @param withdrawalIds
+ */
+async function updateTimestampForWithdrawals(manager: EntityManager, withdrawalIds: number[]) {
+  // update withdrawal record
+  const failedUpdateValue = {
+    updatedAt: Utils.nowInMillis(),
   };
+  await manager.update(Withdrawal, withdrawalIds, failedUpdateValue);
 }
 
 export default pickerDoProcess;
