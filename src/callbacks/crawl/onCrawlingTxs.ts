@@ -54,6 +54,10 @@ async function _onCrawlingTxs(
       return;
     }
 
+    if (watchingTx.isFailed) {
+      return;
+    }
+
     // Prevent process one transaction multiple times
     if (txProcessed.get(watchingTx.txid)) {
       return;
