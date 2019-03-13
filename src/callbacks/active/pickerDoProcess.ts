@@ -103,7 +103,7 @@ async function _pickerDoProcess(
   }
 
   // Create withdrawal tx record
-  const withdrawalTx = await updateUnsignedWithdrawals(manager, unsignedTx, hotWallet, withdrawalIds);
+  const withdrawalTx = await updateUnsignedWithdrawals(manager, unsignedTx, hotWallet, currency, withdrawalIds);
   return {
     needNextProcess: true,
     withdrawalTxId: withdrawalTx.id,
@@ -138,11 +138,12 @@ async function updateUnsignedWithdrawals(
   manager: EntityManager,
   unsignedTx: IRawTransaction,
   hotWallet: HotWallet,
+  currency: string,
   withdrawalIds: number[]
 ): Promise<WithdrawalTx> {
   // Create withdrawal tx record
   const withdrawalTx = await rawdb.insertWithdrawalTx(manager, {
-    currency: hotWallet.currency,
+    currency,
     hotWalletAddress: hotWallet.address,
     status: WithdrawalStatus.SIGNING,
     unsignedRaw: unsignedTx.unsignedRaw,
