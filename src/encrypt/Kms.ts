@@ -79,6 +79,10 @@ export class Kms {
 
   // Decrypt data, using the data key that is defined in environment variable
   public async decrypt(cipherText: string, dataKeyId: number) {
+    if (!dataKeyId) {
+      return cipherText;
+    }
+
     const dataKey = await this.getDataKey(dataKeyId);
     const decipher = crypto.createDecipher(ENCRYPT_ALGORITHM, Buffer.from(dataKey, 'base64'));
     let decrypted = decipher.update(cipherText, 'hex', 'utf8');
