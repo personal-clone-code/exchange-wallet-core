@@ -8,7 +8,7 @@ import { Utils, getTokenBySymbol } from 'sota-common';
 export async function updateWithdrawalTxWallets(
   manager: EntityManager,
   withdrawalTx: WithdrawalTx,
-  event: WithdrawalEvent,
+  event: WithdrawalEvent.COMPLETED | WithdrawalEvent.FAILED,
   fee: string
 ): Promise<WalletBalance> {
   const withdrawals = await manager.find(Withdrawal, {
@@ -87,9 +87,7 @@ export async function updateWithdrawalTxWallets(
           .createQueryBuilder()
           .update(WalletBalance)
           .set({
-            balance: () => {
-              return event === WithdrawalEvent.COMPLETED ? `balance - ${fee}` : `balance`;
-            },
+            balance: () => `balance - ${fee}`,
             updatedAt: Utils.nowInMillis(),
           })
           .where({
