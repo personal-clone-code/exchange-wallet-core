@@ -2,8 +2,7 @@ import { EntityManager, In } from 'typeorm';
 import { getLogger, Utils } from 'sota-common';
 import { BaseCrawler, Transaction } from 'sota-common';
 import insertDeposit from './insertDeposit';
-import { InternalTransfer } from '../entities/InternalTransfer';
-import { InternalTransferType } from '../Enums';
+import { Address, HotWallet } from '../entities';
 
 const logger = getLogger('processOneDepositTransaction');
 
@@ -36,10 +35,7 @@ export async function processOneDepositTransaction(
   }
 
   // internal tx process
-  const internalTx = await manager
-    .getRepository(InternalTransfer)
-    .findOne({ txid: tx.txid, type: In(EnumKeys(InternalTransferType)) });
-  if (internalTx) {
+  if (isInternalTransfer(manager, tx)) {
     logger.info(`${tx.txid} is a internal tx, not write to deposit`);
     return;
   }
@@ -48,23 +44,19 @@ export async function processOneDepositTransaction(
 }
 
 /**
- * Helper function: Extract all string keys or value of an enum type
- * enum {A, B} => ['A','B']; enum { ma: 'A', mb: 'B'} => ['A','B']
- * @param value
- * @constructor
+ * If a transaction have sender addresses that existed in address table, and hot wallet table
+ * so that is internal transfer transaction
+ * @param manager
+ * @param tx
  */
-function EnumKeys<T>(value: T): string[] {
-  const keys: string[] = Object.keys(value).filter(k => {
-    return !(parseInt(k, 10) >= 0);
-  });
-  const valueOfKeys: string[] = [];
-  keys.forEach(key => {
-    const valueOfKey = (value as any)[key as any];
-    const valueOfValueKey = (value as any)[valueOfKey as any];
-    const enumValue: string = valueOfKey && key !== valueOfValueKey ? valueOfKey : key;
-    valueOfKeys.push(enumValue);
-  });
-  return valueOfKeys;
+async function isInternalTransfer(manager: EntityManager, tx: Transaction): Promise<boolean> {
+  const senderAddresses: string[] = tx.extractSenderAddresses();
+  const addressRecord = await manager.getRepository(Address).findOne({ address: In(senderAddresses) });
+  if (addressRecord) {
+    return true;
+  }
+  const hotAddressRecord = await manager.getRepository(HotWallet).findOne({ address: In(senderAddresses) });
+  return !!hotAddressRecord;
 }
 
 export default processOneDepositTransaction;
