@@ -7,6 +7,7 @@ import {
   Utils,
   BaseGateway,
   getListTokenSymbols,
+  getFamily,
 } from 'sota-common';
 import { EntityManager, getConnection } from 'typeorm';
 import { WithdrawalTx, HotWallet, Withdrawal } from '../../entities';
@@ -60,17 +61,7 @@ async function _signerSubDoProcess(manager: EntityManager, currency: string, gat
   }
 
   const withdrawalTxId = withdrawalTx.id;
-  const walletDef = {
-    address: withdrawalTx.hotWalletAddress,
-    currency,
-  };
-
-  const hotWallet = await manager.findOne(HotWallet, walletDef);
-  if (!hotWallet) {
-    throw new Error(
-      `Could not find hot wallet information to sign tx: currency=${currency}, address=${withdrawalTx.hotWalletAddress}`
-    );
-  }
+  const hotWallet = await findHotWalletWithdrawalTx(manager, withdrawalTx);
 
   // TODO: handle multisig hot wallet
   if (hotWallet.type !== HotWalletType.Normal) {
@@ -117,4 +108,30 @@ async function _signerSubDoProcess(manager: EntityManager, currency: string, gat
     needNextProcess: true,
     withdrawalTxId: withdrawalTx.id,
   };
+}
+
+/**
+ * Find hot wallet that associated with withdrawalTx record
+ * @param manager
+ * @param withdrawalTx
+ */
+async function findHotWalletWithdrawalTx(manager: EntityManager, withdrawalTx: WithdrawalTx) {
+  const walletDef = {
+    address: withdrawalTx.hotWalletAddress,
+    currency: withdrawalTx.currency,
+  };
+
+  let hotWallet = await manager.findOne(HotWallet, walletDef);
+  if (!hotWallet) {
+    walletDef.currency = getFamily();
+    hotWallet = await manager.findOne(HotWallet, walletDef);
+  }
+  if (!hotWallet) {
+    throw new Error(
+      `Could not find hot wallet information to sign tx: currency=${walletDef.currency}, address=${
+        withdrawalTx.hotWalletAddress
+      }`
+    );
+  }
+  return hotWallet;
 }

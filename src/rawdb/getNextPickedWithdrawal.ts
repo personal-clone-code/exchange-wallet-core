@@ -2,6 +2,7 @@ import { EntityManager, In } from 'typeorm';
 import _ from 'lodash';
 import { Withdrawal } from '../entities';
 import { WithdrawalStatus } from '../Enums';
+import findWithdrawalsByStatus from './findWithdrawalsByStatus';
 
 /**
  * Determine which withdrawal record will be picked in this round
@@ -9,7 +10,11 @@ import { WithdrawalStatus } from '../Enums';
  * @param manager
  * @param currencies
  */
-export async function getNextPickedWithdrawal(manager: EntityManager, currencies: string[]): Promise<Withdrawal> {
+export async function getNextPickedWithdrawals(
+  manager: EntityManager,
+  currencies: string[],
+  limit: number
+): Promise<Withdrawal[]> {
   const pendingStatuses = [WithdrawalStatus.SENT, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING];
   const pending = await manager
     .getRepository(Withdrawal)
@@ -23,13 +28,30 @@ export async function getNextPickedWithdrawal(manager: EntityManager, currencies
   const notPendingCurrencies = _.difference(currencies, pendingCurrencies);
 
   if (notPendingCurrencies.length === 0) {
-    return null;
+    return [];
   }
 
-  const result = await manager.getRepository(Withdrawal).findOne({
-    currency: In(notPendingCurrencies),
-    status: WithdrawalStatus.UNSIGNED,
+  const firstRecord = await manager.getRepository(Withdrawal).findOne({
+    order: {
+      updatedAt: 'ASC',
+    },
+    where: {
+      currency: In(notPendingCurrencies),
+      status: WithdrawalStatus.UNSIGNED,
+    },
   });
 
-  return result;
+  if (!firstRecord) {
+    return [];
+  }
+
+  const records = await findWithdrawalsByStatus(
+    manager,
+    firstRecord.walletId,
+    firstRecord.currency,
+    WithdrawalStatus.UNSIGNED,
+    limit
+  );
+
+  return records;
 }
