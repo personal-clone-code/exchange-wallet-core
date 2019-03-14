@@ -93,6 +93,7 @@ async function _signerSubDoProcess(manager: EntityManager, currency: string, gat
           coinKeys.spending_password,
           coinKeys.kms_data_key_id
         );
+        rawPrivateKey = JSON.stringify(coinKeys);
       }
     }
   } catch (e) {
