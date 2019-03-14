@@ -87,6 +87,14 @@ async function _signerSubDoProcess(manager: EntityManager, currency: string, gat
         rawPrivateKey = await Kms.getInstance().decrypt(coinKeys.private_key, coinKeys.kms_data_key_id);
       }
     }
+    if (coinKeys.spending_password) {
+      if (coinKeys.kms_data_key_id > 0) {
+        coinKeys.spending_password = await Kms.getInstance().decrypt(
+          coinKeys.spending_password,
+          coinKeys.kms_data_key_id
+        );
+      }
+    }
   } catch (e) {
     //
   }
