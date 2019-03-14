@@ -31,13 +31,6 @@ export class HotWallet {
   })
   public currency: string;
 
-  @Column('int', {
-    default: '0',
-    name: 'kms_data_key_id',
-    nullable: false,
-  })
-  public kms_data_key_id: number;
-
   @Column('decimal', {
     default: '0',
     name: 'balance',
