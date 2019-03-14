@@ -14,7 +14,7 @@ import BN from 'bignumber.js';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
 import { CollectStatus, InternalTransferType, WithdrawalStatus, DepositEvent } from '../../Enums';
-import { Deposit, Wallet, Address, HotWallet } from '../../entities';
+import { Deposit, Address } from '../../entities';
 import Kms from '../../encrypt/Kms';
 
 const logger = getLogger('collectorDoProcess');
