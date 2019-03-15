@@ -2,7 +2,7 @@ import { EntityManager, In } from 'typeorm';
 import { getLogger, Utils } from 'sota-common';
 import { BaseCrawler, Transaction } from 'sota-common';
 import insertDeposit from './insertDeposit';
-import { Address, HotWallet } from '../entities';
+import { Address, HotWallet, InternalTransfer } from '../entities';
 
 const logger = getLogger('processOneDepositTransaction');
 
@@ -36,7 +36,7 @@ export async function processOneDepositTransaction(
 
   // internal tx process
   if (isInternalTransfer(manager, tx)) {
-    logger.info(`${tx.txid} is a internal tx, not write to deposit`);
+    logger.info(`Tx ${tx.txid} is a internal tx, will not write to deposit`);
     return;
   }
 
@@ -50,13 +50,26 @@ export async function processOneDepositTransaction(
  * @param tx
  */
 async function isInternalTransfer(manager: EntityManager, tx: Transaction): Promise<boolean> {
+  // Looking for the internal transfer table
+  const internalTx = await manager.getRepository(InternalTransfer).findOne({ txid: tx.txid });
+  if (internalTx) {
+    return true;
+  }
+
   const senderAddresses: string[] = tx.extractSenderAddresses();
   const addressRecord = await manager.getRepository(Address).findOne({ address: In(senderAddresses) });
   if (addressRecord) {
+    logger.error(`Tx ${tx.txid} is sent from an internal address, but it's not in internal transfer table.`);
     return true;
   }
+
   const hotAddressRecord = await manager.getRepository(HotWallet).findOne({ address: In(senderAddresses) });
-  return !!hotAddressRecord;
+  if (hotAddressRecord) {
+    logger.error(`Tx ${tx.txid} is sent from an internal hotwallet, but it's not in internal transfer table.`);
+    return true;
+  }
+
+  return false;
 }
 
 export default processOneDepositTransaction;

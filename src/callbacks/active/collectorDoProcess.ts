@@ -104,10 +104,10 @@ async function _collectDepositTransaction(
   const amountNumber = new BN(deposit.amount);
   if (amountNumber.lt(minNumber)) {
     logger.error(
-      `Deposit amount less than threshold \
-      depositId=${deposit.id} \
-      currency=${deposit.currency} \
-      amount=${deposit.amount} < threshold=${minNumber}`
+      `Deposit amount less than threshold` +
+        ` depositId=${deposit.id}` +
+        ` currency=${deposit.currency}` +
+        ` amount=${deposit.amount} < threshold=${minNumber}`
     );
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
     deposit.collectedTxid = 'AMOUNT_BELOW_THRESHOLD';
