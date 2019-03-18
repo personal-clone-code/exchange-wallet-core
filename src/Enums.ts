@@ -42,6 +42,7 @@ export enum WithdrawalEvent {
   SENT = 'sent',
   COMPLETED = 'completed',
   FAILED = 'failed',
+  TXID_CHANGED = 'txid_changed',
 }
 
 export enum WithdrawalStatus {

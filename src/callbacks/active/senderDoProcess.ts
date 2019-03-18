@@ -1,9 +1,17 @@
-import { BaseGateway, getLogger, IWithdrawalProcessingResult, Utils, getListTokenSymbols } from 'sota-common';
-import { BaseWithdrawalSender } from 'sota-common';
+import {
+  BaseGateway,
+  BaseWithdrawalSender,
+  getListTokenSymbols,
+  getLogger,
+  IWithdrawalProcessingResult,
+  TransactionStatus,
+  Utils,
+} from 'sota-common';
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection } from 'typeorm';
 import { WithdrawalEvent, WithdrawalStatus } from '../../Enums';
 import util from 'util';
+import { WithdrawalTx } from '../../entities';
 
 const logger = getLogger('senderDoProcess');
 
@@ -48,6 +56,24 @@ async function _senderSubDoProcess(manager: EntityManager, currency: string, gat
   }
 
   let sentResultObj;
+  const prefix: string = 'TMP_';
+  const txid = signedRecord.txid;
+  if (signedRecord.txid.indexOf(prefix) === -1) {
+    const status = await gateway.getTransactionStatus(txid);
+    const withdrawalStatus: WithdrawalStatus =
+      status === TransactionStatus.COMPLETED || status === TransactionStatus.CONFIRMING
+        ? WithdrawalStatus.SENT
+        : status === TransactionStatus.FAILED
+        ? WithdrawalStatus.FAILED
+        : null;
+    if (withdrawalStatus) {
+      sentResultObj = { txid };
+      return updateWithdrawalAndWithdrawalTx(manager, signedRecord, sentResultObj, withdrawalStatus);
+    }
+  }
+
+  // for unknown transaction or temporary transaction
+  // send transaction directly
   try {
     sentResultObj = await gateway.sendRawTransaction(signedRecord.signedRaw);
   } catch (e) {
@@ -56,21 +82,34 @@ async function _senderSubDoProcess(manager: EntityManager, currency: string, gat
   }
 
   if (sentResultObj) {
-    logger.info(`Broadcast successfully ${JSON.stringify(sentResultObj)}`);
-    await Utils.PromiseAll([
-      rawdb.updateWithdrawalTxStatus(manager, signedRecord.id, WithdrawalStatus.SENT, sentResultObj),
-      rawdb.updateWithdrawalsStatus(
-        manager,
-        signedRecord.id,
-        WithdrawalStatus.SENT,
-        WithdrawalEvent.SENT,
-        sentResultObj
-      ),
-    ]);
+    return updateWithdrawalAndWithdrawalTx(manager, signedRecord, sentResultObj, WithdrawalStatus.SENT);
   } else {
     logger.error(`Could not send raw transaction. Result is empty, please check...`);
   }
 
+  return emptyResult;
+}
+
+async function updateWithdrawalAndWithdrawalTx(
+  manager: EntityManager,
+  signedRecord: WithdrawalTx,
+  sentResultObj: any,
+  status: WithdrawalStatus
+): Promise<IWithdrawalProcessingResult> {
+  let event: WithdrawalEvent;
+  if (status === WithdrawalStatus.SENT) {
+    // keep withdrawal status and fire sent withdrawal event
+    event = WithdrawalEvent.SENT;
+  } else if (status === WithdrawalStatus.FAILED) {
+    // changed withdrawal status to unsign and fire txid_changed withdrawal event
+    status = WithdrawalStatus.UNSIGNED;
+    event = WithdrawalEvent.TXID_CHANGED;
+  }
+  logger.info(`Broadcast successfully ${JSON.stringify(sentResultObj)}`);
+  await Utils.PromiseAll([
+    rawdb.updateWithdrawalTxStatus(manager, signedRecord.id, status, sentResultObj),
+    rawdb.updateWithdrawalsStatus(manager, signedRecord.id, status, event, sentResultObj),
+  ]);
   return emptyResult;
 }
 
