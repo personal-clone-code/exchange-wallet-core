@@ -14,7 +14,7 @@ import BN from 'bignumber.js';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
 import { CollectStatus, InternalTransferType, WithdrawalStatus, DepositEvent } from '../../Enums';
-import { Deposit, Address } from '../../entities';
+import { Deposit, Address, InternalTransfer } from '../../entities';
 import Kms from '../../encrypt/Kms';
 
 const logger = getLogger('collectorDoProcess');
@@ -88,7 +88,7 @@ async function _collectDepositTransaction(
   manager: EntityManager,
   collector: BaseDepositCollector,
   deposit: Deposit
-): Promise<Transaction> {
+): Promise<void> {
   const now = Utils.now();
   const currency = getFamily();
   const gateway = collector.getGateway(deposit.currency);
@@ -188,19 +188,16 @@ async function _collectDepositTransaction(
   deposit.collectedTxid = result.txid;
   deposit.nextCheckAt = 0;
   deposit.collectStatus = CollectStatus.COLLECTING;
-  await Utils.PromiseAll([
-    rawdb.insertInternalTransfer(manager, {
-      currency: deposit.currency,
-      txid: result.txid,
-      type: InternalTransferType.COLLECT,
-      status: WithdrawalStatus.SENT,
-      fromAddress: deposit.toAddress,
-      toAddress: hotWallet.address,
-    }),
-    manager.save(deposit),
-  ]);
 
-  return result;
+  const internalTransferRecord = new InternalTransfer();
+  internalTransferRecord.currency = deposit.currency;
+  internalTransferRecord.txid = result.txid;
+  internalTransferRecord.type = InternalTransferType.COLLECT;
+  internalTransferRecord.status = WithdrawalStatus.SENT;
+  internalTransferRecord.fromAddress = deposit.toAddress;
+  internalTransferRecord.toAddress = hotWallet.address;
+
+  await Utils.PromiseAll([rawdb.insertInternalTransfer(manager, internalTransferRecord), manager.save(deposit)]);
 }
 
 export default collectorDoProcess;

@@ -15,6 +15,9 @@ export class WithdrawalLog {
   @Column({ name: 'event', nullable: false })
   public event: string;
 
+  @Column({ name: 'data', nullable: false })
+  public data: string;
+
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;
 

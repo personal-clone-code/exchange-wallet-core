@@ -1,3 +1,4 @@
+import { ISubmittedTransaction } from 'sota-common';
 import { WithdrawalTx } from '../entities';
 import { EntityManager } from 'typeorm';
 import { WithdrawalStatus } from '../Enums';
@@ -6,7 +7,7 @@ export async function updateWithdrawalTxStatus(
   manager: EntityManager,
   id: number,
   status: WithdrawalStatus,
-  transactionResult?: any,
+  transactionResult?: ISubmittedTransaction,
   fee?: string
 ): Promise<WithdrawalTx> {
   // Find wallet of record
@@ -16,6 +17,7 @@ export async function updateWithdrawalTxStatus(
     if (transactionResult.hasOwnProperty('txid')) {
       record.txid = transactionResult.txid;
     }
+
     if (transactionResult.hasOwnProperty('blockNumber')) {
       record.blockNumber = transactionResult.blockNumber;
     }

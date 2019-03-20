@@ -1,8 +1,7 @@
 import { EntityManager } from 'typeorm';
-import { Webhook, WebhookProgress, Withdrawal } from '../entities';
+import { Withdrawal, WithdrawalLog } from '../entities';
 import { getLogger, Utils } from 'sota-common';
-import { WebhookType, WithdrawalEvent, DepositEvent } from '../Enums';
-import { WithdrawalLog } from '../entities/WithdrawalLog';
+import { WithdrawalEvent } from '../Enums';
 
 const logger = getLogger('rawdb::insertWithdrawalLog');
 
@@ -19,7 +18,8 @@ export async function insertWithdrawalLog(
   manager: EntityManager,
   txid: string,
   refId: number,
-  event: WithdrawalEvent
+  event: WithdrawalEvent,
+  data?: string
 ): Promise<void> {
   // Find out all user webhooks first
   const withdrawals = await manager.getRepository(Withdrawal).find({ txid });
@@ -31,6 +31,11 @@ export async function insertWithdrawalLog(
     record.event = event;
     record.refId = refId;
     record.createdAt = Utils.nowInMillis();
+
+    if (data) {
+      record.data = data;
+    }
+
     return record;
   });
 

@@ -4,6 +4,7 @@ import {
   getListTokenSymbols,
   getLogger,
   IWithdrawalProcessingResult,
+  ISubmittedTransaction,
   TransactionStatus,
   Utils,
 } from 'sota-common';
@@ -55,20 +56,23 @@ async function _senderSubDoProcess(manager: EntityManager, currency: string, gat
     return emptyResult;
   }
 
-  let sentResultObj;
+  let sentResultObj: ISubmittedTransaction = null;
   const prefix: string = 'TMP_';
   const txid = signedRecord.txid;
+
+  // If transaction has valid is, not the temporary one
+  // We'll check whether its status is determined or not on the network
   if (signedRecord.txid.indexOf(prefix) === -1) {
     const status = await gateway.getTransactionStatus(txid);
-    const withdrawalStatus: WithdrawalStatus =
-      status === TransactionStatus.COMPLETED || status === TransactionStatus.CONFIRMING
-        ? WithdrawalStatus.SENT
-        : status === TransactionStatus.FAILED
-        ? WithdrawalStatus.FAILED
-        : null;
-    if (withdrawalStatus) {
-      sentResultObj = { txid };
-      return updateWithdrawalAndWithdrawalTx(manager, signedRecord, sentResultObj, withdrawalStatus);
+
+    // If transaction status is completed or confirming, both mean the withdrawal was submitted to network successfully
+    if (status === TransactionStatus.COMPLETED || status === TransactionStatus.CONFIRMING) {
+      return updateWithdrawalAndWithdrawalTx(manager, signedRecord, { txid }, WithdrawalStatus.SENT);
+    }
+
+    // If transaction is determined as failed, the withdrawal is failed as well
+    if (status === TransactionStatus.FAILED) {
+      return updateWithdrawalAndWithdrawalTx(manager, signedRecord, { txid }, WithdrawalStatus.FAILED);
     }
   }
 
@@ -93,23 +97,28 @@ async function _senderSubDoProcess(manager: EntityManager, currency: string, gat
 async function updateWithdrawalAndWithdrawalTx(
   manager: EntityManager,
   signedRecord: WithdrawalTx,
-  sentResultObj: any,
-  status: WithdrawalStatus
+  sentResultObj: ISubmittedTransaction,
+  status: WithdrawalStatus.SENT | WithdrawalStatus.FAILED
 ): Promise<IWithdrawalProcessingResult> {
   let event: WithdrawalEvent;
+  let newStatus: WithdrawalStatus;
   if (status === WithdrawalStatus.SENT) {
     // keep withdrawal status and fire sent withdrawal event
+    newStatus = WithdrawalStatus.SENT;
     event = WithdrawalEvent.SENT;
   } else if (status === WithdrawalStatus.FAILED) {
     // changed withdrawal status to unsign and fire txid_changed withdrawal event
-    status = WithdrawalStatus.UNSIGNED;
+    newStatus = WithdrawalStatus.UNSIGNED;
     event = WithdrawalEvent.TXID_CHANGED;
   }
+
   logger.info(`Broadcast successfully ${JSON.stringify(sentResultObj)}`);
+
   await Utils.PromiseAll([
-    rawdb.updateWithdrawalTxStatus(manager, signedRecord.id, status, sentResultObj),
-    rawdb.updateWithdrawalsStatus(manager, signedRecord.id, status, event, sentResultObj),
+    rawdb.updateWithdrawalTxStatus(manager, signedRecord.id, newStatus, sentResultObj),
+    rawdb.updateWithdrawalsStatus(manager, signedRecord.id, newStatus, event, sentResultObj),
   ]);
+
   return emptyResult;
 }
 

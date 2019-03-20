@@ -1,4 +1,4 @@
-import { getLogger, Utils } from 'sota-common';
+import { getLogger, Utils, ISubmittedTransaction } from 'sota-common';
 import { Withdrawal } from '../entities';
 import { EntityManager } from 'typeorm';
 import insertWebhookProgress from './insertWebhookProgress';
@@ -12,7 +12,8 @@ export async function updateWithdrawalsStatus(
   withdrawalTxId: number,
   status: WithdrawalStatus,
   event: WithdrawalEvent,
-  transactionResult?: any
+  transactionResult?: ISubmittedTransaction,
+  data?: string
 ): Promise<Withdrawal[]> {
   // Find wallet of record
   const records = await manager.find(Withdrawal, { withdrawalTxId });
@@ -22,11 +23,13 @@ export async function updateWithdrawalsStatus(
       if (transactionResult) {
         record.txid = transactionResult.txid;
       }
+
       const [newRecord] = await Utils.PromiseAll([
         manager.save(record),
         insertWebhookProgress(manager, record.userId, WebhookType.WITHDRAWAL, record.id, event),
       ]);
-      return insertWithdrawalLog(manager, newRecord.txid, newRecord.id, event);
+
+      return insertWithdrawalLog(manager, newRecord.txid, newRecord.id, event, data);
     })
   );
   return records;
