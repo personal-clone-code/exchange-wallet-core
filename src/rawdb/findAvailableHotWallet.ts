@@ -49,7 +49,7 @@ export async function findTransferableHotWallet(
   await Promise.all(
     hotWallets.map(async hotWallet => {
       const hotWalletBalance: BigNumber = new BigNumber(await gateway.getAddressBalance(hotWallet.address), 10);
-      if (hotWalletBalance.isGreaterThan(total)) {
+      if (hotWalletBalance.isGreaterThanOrEqualTo(total)) {
         foundHotWallet = hotWallet;
         return;
       }
