@@ -56,7 +56,9 @@ export async function findTransferableHotWallet(
     })
   );
   if (!foundHotWallet) {
-    logger.error(`Cannot find any hot wallet that have available balance for currency = ${currency.toUpperCase()}`);
+    logger.error(
+      `Cannot find any hot wallet that have available balance for walletId=${walletId} currency=${currency.toUpperCase()}`
+    );
   }
   return foundHotWallet;
 }
