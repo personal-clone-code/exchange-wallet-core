@@ -75,14 +75,15 @@ async function _feeSeederDoProcess(
 
   const tx = await seeder.getGateway().seedFee(hotWallet.coinKeys, hotWallet.address, toAddress, amount);
 
-  await rawdb.insertInternalTransfer(manager, {
-    currency: feeSeederCurrency,
-    fromAddress: hotWallet.address,
-    toAddress,
-    type: InternalTransferType.SEED,
-    txid: tx.txid,
-    status: WithdrawalStatus.SENT,
-  });
+  const internalTransferRecord = new InternalTransfer();
+  internalTransferRecord.currency = feeSeederCurrency;
+  internalTransferRecord.fromAddress = hotWallet.address;
+  internalTransferRecord.toAddress = toAddress;
+  internalTransferRecord.type = InternalTransferType.SEED;
+  internalTransferRecord.txid = tx.txid;
+  internalTransferRecord.status = WithdrawalStatus.SENT;
+
+  await rawdb.insertInternalTransfer(manager, internalTransferRecord);
 
   logger.info(`Seed Successfully address=${toAddress}`);
 

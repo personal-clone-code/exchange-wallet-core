@@ -18,13 +18,15 @@ export async function insertWithdrawalLogs(
   manager: EntityManager,
   withdrawalIds: number[],
   event: WithdrawalEvent,
-  refId: number
+  refId: number,
+  data: string
 ): Promise<void> {
   const logRecords = withdrawalIds.map(withdrawalId => {
     return {
       withdrawalId,
       event,
       refId,
+      data,
       createdAt: Utils.nowInMillis(),
     };
   });

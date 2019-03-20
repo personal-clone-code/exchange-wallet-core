@@ -15,6 +15,7 @@ export * from './WalletBalance';
 export * from './WalletLog';
 export * from './Withdrawal';
 export * from './WithdrawalTx';
+export * from './WithdrawalLog';
 export * from './Webhook';
 export * from './WebhookLog';
 export * from './WebhookProgress';

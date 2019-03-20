@@ -142,15 +142,16 @@ async function updateUnsignedWithdrawals(
   withdrawalIds: number[]
 ): Promise<WithdrawalTx> {
   // Create withdrawal tx record
-  const withdrawalTx = await rawdb.insertWithdrawalTx(manager, {
-    currency,
-    hotWalletAddress: hotWallet.address,
-    status: WithdrawalStatus.SIGNING,
-    unsignedRaw: unsignedTx.unsignedRaw,
-    unsignedTxid: unsignedTx.txid,
-    createdAt: Utils.nowInMillis(),
-    updatedAt: Utils.nowInMillis(),
-  });
+  const record = new WithdrawalTx();
+  record.currency = currency;
+  record.hotWalletAddress = hotWallet.address;
+  record.status = WithdrawalStatus.SIGNING;
+  record.unsignedRaw = unsignedTx.unsignedRaw;
+  record.unsignedTxid = unsignedTx.txid;
+  record.createdAt = Utils.nowInMillis();
+  record.updatedAt = Utils.nowInMillis();
+
+  const withdrawalTx = await rawdb.insertWithdrawalTx(manager, record);
 
   // update withdrawal record
   const updatedValue = {
@@ -162,8 +163,9 @@ async function updateUnsignedWithdrawals(
 
   await Utils.PromiseAll([
     manager.update(Withdrawal, withdrawalIds, updatedValue),
-    rawdb.insertWithdrawalLogs(manager, withdrawalIds, WithdrawalEvent.PICKED, withdrawalTx.id),
+    rawdb.insertWithdrawalLogs(manager, withdrawalIds, WithdrawalEvent.PICKED, withdrawalTx.id, withdrawalTx.txid),
   ]);
+
   return withdrawalTx;
 }
 

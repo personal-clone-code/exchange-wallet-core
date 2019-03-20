@@ -13,7 +13,7 @@ const logger = getLogger('rawdb::insertWithdrawalLog');
  * @param {number} refId - the ID of deposit or withdrawal, corresponding to the type
  * @param {string} event -
  */
-export async function insertWithdrawalTx(manager: EntityManager, withdrawalTx: any): Promise<WithdrawalTx> {
+export async function insertWithdrawalTx(manager: EntityManager, withdrawalTx: WithdrawalTx): Promise<WithdrawalTx> {
   // And persist them to database
   withdrawalTx.createdAt = Utils.nowInMillis();
   withdrawalTx.updatedAt = Utils.nowInMillis();
