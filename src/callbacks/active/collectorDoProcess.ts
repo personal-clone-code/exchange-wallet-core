@@ -2,7 +2,7 @@ import {
   IWithdrawalProcessingResult,
   getLogger,
   BaseDepositCollector,
-  Transaction,
+  ISubmittedTransaction,
   Utils,
   getListTokenSymbols,
   isPlatform,
@@ -88,7 +88,7 @@ async function _collectDepositTransaction(
   manager: EntityManager,
   collector: BaseDepositCollector,
   deposit: Deposit
-): Promise<Transaction> {
+): Promise<ISubmittedTransaction> {
   const now = Utils.now();
   const currency = getFamily();
   const gateway = collector.getGateway(deposit.currency);
