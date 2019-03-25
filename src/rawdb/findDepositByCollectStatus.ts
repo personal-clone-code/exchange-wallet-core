@@ -26,6 +26,8 @@ export async function findDepositByCollectStatus(
 
 /**
  * Find all deposit with similar toAddress, walletId and currency property
+ * that can be group amount
+ * TODO: update transfer type
  * @param manager
  * @param currencies
  * @param statuses
@@ -33,7 +35,8 @@ export async function findDepositByCollectStatus(
 export async function findDepositsByCollectStatus(
   manager: EntityManager,
   currencies: string[],
-  statuses: CollectStatus[]
+  statuses: CollectStatus[],
+  transferType: boolean
 ): Promise<Deposit[]> {
   // find and filter first group
   const unCollected = await manager.getRepository(Deposit).find({
@@ -49,7 +52,14 @@ export async function findDepositsByCollectStatus(
   if (!unCollected.length) {
     return [];
   }
-  const results = unCollected.filter(deposit => deposit.walletId === unCollected[0].walletId);
+  let results = unCollected.filter(deposit => deposit.walletId === unCollected[0].walletId);
+  // find all results that have similar toAddress
+  if (transferType) {
+    // 1. Account base
+    results = results.filter(deposit => deposit.toAddress === results[0].toAddress);
+  }
+  // 2. UTXO based type
+
   return results;
 }
 

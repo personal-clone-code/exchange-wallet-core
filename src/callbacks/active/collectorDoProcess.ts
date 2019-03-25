@@ -1,38 +1,64 @@
 import {
-  IWithdrawalProcessingResult,
   getLogger,
   BaseDepositCollector,
-  Transaction,
   Utils,
   getListTokenSymbols,
   isPlatform,
   getMinimumDepositAmount,
   getCurrencyDecimal,
   getFamily,
+  IWithdrawalProcessingResult,
 } from 'sota-common';
 import BN from 'bignumber.js';
-import { EntityManager, getConnection } from 'typeorm';
+import { EntityManager, getConnection, In } from 'typeorm';
 import * as rawdb from '../../rawdb';
-import { CollectStatus, InternalTransferType, WithdrawalStatus, DepositEvent } from '../../Enums';
-import { Deposit, Address, InternalTransfer } from '../../entities';
+import { CollectStatus } from '../../Enums';
+import { Deposit, Address } from '../../entities';
 import Kms from '../../encrypt/Kms';
+import _ = require('lodash');
 
 const logger = getLogger('collectorDoProcess');
 
-const emptyResult: IWithdrawalProcessingResult = {
-  needNextProcess: false,
-  withdrawalTxId: 0,
+const emptyResult: IWithdrawalDoProcessingResult = {
+  deposits: [],
+  satisfiedDeposits: [],
+  rawTransaction: null,
+  needNextProcess: true,
+  withdrawalTxId: null,
 };
 
-export async function collectorDoProcess(collector: BaseDepositCollector): Promise<IWithdrawalProcessingResult> {
-  let result: IWithdrawalProcessingResult;
+export interface IWithdrawalDoProcessingResult extends IWithdrawalProcessingResult {
+  deposits: Deposit[];
+  satisfiedDeposits: Deposit[];
+  rawTransaction: any;
+}
+
+interface IDepositsProcessed {
+  addresses: string | string[];
+  privateKeys: string | string[];
+  satisfiedDeposits: Deposit[];
+}
+
+interface IDepositsTotalAmount {
+  ok: boolean;
+  totalDepositAmount: string;
+}
+
+export async function collectorDoProcess(collector: BaseDepositCollector): Promise<IWithdrawalDoProcessingResult> {
+  let doProcessResult: IWithdrawalDoProcessingResult;
   await getConnection().transaction(async manager => {
-    result = await _collectorDoProcess(manager, collector);
+    doProcessResult = await _collectorDoProcess(manager, collector);
   });
-  return result;
+
+  let submitResult: any;
+  await getConnection().transaction(async manager => {
+    submitResult = await _collectorSubmitProcess(manager, collector, doProcessResult);
+  });
+  return doProcessResult;
 }
 
 /**
+ * TODO: update transfer type, now support account base type
  * Picker do process
  * @param manager
  * @param picker
@@ -41,125 +67,88 @@ export async function collectorDoProcess(collector: BaseDepositCollector): Promi
 async function _collectorDoProcess(
   manager: EntityManager,
   collector: BaseDepositCollector
-): Promise<IWithdrawalProcessingResult> {
+): Promise<IWithdrawalDoProcessingResult> {
   const now = Date.now();
-  const unCollectedDeposit = await rawdb.findDepositByCollectStatus(
+  const unCollectedDeposit = await rawdb.findDepositsByCollectStatus(
     manager,
     getListTokenSymbols().tokenSymbols,
     [CollectStatus.UNCOLLECTED],
-    '0'
+    true
   );
   if (!unCollectedDeposit) {
     logger.info(`There're no uncollected deposit right now. Will try to process later...`);
     return emptyResult;
   }
 
-  try {
-    await _collectDepositTransaction(manager, collector, unCollectedDeposit);
-  } catch (err) {
-    logger.error(
-      `Can not collector transaction txid=${unCollectedDeposit.txid}, address=${unCollectedDeposit.toAddress}.`
-    );
-    logger.error(`===============================`);
-    logger.error(err);
-    logger.error(`===============================`);
-
-    unCollectedDeposit.nextCheckAt = now + collector.getNextCheckAtAmount();
-    await manager.save(unCollectedDeposit);
-    // assume insufficient balance
-    if (!isPlatform(unCollectedDeposit.currency)) {
-      await collector.emitMessage(`seed,${unCollectedDeposit.id},${unCollectedDeposit.toAddress}`);
-    }
-
-    return emptyResult;
-  }
-
-  return emptyResult;
+  const result = await _collectDepositTransaction(manager, collector, unCollectedDeposit);
+  return result;
 }
 
 /**
- * Try to collect funds from every single deposit address to the hot wallet
+ * TODO: log internal transaction into database
+ * Picker do process
+ * @param manager
+ * @param picker
+ * @private
+ */
+async function _collectorSubmitProcess(
+  manager: EntityManager,
+  collector: BaseDepositCollector,
+  doProcessResult: IWithdrawalDoProcessingResult
+): Promise<void> {
+  const depositCurrency = doProcessResult.deposits[0].currency;
+  const gateway = collector.getGateway(depositCurrency);
+
+  try {
+    await gateway.sendRawTransaction(doProcessResult.rawTransaction);
+  } catch (e) {
+    logger.error(
+      `Can not send transaction txid=${doProcessResult.satisfiedDeposits[0].collectedTxid}, address=${
+        doProcessResult.deposits[0].toAddress
+      }.`
+    );
+    logger.error(`===============================`);
+    logger.error(e);
+    logger.error(`===============================`);
+    if (!isPlatform(doProcessResult.deposits[0].currency)) {
+      await Promise.all(
+        doProcessResult.satisfiedDeposits.map(async deposit => {
+          await collector.emitMessage(`seed,${deposit.id},${deposit.toAddress}`);
+        })
+      );
+    }
+  }
+  // after sent, update status to collecting
+  const satisfiedDeposit = doProcessResult.satisfiedDeposits;
+  satisfiedDeposit.forEach(deposit => {
+    deposit.collectStatus = CollectStatus.COLLECTING;
+    deposit.updatedAt = Utils.nowInMillis();
+  });
+
+  return;
+}
+
+/**
+ * Try to collect funds from many deposits to the hot wallet
  *
  * @param manager
  * @param collector
- * @param deposit
+ * @param deposits
  */
 async function _collectDepositTransaction(
   manager: EntityManager,
   collector: BaseDepositCollector,
-  deposit: Deposit
-): Promise<void> {
-  const now = Utils.now();
+  deposits: Deposit[]
+): Promise<IWithdrawalDoProcessingResult> {
   const currency = getFamily();
-  const gateway = collector.getGateway(deposit.currency);
+  const depositCurrency = deposits[0].currency;
+  const walletId = deposits[0].walletId;
+  const gateway = collector.getGateway(depositCurrency);
 
-  const minimumDepositAmount = getMinimumDepositAmount(deposit.currency);
-  if (!minimumDepositAmount) {
-    logger.error(`Minimum deposit is not setted for ${deposit.currency}`);
+  const checkDepositAmounts = await _checkDepositAmount(manager, collector, deposits);
+  if (!checkDepositAmounts.ok) {
     return null;
   }
-
-  const factor = new BN(10).pow(getCurrencyDecimal(deposit.currency));
-  const minNumber = new BN(minimumDepositAmount).multipliedBy(factor);
-  const amountNumber = new BN(deposit.amount);
-  if (amountNumber.lt(minNumber)) {
-    logger.error(
-      `Deposit amount less than threshold` +
-        ` depositId=${deposit.id}` +
-        ` currency=${deposit.currency}` +
-        ` amount=${deposit.amount} < threshold=${minNumber}`
-    );
-    deposit.collectStatus = CollectStatus.NOTCOLLECT;
-    deposit.collectedTxid = 'AMOUNT_BELOW_THRESHOLD';
-    await rawdb.insertDepositLog(manager, deposit.id, DepositEvent.NOTCOLLECT);
-    await manager.getRepository(Deposit).save(deposit);
-    return null;
-  }
-
-  const address = await manager.getRepository(Address).findOne({ address: deposit.toAddress });
-  if (!address) {
-    logger.error(`Cannot collect depositId=${deposit.id} because of address not found: ${deposit.toAddress}.`);
-    deposit.collectStatus = CollectStatus.NOTCOLLECT;
-    deposit.collectedTxid = 'INVALID_ADDRESS';
-    await rawdb.insertDepositLog(manager, deposit.id, DepositEvent.NOTCOLLECT);
-    await manager.getRepository(Deposit).save(deposit);
-    return null;
-  }
-
-  if (address.isExternal) {
-    logger.error(`Does not collect external address' deposit: id=${deposit.id} address=${deposit.toAddress}`);
-    deposit.collectStatus = CollectStatus.COLLECTED;
-    deposit.collectedTxid = 'NO_COLLECT_EXTERNAL_ADDRESS';
-    await manager.getRepository(Deposit).save(deposit);
-    return null;
-  }
-
-  const isCollectable = await collector.isCollectable(deposit.txid, deposit.toAddress, deposit.amount);
-  if (!isCollectable) {
-    logger.error(`Deposit is already collected id=${deposit.id} txid=${deposit.txid} address=${deposit.toAddress}`);
-    deposit.collectStatus = CollectStatus.NOTCOLLECT;
-    deposit.collectedTxid = 'COLLECTED_SOMEWHERE_ALREADY';
-    await rawdb.insertDepositLog(manager, deposit.id, DepositEvent.NOTCOLLECT);
-    await manager.getRepository(Deposit).save(deposit);
-    return null;
-  }
-
-  let kmsDataKeyId: number = 0;
-  let privateKey: string;
-
-  try {
-    const privateKeyDef = JSON.parse(address.secret);
-    privateKey = privateKeyDef.private_key;
-    kmsDataKeyId = privateKeyDef.kms_data_key_id;
-  } catch (e) {
-    privateKey = address.secret;
-  }
-
-  if (kmsDataKeyId !== 0) {
-    privateKey = await Kms.getInstance().decrypt(privateKey, kmsDataKeyId);
-  }
-
-  const walletId = deposit.walletId;
 
   // TODO: What's the right way to find hot wallet?
   let hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, false);
@@ -170,34 +159,150 @@ async function _collectDepositTransaction(
     hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, true);
   }
 
-  if (!hotWallet) {
-    logger.error(`No hot wallet is available depositId=${deposit.id} walletId=${walletId} currency=${currency}`);
-    deposit.nextCheckAt = now + collector.getNextCheckAtAmount();
-    await manager.getRepository(Deposit).save(deposit);
-    return null;
+  const forwardInputs = await _getAddressesFromDeposits(manager, collector, deposits);
+  let forwardResult: any;
+  if (hotWallet) {
+    forwardResult = await gateway.forwardTransaction(
+      forwardInputs.privateKeys,
+      forwardInputs.addresses,
+      hotWallet.address,
+      checkDepositAmounts.totalDepositAmount,
+      deposits.map(deposit => deposit.txid)
+    );
   }
 
-  const result = await gateway.forwardTransaction(privateKey, address.address, hotWallet.address, deposit.amount);
-  if (!result) {
-    logger.error(`Construct collect tx failed depositId=${deposit.id} walletId=${walletId} currency=${currency}`);
-    deposit.nextCheckAt = now + collector.getNextCheckAtAmount();
-    await manager.getRepository(Deposit).save(deposit);
-    return null;
+  const satisfiedDeposit = forwardInputs.satisfiedDeposits;
+  const unsatisfiedDeposit = _.difference(deposits, satisfiedDeposit);
+  unsatisfiedDeposit.forEach(deposit => {
+    deposit.collectStatus = CollectStatus.NOTCOLLECT;
+    deposit.collectedTxid = 'INVALID_ADDRESS';
+    deposit.updatedAt = Utils.nowInMillis();
+  });
+  satisfiedDeposit.forEach(deposit => {
+    if (forwardResult) {
+      // MAKE SURE DEPOSIT WILL BE NOT RESENT, IF TRANSACTION SENT BUT IT IS NOT UPDATED STATUS TO COLLECTING
+      deposit.collectStatus = CollectStatus.COLLECTING_FORWARDING;
+      deposit.collectedTxid = forwardResult.txid;
+    }
+    deposit.updatedAt = Utils.nowInMillis();
+  });
+
+  await Utils.PromiseAll([manager.save(satisfiedDeposit), manager.save(unsatisfiedDeposit)]);
+
+  return {
+    deposits,
+    satisfiedDeposits: satisfiedDeposit,
+    rawTransaction: forwardResult.signedRaw,
+    needNextProcess: true,
+    withdrawalTxId: 0,
+  };
+}
+
+/**
+ * Check total amount of deposit records with set minimum deposit amount
+ * @param manager
+ * @param collector
+ * @param deposits
+ * @private
+ */
+async function _checkDepositAmount(
+  manager: EntityManager,
+  collector: BaseDepositCollector,
+  deposits: Deposit[]
+): Promise<IDepositsTotalAmount> {
+  let amountNumber = new BN(0);
+  deposits.forEach(deposit => {
+    amountNumber = amountNumber.plus(new BN(deposit.amount));
+  });
+  const depositCurrency = deposits[0].currency;
+  const minimumDepositAmount = getMinimumDepositAmount(depositCurrency);
+  if (!minimumDepositAmount) {
+    logger.error(`Minimum deposit is not setted for ${depositCurrency}`);
+    return {
+      ok: false,
+      totalDepositAmount: amountNumber.toString(),
+    };
   }
 
-  deposit.collectedTxid = result.txid;
-  deposit.nextCheckAt = 0;
-  deposit.collectStatus = CollectStatus.COLLECTING;
+  const factor = new BN(10).pow(getCurrencyDecimal(depositCurrency));
+  const minNumber = new BN(minimumDepositAmount).multipliedBy(factor);
 
-  const internalTransferRecord = new InternalTransfer();
-  internalTransferRecord.currency = deposit.currency;
-  internalTransferRecord.txid = result.txid;
-  internalTransferRecord.type = InternalTransferType.COLLECT;
-  internalTransferRecord.status = WithdrawalStatus.SENT;
-  internalTransferRecord.fromAddress = deposit.toAddress;
-  internalTransferRecord.toAddress = hotWallet.address;
+  if (amountNumber.lt(minNumber)) {
+    logger.error(
+      `Deposit amount less than threshold` +
+        ` depositId=${deposits.map(deposit => deposit.id)}` +
+        ` currency=${deposits[0].currency}` +
+        ` amount=${amountNumber} < threshold=${minNumber}`
+    );
+    deposits.forEach(deposit => {
+      deposit.updatedAt = Utils.nowInMillis();
+      deposit.collectedTxid = 'AMOUNT_BELOW_THRESHOLD';
+    });
+    await manager.getRepository(Deposit).save(deposits);
+    return {
+      ok: false,
+      totalDepositAmount: amountNumber.toString(),
+    };
+  }
+  return {
+    ok: true,
+    totalDepositAmount: amountNumber.toString(),
+  };
+}
 
-  await Utils.PromiseAll([rawdb.insertInternalTransfer(manager, internalTransferRecord), manager.save(deposit)]);
+/**
+ * Get list sender addresses and private keys to forward transaction
+ * @param manager
+ * @param collector
+ * @param deposits
+ * @private
+ */
+async function _getAddressesFromDeposits(
+  manager: EntityManager,
+  collector: BaseDepositCollector,
+  deposits: Deposit[]
+): Promise<IDepositsProcessed> {
+  const depositAddress = deposits.map(deposit => deposit.toAddress);
+  const uniqueDepositAddress: string[] = Array.from(new Set(depositAddress.map((addr: string) => addr)));
+
+  // get list address
+  const addresses = await manager.getRepository(Address).find({ address: In(uniqueDepositAddress), isExternal: 0 });
+
+  const stringAddrs: string[] = addresses.map(addr => addr.address);
+  const results: any[] = [];
+  const privateKeys: string[] = [];
+
+  await Promise.all(
+    addresses.map(async addr => {
+      let privateKey: string = null;
+      let kmsDataKeyId: number;
+
+      try {
+        const privateKeyDef = JSON.parse(addr.secret);
+        privateKey = privateKeyDef.private_key;
+        kmsDataKeyId = privateKeyDef.kms_data_key_id;
+
+        if (kmsDataKeyId !== 0) {
+          privateKey = await Kms.getInstance().decrypt(privateKey, kmsDataKeyId);
+        }
+      } catch (e) {
+        privateKey = addr.secret;
+      }
+      results.push({
+        address: addr.address,
+        privateKey,
+      });
+
+      privateKeys.push(privateKey);
+    })
+  );
+
+  const satisfiedDeposits = deposits.filter(deposit => stringAddrs.indexOf(deposit.toAddress));
+  return {
+    addresses: addresses.length === 1 ? addresses[0].address : stringAddrs,
+    privateKeys: privateKeys.length === 1 ? privateKeys[0] : privateKeys,
+    satisfiedDeposits,
+  };
 }
 
 export default collectorDoProcess;
