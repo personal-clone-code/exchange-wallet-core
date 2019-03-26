@@ -13,8 +13,8 @@ import {
 import BN from 'bignumber.js';
 import { EntityManager, getConnection, In } from 'typeorm';
 import * as rawdb from '../../rawdb';
-import { CollectStatus } from '../../Enums';
-import { Deposit, Address } from '../../entities';
+import { CollectStatus, InternalTransferType, WithdrawalStatus } from '../../Enums';
+import { Deposit, Address, InternalTransfer } from '../../entities';
 import Kms from '../../encrypt/Kms';
 import _ = require('lodash');
 
@@ -24,11 +24,13 @@ const emptyResult: IWithdrawalDoProcessingResult = {
   deposits: [],
   satisfiedDeposits: [],
   rawTransaction: null,
+  receiver: null,
   needNextProcess: false,
   withdrawalTxId: null,
 };
 
 export interface IWithdrawalDoProcessingResult extends IWithdrawalProcessingResult {
+  receiver: string;
   deposits: Deposit[];
   satisfiedDeposits: Deposit[];
   rawTransaction: any;
@@ -100,6 +102,7 @@ async function _collectorSubmitProcess(
     return;
   }
   const depositCurrency = doProcessResult.deposits[0].currency;
+  const collectTxId = doProcessResult.deposits[0].collectedTxid;
   const gateway = collector.getGateway(depositCurrency);
 
   try {
@@ -128,7 +131,15 @@ async function _collectorSubmitProcess(
     deposit.updatedAt = Utils.nowInMillis();
   });
 
-  await manager.save(satisfiedDeposit);
+  const internalTransferRecord = new InternalTransfer();
+  internalTransferRecord.currency = depositCurrency;
+  internalTransferRecord.txid = collectTxId;
+  internalTransferRecord.type = InternalTransferType.COLLECT;
+  internalTransferRecord.status = WithdrawalStatus.SENT;
+  internalTransferRecord.fromAddress = 'will remove this field';
+  internalTransferRecord.toAddress = doProcessResult.receiver;
+
+  await Utils.PromiseAll([manager.save(internalTransferRecord), manager.save(satisfiedDeposit)]);
   return;
 }
 
@@ -153,11 +164,12 @@ async function _collectDepositTransaction(
   let satisfyDeposit: any[] = [];
   let unsatisfyDeposit: any[] = [];
   let forwardResult: any;
+  let hotWallet: any;
 
   // pre-checking
   if (checkDepositAmounts.ok) {
     // TODO: What's the right way to find hot wallet?
-    let hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, false);
+    hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, false);
     if (hotWallet) {
       logger.info(`${currency} internal hot wallet is available, internal mode`);
     } else {
@@ -201,6 +213,7 @@ async function _collectDepositTransaction(
     rawTransaction: forwardResult.signedRaw,
     needNextProcess: true,
     withdrawalTxId: 0,
+    receiver: hotWallet.address,
   };
 }
 
