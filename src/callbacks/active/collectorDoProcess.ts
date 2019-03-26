@@ -103,6 +103,7 @@ async function _collectorSubmitProcess(
   }
   const depositCurrency = doProcessResult.deposits[0].currency;
   const collectTxId = doProcessResult.deposits[0].collectedTxid;
+  const walletId = doProcessResult.deposits[0].walletId;
   const gateway = collector.getGateway(depositCurrency);
 
   try {
@@ -134,10 +135,11 @@ async function _collectorSubmitProcess(
   const internalTransferRecord = new InternalTransfer();
   internalTransferRecord.currency = depositCurrency;
   internalTransferRecord.txid = collectTxId;
+  internalTransferRecord.walletId = walletId;
   internalTransferRecord.type = InternalTransferType.COLLECT;
   internalTransferRecord.status = WithdrawalStatus.SENT;
   internalTransferRecord.fromAddress = 'will remove this field';
-  internalTransferRecord.toAddress = doProcessResult.receiver;
+  internalTransferRecord.toAddress = 'will remove this field';
 
   await Utils.PromiseAll([manager.save(internalTransferRecord), manager.save(satisfiedDeposit)]);
   return;

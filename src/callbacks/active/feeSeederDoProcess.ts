@@ -77,8 +77,9 @@ async function _feeSeederDoProcess(
 
   const internalTransferRecord = new InternalTransfer();
   internalTransferRecord.currency = feeSeederCurrency;
-  internalTransferRecord.fromAddress = hotWallet.address;
-  internalTransferRecord.toAddress = toAddress;
+  internalTransferRecord.walletId = hotWallet.walletId;
+  internalTransferRecord.fromAddress = 'will remove this field'; // remove
+  internalTransferRecord.toAddress = 'will remove this field'; // remove
   internalTransferRecord.type = InternalTransferType.SEED;
   internalTransferRecord.txid = tx.txid;
   internalTransferRecord.status = WithdrawalStatus.SENT;
