@@ -34,7 +34,7 @@ export interface IWithdrawalDoProcessingResult extends IWithdrawalProcessingResu
   rawTransaction: any;
 }
 
-interface IDepositsProcessed {
+interface IForwardingInputs {
   addresses: string | string[];
   privateKeys: string | string[];
   satisfiedDeposits: Deposit[];
@@ -46,7 +46,7 @@ interface IDepositsTotalAmount {
 }
 
 export async function collectorDoProcess(collector: BaseDepositCollector): Promise<IWithdrawalDoProcessingResult> {
-  let doProcessResult: IWithdrawalDoProcessingResult;
+  let doProcessResult: IWithdrawalDoProcessingResult = null;
   await getConnection().transaction(async manager => {
     doProcessResult = await _collectorDoProcess(manager, collector);
   });
@@ -149,7 +149,7 @@ async function _collectDepositTransaction(
   const walletId = deposits[0].walletId;
   const gateway = collector.getGateway(depositCurrency);
 
-  const checkDepositAmounts = await _checkDepositAmount(manager, collector, deposits);
+  const checkDepositAmounts = await _checkDepositAmount(manager, deposits);
   if (!checkDepositAmounts.ok) {
     return emptyResult;
   }
@@ -163,7 +163,7 @@ async function _collectDepositTransaction(
     hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, true);
   }
 
-  const forwardInputs = await _getAddressesFromDeposits(manager, collector, deposits);
+  const forwardInputs = await _getForwardingInputs(manager, deposits);
   let forwardResult: any;
   if (hotWallet) {
     forwardResult = await gateway.forwardTransaction(
@@ -209,11 +209,7 @@ async function _collectDepositTransaction(
  * @param deposits
  * @private
  */
-async function _checkDepositAmount(
-  manager: EntityManager,
-  collector: BaseDepositCollector,
-  deposits: Deposit[]
-): Promise<IDepositsTotalAmount> {
+async function _checkDepositAmount(manager: EntityManager, deposits: Deposit[]): Promise<IDepositsTotalAmount> {
   let amountNumber = new BN(0);
   deposits.forEach(deposit => {
     amountNumber = amountNumber.plus(new BN(deposit.amount));
@@ -261,11 +257,7 @@ async function _checkDepositAmount(
  * @param deposits
  * @private
  */
-async function _getAddressesFromDeposits(
-  manager: EntityManager,
-  collector: BaseDepositCollector,
-  deposits: Deposit[]
-): Promise<IDepositsProcessed> {
+async function _getForwardingInputs(manager: EntityManager, deposits: Deposit[]): Promise<IForwardingInputs> {
   const depositAddress = deposits.map(deposit => deposit.toAddress);
   const uniqueDepositAddress: string[] = Array.from(new Set(depositAddress.map((addr: string) => addr)));
 
@@ -273,7 +265,6 @@ async function _getAddressesFromDeposits(
   const addresses = await manager.getRepository(Address).find({ address: In(uniqueDepositAddress), isExternal: 0 });
 
   const stringAddrs: string[] = addresses.map(addr => addr.address);
-  const results: any[] = [];
   const privateKeys: string[] = [];
 
   await Promise.all(
@@ -292,10 +283,6 @@ async function _getAddressesFromDeposits(
       } catch (e) {
         privateKey = addr.secret;
       }
-      results.push({
-        address: addr.address,
-        privateKey,
-      });
 
       privateKeys.push(privateKey);
     })
