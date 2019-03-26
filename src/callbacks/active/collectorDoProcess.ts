@@ -8,6 +8,7 @@ import {
   getCurrencyDecimal,
   getFamily,
   IWithdrawalProcessingResult,
+  getCurrency,
 } from 'sota-common';
 import BN from 'bignumber.js';
 import { EntityManager, getConnection, In } from 'typeorm';
@@ -58,7 +59,6 @@ export async function collectorDoProcess(collector: BaseDepositCollector): Promi
 }
 
 /**
- * TODO: update transfer type, now support account base type
  * Picker do process
  * @param manager
  * @param picker
@@ -68,11 +68,12 @@ async function _collectorDoProcess(
   manager: EntityManager,
   collector: BaseDepositCollector
 ): Promise<IWithdrawalDoProcessingResult> {
+  const currencyGateway = collector.getGateway(getCurrency());
   const unCollectedDeposits = await rawdb.findDepositsByCollectStatus(
     manager,
     getListTokenSymbols().tokenSymbols,
     [CollectStatus.UNCOLLECTED],
-    true
+    currencyGateway.getTransferType()
   );
   if (!unCollectedDeposits.length) {
     logger.info(`There're no uncollected deposit right now. Will try to process later...`);

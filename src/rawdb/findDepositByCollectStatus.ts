@@ -1,6 +1,7 @@
-import { Address, Deposit } from '../entities';
-import { EntityManager, In, Not, LessThan } from 'typeorm';
+import { Deposit } from '../entities';
+import { EntityManager, In, LessThan, Not } from 'typeorm';
 import { CollectStatus } from '../Enums';
+import { TransferType } from 'sota-common';
 
 export async function findDepositByCollectStatus(
   manager: EntityManager,
@@ -27,16 +28,16 @@ export async function findDepositByCollectStatus(
 /**
  * Find all deposit with similar toAddress, walletId and currency property
  * that can be group amount
- * TODO: update transfer type
  * @param manager
  * @param currencies
  * @param statuses
+ * @param transferType
  */
 export async function findDepositsByCollectStatus(
   manager: EntityManager,
   currencies: string[],
   statuses: CollectStatus[],
-  transferType: boolean
+  transferType: TransferType
 ): Promise<Deposit[]> {
   // find and filter first group
   const unCollected = await manager.getRepository(Deposit).find({
@@ -52,14 +53,15 @@ export async function findDepositsByCollectStatus(
   if (!unCollected.length) {
     return [];
   }
-  let results = unCollected.filter(deposit => deposit.walletId === unCollected[0].walletId);
+  const results = unCollected.filter(deposit => deposit.walletId === unCollected[0].walletId);
   // find all results that have similar toAddress
-  if (transferType) {
+  if (transferType === TransferType.ACCOUNT_BASED) {
     // 1. Account base
-    results = results.filter(deposit => deposit.toAddress === results[0].toAddress);
+    return results.filter(deposit => deposit.toAddress === results[0].toAddress);
+  } else if (transferType === TransferType.UTXO_BASED) {
+    // 2. UTXO based type
+    return results;
   }
-  // 2. UTXO based type
-
   return results;
 }
 
