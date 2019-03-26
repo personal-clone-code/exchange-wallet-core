@@ -23,7 +23,7 @@ const emptyResult: IWithdrawalDoProcessingResult = {
   deposits: [],
   satisfiedDeposits: [],
   rawTransaction: null,
-  needNextProcess: true,
+  needNextProcess: false,
   withdrawalTxId: null,
 };
 
@@ -68,19 +68,18 @@ async function _collectorDoProcess(
   manager: EntityManager,
   collector: BaseDepositCollector
 ): Promise<IWithdrawalDoProcessingResult> {
-  const now = Date.now();
-  const unCollectedDeposit = await rawdb.findDepositsByCollectStatus(
+  const unCollectedDeposits = await rawdb.findDepositsByCollectStatus(
     manager,
     getListTokenSymbols().tokenSymbols,
     [CollectStatus.UNCOLLECTED],
     true
   );
-  if (!unCollectedDeposit) {
+  if (!unCollectedDeposits.length) {
     logger.info(`There're no uncollected deposit right now. Will try to process later...`);
     return emptyResult;
   }
 
-  const result = await _collectDepositTransaction(manager, collector, unCollectedDeposit);
+  const result = await _collectDepositTransaction(manager, collector, unCollectedDeposits);
   return result;
 }
 
@@ -96,6 +95,9 @@ async function _collectorSubmitProcess(
   collector: BaseDepositCollector,
   doProcessResult: IWithdrawalDoProcessingResult
 ): Promise<void> {
+  if (doProcessResult === emptyResult) {
+    return;
+  }
   const depositCurrency = doProcessResult.deposits[0].currency;
   const gateway = collector.getGateway(depositCurrency);
 
@@ -147,7 +149,7 @@ async function _collectDepositTransaction(
 
   const checkDepositAmounts = await _checkDepositAmount(manager, collector, deposits);
   if (!checkDepositAmounts.ok) {
-    return null;
+    return emptyResult;
   }
 
   // TODO: What's the right way to find hot wallet?
@@ -171,14 +173,14 @@ async function _collectDepositTransaction(
     );
   }
 
-  const satisfiedDeposit = forwardInputs.satisfiedDeposits;
-  const unsatisfiedDeposit = _.difference(deposits, satisfiedDeposit);
-  unsatisfiedDeposit.forEach(deposit => {
+  const satisfyDeposit = forwardInputs.satisfiedDeposits;
+  const unsatisfyDeposit = _.difference(deposits, satisfyDeposit);
+  unsatisfyDeposit.forEach(deposit => {
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
     deposit.collectedTxid = 'INVALID_ADDRESS';
     deposit.updatedAt = Utils.nowInMillis();
   });
-  satisfiedDeposit.forEach(deposit => {
+  satisfyDeposit.forEach(deposit => {
     if (forwardResult) {
       // MAKE SURE DEPOSIT WILL BE NOT RESENT, IF TRANSACTION SENT BUT IT IS NOT UPDATED STATUS TO COLLECTING
       deposit.collectStatus = CollectStatus.COLLECTING_FORWARDING;
@@ -187,11 +189,11 @@ async function _collectDepositTransaction(
     deposit.updatedAt = Utils.nowInMillis();
   });
 
-  await Utils.PromiseAll([manager.save(satisfiedDeposit), manager.save(unsatisfiedDeposit)]);
+  await Utils.PromiseAll([manager.save(satisfyDeposit), manager.save(unsatisfyDeposit)]);
 
   return {
     deposits,
-    satisfiedDeposits: satisfiedDeposit,
+    satisfiedDeposits: satisfyDeposit,
     rawTransaction: forwardResult.signedRaw,
     needNextProcess: true,
     withdrawalTxId: 0,
@@ -232,7 +234,7 @@ async function _checkDepositAmount(
       `Deposit amount less than threshold` +
         ` depositId=${deposits.map(deposit => deposit.id)}` +
         ` currency=${deposits[0].currency}` +
-        ` amount=${amountNumber} < threshold=${minNumber}`
+        ` amount=${amountNumber.toString()} < threshold=${minNumber}`
     );
     deposits.forEach(deposit => {
       deposit.updatedAt = Utils.nowInMillis();
