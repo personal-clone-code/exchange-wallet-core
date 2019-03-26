@@ -57,7 +57,7 @@ export enum WithdrawalStatus {
 
 export enum CollectStatus {
   UNCOLLECTED = 'uncollected',
-  COLLECTING_FORWARDING = 'collecting_forwarding',
+  COLLECTING_FORWARDING = 'forwarding',
   COLLECTING = 'collecting',
   COLLECTED = 'collected',
   NOTCOLLECT = 'notcollect',

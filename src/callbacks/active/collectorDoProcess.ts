@@ -127,6 +127,7 @@ async function _collectorSubmitProcess(
     deposit.updatedAt = Utils.nowInMillis();
   });
 
+  await manager.save(satisfiedDeposit);
   return;
 }
 
@@ -299,7 +300,7 @@ async function _getAddressesFromDeposits(
     })
   );
 
-  const satisfiedDeposits = deposits.filter(deposit => stringAddrs.indexOf(deposit.toAddress));
+  const satisfiedDeposits = deposits.filter(deposit => stringAddrs.indexOf(deposit.toAddress) !== -1);
   return {
     addresses: addresses.length === 1 ? addresses[0].address : stringAddrs,
     privateKeys: privateKeys.length === 1 ? privateKeys[0] : privateKeys,
