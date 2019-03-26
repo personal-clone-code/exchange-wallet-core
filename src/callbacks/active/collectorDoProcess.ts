@@ -150,33 +150,35 @@ async function _collectDepositTransaction(
   const gateway = collector.getGateway(depositCurrency);
 
   const checkDepositAmounts = await _checkDepositAmount(manager, deposits);
-  if (!checkDepositAmounts.ok) {
-    return emptyResult;
-  }
-
-  // TODO: What's the right way to find hot wallet?
-  let hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, false);
-  if (hotWallet) {
-    logger.info(`${currency} internal hot wallet is available, internal mode`);
-  } else {
-    logger.info(`${currency} internal hot wallet is not available, external mode`);
-    hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, true);
-  }
-
-  const forwardInputs = await _getForwardingInputs(manager, deposits);
+  let satisfyDeposit: any[] = [];
+  let unsatisfyDeposit: any[] = [];
   let forwardResult: any;
-  if (hotWallet) {
-    forwardResult = await gateway.forwardTransaction(
-      forwardInputs.privateKeys,
-      forwardInputs.addresses,
-      hotWallet.address,
-      checkDepositAmounts.totalDepositAmount,
-      deposits.map(deposit => deposit.txid)
-    );
+
+  // pre-checking
+  if (checkDepositAmounts.ok) {
+    // TODO: What's the right way to find hot wallet?
+    let hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, false);
+    if (hotWallet) {
+      logger.info(`${currency} internal hot wallet is available, internal mode`);
+    } else {
+      logger.info(`${currency} internal hot wallet is not available, external mode`);
+      hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, true);
+    }
+
+    const forwardInputs = await _getForwardingInputs(manager, deposits);
+    if (hotWallet) {
+      forwardResult = await gateway.forwardTransaction(
+        forwardInputs.privateKeys,
+        forwardInputs.addresses,
+        hotWallet.address,
+        checkDepositAmounts.totalDepositAmount,
+        deposits.map(deposit => deposit.txid)
+      );
+    }
+    satisfyDeposit = forwardInputs.satisfiedDeposits;
+    unsatisfyDeposit = _.difference(deposits, satisfyDeposit);
   }
 
-  const satisfyDeposit = forwardInputs.satisfiedDeposits;
-  const unsatisfyDeposit = _.difference(deposits, satisfyDeposit);
   unsatisfyDeposit.forEach(deposit => {
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
     deposit.collectedTxid = 'INVALID_ADDRESS';
