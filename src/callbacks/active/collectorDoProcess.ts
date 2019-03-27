@@ -87,7 +87,6 @@ async function _collectorDoProcess(
 }
 
 /**
- * TODO: log internal transaction into database
  * Picker do process
  * @param manager
  * @param picker

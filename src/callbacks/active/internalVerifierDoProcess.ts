@@ -22,7 +22,7 @@ const emptyResult: IWithdrawalProcessingResult = {
 export async function internalVerifierDoProcess(
   verfifier: BaseInternalTransferVerifier
 ): Promise<IWithdrawalProcessingResult> {
-  let result: IWithdrawalProcessingResult;
+  let result: IWithdrawalProcessingResult = null;
   await getConnection().transaction(async manager => {
     result = await _verifierDoProcess(manager, verfifier);
   });
@@ -90,11 +90,9 @@ async function _collectVerify(
     rawdb.updateDepositCollectStatus(manager, collectingRecord.id, verifiedStatus, timestamp),
     rawdb.updateDepositCollectWallets(manager, collectingRecord, event, transfer.amount, fee, hotWallet.isExternal),
     rawdb.updateInternalTransfer(manager, transfer, verifiedStatus, transfer.amount, fee, transfer.walletId),
+    rawdb.insertDepositLog(manager, collectingRecord.id, event),
   ];
   await Utils.PromiseAll(tasks);
-
-  // for collectedtimestamp
-  await rawdb.insertDepositLog(manager, collectingRecord.id, event);
 
   return emptyResult;
 }
