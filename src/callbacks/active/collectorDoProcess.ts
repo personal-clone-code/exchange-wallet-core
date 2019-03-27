@@ -9,18 +9,19 @@ import {
   getFamily,
   IWithdrawalProcessingResult,
   getCurrency,
+  ISignedRawTransaction,
 } from 'sota-common';
 import BN from 'bignumber.js';
 import { EntityManager, getConnection, In } from 'typeorm';
 import * as rawdb from '../../rawdb';
 import { CollectStatus, InternalTransferType, WithdrawalStatus } from '../../Enums';
-import { Deposit, Address, InternalTransfer } from '../../entities';
+import { Deposit, Address, InternalTransfer, HotWallet } from '../../entities';
 import Kms from '../../encrypt/Kms';
 import _ = require('lodash');
 
 const logger = getLogger('collectorDoProcess');
 
-const emptyResult: IWithdrawalDoProcessingResult = {
+const emptyResult: IWithdrawalCollectingResult = {
   deposits: [],
   satisfiedDeposits: [],
   rawTransaction: null,
@@ -29,11 +30,11 @@ const emptyResult: IWithdrawalDoProcessingResult = {
   withdrawalTxId: null,
 };
 
-export interface IWithdrawalDoProcessingResult extends IWithdrawalProcessingResult {
+interface IWithdrawalCollectingResult extends IWithdrawalProcessingResult {
   receiver: string;
   deposits: Deposit[];
   satisfiedDeposits: Deposit[];
-  rawTransaction: any;
+  rawTransaction: string;
 }
 
 interface IForwardingInputs {
@@ -47,15 +48,14 @@ interface IDepositsTotalAmount {
   totalDepositAmount: string;
 }
 
-export async function collectorDoProcess(collector: BaseDepositCollector): Promise<IWithdrawalDoProcessingResult> {
-  let doProcessResult: IWithdrawalDoProcessingResult = null;
+export async function collectorDoProcess(collector: BaseDepositCollector): Promise<IWithdrawalCollectingResult> {
+  let doProcessResult: IWithdrawalCollectingResult = null;
   await getConnection().transaction(async manager => {
     doProcessResult = await _collectorDoProcess(manager, collector);
   });
 
-  let submitResult: any;
   await getConnection().transaction(async manager => {
-    submitResult = await _collectorSubmitProcess(manager, collector, doProcessResult);
+    await _collectorSubmitProcess(manager, collector, doProcessResult);
   });
   return doProcessResult;
 }
@@ -69,7 +69,7 @@ export async function collectorDoProcess(collector: BaseDepositCollector): Promi
 async function _collectorDoProcess(
   manager: EntityManager,
   collector: BaseDepositCollector
-): Promise<IWithdrawalDoProcessingResult> {
+): Promise<IWithdrawalCollectingResult> {
   const currencyGateway = collector.getGateway(getCurrency());
   const unCollectedDeposits = await rawdb.findDepositsByCollectStatus(
     manager,
@@ -95,7 +95,7 @@ async function _collectorDoProcess(
 async function _collectorSubmitProcess(
   manager: EntityManager,
   collector: BaseDepositCollector,
-  doProcessResult: IWithdrawalDoProcessingResult
+  doProcessResult: IWithdrawalCollectingResult
 ): Promise<void> {
   if (doProcessResult === emptyResult) {
     return;
@@ -155,17 +155,17 @@ async function _collectDepositTransaction(
   manager: EntityManager,
   collector: BaseDepositCollector,
   deposits: Deposit[]
-): Promise<IWithdrawalDoProcessingResult> {
+): Promise<IWithdrawalCollectingResult> {
   const currency = getFamily();
   const depositCurrency = deposits[0].currency;
   const walletId = deposits[0].walletId;
   const gateway = collector.getGateway(depositCurrency);
 
   const checkDepositAmounts = await _checkDepositAmount(manager, deposits);
-  let satisfyDeposit: any[] = [];
-  let unsatisfyDeposit: any[] = [];
-  let forwardResult: any;
-  let hotWallet: any;
+  let satisfyDeposit: Deposit[] = [];
+  let unsatisfyDeposit: Deposit[] = [];
+  let forwardResult: ISignedRawTransaction;
+  let hotWallet: HotWallet;
 
   // pre-checking
   if (checkDepositAmounts.ok) {
