@@ -31,8 +31,9 @@ async function _feeSeederDoProcess(
   }
   const feeSeederCurrency = getFamily();
   const request = seeder.requests.shift();
-  const { toAddress, amount: feeAmount, depositId } = request;
+  const { toAddress, amount, depositId } = request;
 
+  const feeAmount = amount;
   const seeded = await manager.getRepository(InternalTransfer).findOne({
     toAddress,
     status: WithdrawalStatus.SENT,
