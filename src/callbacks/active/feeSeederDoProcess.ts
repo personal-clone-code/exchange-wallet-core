@@ -14,7 +14,7 @@ const emptyResult: IWithdrawalProcessingResult = {
 };
 
 export async function feeSeederDoProcess(seeder: BaseFeeSeeder): Promise<IWithdrawalProcessingResult> {
-  let result: IWithdrawalProcessingResult;
+  let result: IWithdrawalProcessingResult = null;
   await getConnection().transaction(async manager => {
     result = await _feeSeederDoProcess(manager, seeder);
   });
@@ -31,7 +31,7 @@ async function _feeSeederDoProcess(
   }
   const feeSeederCurrency = getFamily();
   const request = seeder.requests.shift();
-  const { toAddress, amount, depositId } = request;
+  const { toAddress, amount: feeAmount, depositId } = request;
 
   const seeded = await manager.getRepository(InternalTransfer).findOne({
     toAddress,
@@ -39,7 +39,6 @@ async function _feeSeederDoProcess(
     type: InternalTransferType.SEED,
     currency: feeSeederCurrency,
   });
-
   if (seeded) {
     logger.info(`${depositId} is seeded previously`);
     return emptyResult;
@@ -52,28 +51,30 @@ async function _feeSeederDoProcess(
   }
 
   const walletId = address.walletId;
-
   // Find internal hot wallet to seed fee for funds collector
   const hotWallet = await rawdb.findAvailableHotWallet(manager, walletId, feeSeederCurrency, false);
-
   if (!hotWallet) {
     logger.error(`No internal hot wallet walletId=${walletId} currency=${feeSeederCurrency}`);
     return emptyResult;
   }
 
-  const walletBalance = await manager.getRepository(WalletBalance).findOne({ walletId: address.walletId });
+  const walletBalance = await manager.getRepository(WalletBalance).findOne({ walletId, coin: feeSeederCurrency });
   if (!walletBalance) {
-    logger.error(`${address.address} has empty wallet balance`);
+    logger.error(`Wallet ${walletId} is missed wallet balance record`);
     return emptyResult;
   }
 
-  const balance = walletBalance.balance;
-  if (new BigNumber(balance).lt(amount)) {
-    logger.error(`${address.address} has not enough fund to get seed`);
+  const feeWalletBalance = walletBalance.balance;
+  if (new BigNumber(feeWalletBalance).lt(feeAmount)) {
+    logger.error(
+      `Wallet ${walletId} has not enough ${feeSeederCurrency.toUpperCase()} fund to seed fee for address=${
+        address.address
+      }`
+    );
     return emptyResult;
   }
 
-  const tx = await seeder.getGateway().seedFee(hotWallet.coinKeys, hotWallet.address, toAddress, amount);
+  const tx = await seeder.getGateway().seedFee(hotWallet.coinKeys, hotWallet.address, toAddress, feeAmount);
 
   const internalTransferRecord = new InternalTransfer();
   internalTransferRecord.currency = feeSeederCurrency;
