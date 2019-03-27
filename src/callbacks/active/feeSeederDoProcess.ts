@@ -5,6 +5,7 @@ import { InternalTransferType, WithdrawalStatus } from '../../Enums';
 import { Address, WalletBalance, Wallet } from '../../entities';
 import BigNumber from 'bignumber.js';
 import { InternalTransfer } from '../../entities/InternalTransfer';
+import { raw } from 'mysql';
 
 const logger = getLogger('feeSeederDoProcess');
 
@@ -54,10 +55,16 @@ async function _feeSeederDoProcess(
   const walletId = address.walletId;
 
   // Find internal hot wallet to seed fee for funds collector
-  const hotWallet = await rawdb.findAvailableHotWallet(manager, walletId, feeSeederCurrency, false);
-
+  const hotWallet = await rawdb.findTransferableHotWallet(
+    manager,
+    walletId,
+    [{ toAddress, amount } as any],
+    feeSeederCurrency,
+    false,
+    seeder.getGateway()
+  );
   if (!hotWallet) {
-    logger.error(`No internal hot wallet walletId=${walletId} currency=${feeSeederCurrency}`);
+    logger.error(`No transferable internal hot wallet walletId=${walletId} currency=${feeSeederCurrency}`);
     return emptyResult;
   }
 
