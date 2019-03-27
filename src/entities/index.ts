@@ -22,3 +22,4 @@ export * from './WebhookProgress';
 export * from './Config';
 export * from './KmsDataKey';
 export * from './CurrencyToken';
+export * from './EnvConfig';
