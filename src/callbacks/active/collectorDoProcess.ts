@@ -191,6 +191,7 @@ async function _collectDepositTransaction(
               await collector.emitMessage(`seed,${deposit.id},${deposit.toAddress}`);
             })
           );
+          return emptyResult;
         } else {
           throw e;
         }
