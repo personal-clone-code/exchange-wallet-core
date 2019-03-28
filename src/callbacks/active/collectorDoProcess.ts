@@ -3,13 +3,13 @@ import {
   BaseDepositCollector,
   Utils,
   getListTokenSymbols,
-  isPlatform,
   getMinimumDepositAmount,
   getCurrencyDecimal,
   getFamily,
   IWithdrawalProcessingResult,
   getCurrency,
   ISignedRawTransaction,
+  Errors,
 } from 'sota-common';
 import BN from 'bignumber.js';
 import { EntityManager, getConnection, In } from 'typeorm';
@@ -116,13 +116,6 @@ async function _collectorSubmitProcess(
     logger.error(`===============================`);
     logger.error(e);
     logger.error(`===============================`);
-    if (!isPlatform(doProcessResult.deposits[0].currency)) {
-      await Promise.all(
-        doProcessResult.satisfiedDeposits.map(async deposit => {
-          await collector.emitMessage(`seed,${deposit.id},${deposit.toAddress}`);
-        })
-      );
-    }
   }
   // after sent, update status to collecting
   const satisfiedDeposit = doProcessResult.satisfiedDeposits;
@@ -169,6 +162,10 @@ async function _collectDepositTransaction(
 
   // pre-checking
   if (checkDepositAmounts.ok) {
+    const forwardInputs = await _getForwardingInputs(manager, deposits);
+    satisfyDeposit = forwardInputs.satisfiedDeposits;
+    unsatisfyDeposit = _.difference(deposits, satisfyDeposit);
+
     // TODO: What's the right way to find hot wallet?
     hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, false);
     if (hotWallet) {
@@ -178,18 +175,27 @@ async function _collectDepositTransaction(
       hotWallet = await rawdb.findAnyHotWallet(manager, walletId, currency, true);
     }
 
-    const forwardInputs = await _getForwardingInputs(manager, deposits);
     if (hotWallet) {
-      forwardResult = await gateway.forwardTransaction(
-        forwardInputs.privateKeys,
-        forwardInputs.addresses,
-        hotWallet.address,
-        checkDepositAmounts.totalDepositAmount,
-        deposits.map(deposit => deposit.txid)
-      );
+      try {
+        forwardResult = await gateway.forwardTransaction(
+          forwardInputs.privateKeys,
+          forwardInputs.addresses,
+          hotWallet.address,
+          checkDepositAmounts.totalDepositAmount,
+          satisfyDeposit.map(deposit => deposit.txid)
+        );
+      } catch (e) {
+        if (e.code && e.code === Errors.notEnoughFeeError.code) {
+          await Promise.all(
+            satisfyDeposit.map(async deposit => {
+              await collector.emitMessage(`seed,${deposit.id},${deposit.toAddress}`);
+            })
+          );
+        } else {
+          throw e;
+        }
+      }
     }
-    satisfyDeposit = forwardInputs.satisfiedDeposits;
-    unsatisfyDeposit = _.difference(deposits, satisfyDeposit);
   }
 
   unsatisfyDeposit.forEach(deposit => {
