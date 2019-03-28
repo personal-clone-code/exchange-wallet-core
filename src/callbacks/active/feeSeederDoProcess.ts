@@ -56,7 +56,7 @@ async function _feeSeederDoProcess(
   const hotWallet = await rawdb.findTransferableHotWallet(
     manager,
     walletId,
-    [{ toAddress, amount } as any],
+    [{ toAddress, amount: feeAmount } as any],
     feeSeederCurrency,
     false,
     seeder.getGateway()
