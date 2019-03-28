@@ -1,23 +1,21 @@
 import { EntityManager } from 'typeorm';
-import { WithdrawalEvent, WalletEvent, DepositEvent, WithdrawalStatus, CollectStatus } from '../Enums';
-import { WalletBalance, Withdrawal, WithdrawalTx, Deposit, Address } from '../entities';
+import { WalletEvent, CollectStatus } from '../Enums';
+import { WalletBalance } from '../entities';
 
 import * as rawdb from './index';
-import { Utils } from 'sota-common';
-import { stat } from 'fs';
+import { getTokenBySymbol, Utils } from 'sota-common';
 import { InternalTransfer } from '../entities/InternalTransfer';
 
 export async function updateWalletBalanceOnlyFee(
   manager: EntityManager,
   transfer: InternalTransfer,
-  address: Address,
   status: CollectStatus,
   fee: string
 ): Promise<WalletBalance> {
   let walletEvent: WalletEvent;
   let balanceChange: string;
   const walletBalance = await manager.findOne(WalletBalance, {
-    walletId: address.walletId,
+    walletId: transfer.walletId,
   });
 
   if (!walletBalance) {
@@ -36,8 +34,8 @@ export async function updateWalletBalanceOnlyFee(
   }
 
   const withdrawalFeeLog = {
-    walletId: address.walletId,
-    currency: address.currency,
+    walletId: transfer.walletId,
+    currency: transfer.currency,
     balanceChange,
     event: WalletEvent.SEED_FEE,
     refId: transfer.id,
@@ -54,8 +52,8 @@ export async function updateWalletBalanceOnlyFee(
         updatedAt: Utils.nowInMillis(),
       })
       .where({
-        walletId: address.walletId,
-        coin: address.currency === 'erc20' ? 'eth' : address.currency,
+        walletId: transfer.walletId,
+        coin: getTokenBySymbol(transfer.currency).family,
       })
       .execute(),
 

@@ -53,9 +53,16 @@ async function _feeSeederDoProcess(
 
   const walletId = address.walletId;
   // Find internal hot wallet to seed fee for funds collector
-  const hotWallet = await rawdb.findAvailableHotWallet(manager, walletId, feeSeederCurrency, false);
+  const hotWallet = await rawdb.findTransferableHotWallet(
+    manager,
+    walletId,
+    [{ toAddress, amount: feeAmount } as any],
+    feeSeederCurrency,
+    false,
+    seeder.getGateway()
+  );
   if (!hotWallet) {
-    logger.error(`No internal hot wallet walletId=${walletId} currency=${feeSeederCurrency}`);
+    logger.error(`No transferable internal hot wallet walletId=${walletId} currency=${feeSeederCurrency}`);
     return emptyResult;
   }
 
@@ -79,8 +86,9 @@ async function _feeSeederDoProcess(
 
   const internalTransferRecord = new InternalTransfer();
   internalTransferRecord.currency = feeSeederCurrency;
-  internalTransferRecord.fromAddress = hotWallet.address;
-  internalTransferRecord.toAddress = toAddress;
+  internalTransferRecord.walletId = hotWallet.walletId;
+  internalTransferRecord.fromAddress = 'will remove this field'; // remove
+  internalTransferRecord.toAddress = 'will remove this field'; // remove
   internalTransferRecord.type = InternalTransferType.SEED;
   internalTransferRecord.txid = tx.txid;
   internalTransferRecord.status = WithdrawalStatus.SENT;

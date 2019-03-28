@@ -10,7 +10,7 @@ import {
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection } from 'typeorm';
 import { CollectStatus, DepositEvent, WithdrawalStatus, InternalTransferType } from '../../Enums';
-import { HotWallet, Deposit, Address } from '../../entities';
+import { HotWallet, Deposit } from '../../entities';
 import { InternalTransfer } from '../../entities/InternalTransfer';
 
 const logger = getLogger('internalVerifierDoProcess');
@@ -22,7 +22,7 @@ const emptyResult: IWithdrawalProcessingResult = {
 export async function internalVerifierDoProcess(
   verfifier: BaseInternalTransferVerifier
 ): Promise<IWithdrawalProcessingResult> {
-  let result: IWithdrawalProcessingResult;
+  let result: IWithdrawalProcessingResult = null;
   await getConnection().transaction(async manager => {
     result = await _verifierDoProcess(manager, verfifier);
   });
@@ -66,13 +66,13 @@ async function _collectVerify(
   status: TransactionStatus,
   tx: Transaction
 ): Promise<IWithdrawalProcessingResult> {
-  const [collectingRecord, hotWallet, address] = await Promise.all([
+  const toAddress = tx.extractRecipientAddresses()[0];
+  const [collectingRecord, hotWallet] = await Promise.all([
     manager.getRepository(Deposit).findOne({ collectedTxid: transfer.txid }),
-    manager.getRepository(HotWallet).findOne({ address: transfer.toAddress }),
-    manager.getRepository(Address).findOne({ address: transfer.fromAddress }),
+    manager.getRepository(HotWallet).findOne({ address: toAddress }),
   ]);
 
-  if (!collectingRecord || !hotWallet || !address) {
+  if (!collectingRecord || !hotWallet) {
     logger.error('Missing data, cannot verify collecing deposit');
     return emptyResult;
   }
@@ -84,24 +84,15 @@ async function _collectVerify(
     verifiedStatus = CollectStatus.UNCOLLECTED;
   }
   const fee = tx.getNetworkFee();
-  const outputs = tx.extractTransferOutputs().filter(output => output.toAddress === transfer.toAddress);
-
-  // Handle for case: an address send amount to itself
-  if (outputs.length === 0) {
-    return emptyResult;
-  }
-  const amount = outputs[0].amount;
   const timestamp = tx.timestamp;
 
   const tasks = [
     rawdb.updateDepositCollectStatus(manager, collectingRecord.id, verifiedStatus, timestamp),
-    rawdb.updateDepositCollectWallets(manager, collectingRecord, event, amount, fee, hotWallet.isExternal),
-    rawdb.updateInternalTransfer(manager, transfer, verifiedStatus, amount, fee, address.walletId),
+    rawdb.updateDepositCollectWallets(manager, collectingRecord, event, transfer.amount, fee, hotWallet.isExternal),
+    rawdb.updateInternalTransfer(manager, transfer, verifiedStatus, transfer.amount, fee, transfer.walletId),
+    rawdb.insertDepositLog(manager, collectingRecord.id, event),
   ];
   await Utils.PromiseAll(tasks);
-
-  // for collectedtimestamp
-  await rawdb.insertDepositLog(manager, collectingRecord.id, event);
 
   return emptyResult;
 }
@@ -112,28 +103,15 @@ async function _seedVerify(
   status: TransactionStatus,
   tx: Transaction
 ): Promise<IWithdrawalProcessingResult> {
-  const [hotWallet, address] = await Promise.all([
-    manager.getRepository(HotWallet).findOne({ address: transfer.fromAddress }),
-    manager.getRepository(Address).findOne({ address: transfer.toAddress }),
-  ]);
-
-  if (!hotWallet || !address) {
-    logger.error('Missing data, cannot verify collecing deposit');
-    return emptyResult;
-  }
-
   let verifiedStatus = CollectStatus.COLLECTED;
   if (status === TransactionStatus.FAILED) {
     verifiedStatus = CollectStatus.UNCOLLECTED;
   }
   const fee = tx.getNetworkFee();
-  const outputs = tx.extractTransferOutputs().filter(output => output.toAddress === transfer.toAddress);
-  // asumme one out
-  const amount = outputs[0].amount;
 
   const tasks = [
-    rawdb.updateWalletBalanceOnlyFee(manager, transfer, address, verifiedStatus, fee),
-    rawdb.updateInternalTransfer(manager, transfer, verifiedStatus, amount, fee, address.walletId),
+    rawdb.updateWalletBalanceOnlyFee(manager, transfer, verifiedStatus, fee),
+    rawdb.updateInternalTransfer(manager, transfer, verifiedStatus, transfer.amount, fee, transfer.walletId),
   ];
   await Utils.PromiseAll(tasks);
 
