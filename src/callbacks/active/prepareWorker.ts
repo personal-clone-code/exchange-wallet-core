@@ -1,4 +1,4 @@
-import { Config, CurrencyToken } from '../../entities';
+import { Config, CurrencyToken, EnvConfig } from '../../entities';
 import {
   buildListTokenSymbols,
   Currency,
@@ -7,6 +7,7 @@ import {
   setCurrencyConfig,
   setTokenData,
   updateValidApiEndpoint,
+  setEnvConfig,
 } from 'sota-common';
 import { createConnection, getConnection } from 'typeorm';
 
@@ -17,10 +18,11 @@ export async function prepareCurrencyWorker(currency: Currency, tokenType?: stri
   const connection = getConnection();
 
   // same network
-  const [allTokens, configByCurrency, configByTokenType] = await Promise.all([
+  const [allTokens, configByCurrency, configByTokenType, envConfigs] = await Promise.all([
     connection.getRepository(CurrencyToken).find({}),
     connection.getRepository(Config).findOne({ currency }),
     tokenType ? connection.getRepository(Config).findOne({ currency: tokenType }) : null,
+    connection.getRepository(EnvConfig).find({}),
   ]);
 
   if (allTokens.length === 0) {
@@ -30,6 +32,8 @@ export async function prepareCurrencyWorker(currency: Currency, tokenType?: stri
     throw new Error(`Cannot find ${currency.toString().toUpperCase()} configuration in config table`);
   }
   await setTokenData(allTokens.map(token => Object.assign(token)));
+
+  await setEnvConfig(envConfigs.map(config => Object.assign(config)));
 
   buildListTokenSymbols(currency, tokenType);
   setCurrencyConfig(currency, configByTokenType ? configByTokenType : configByCurrency);
