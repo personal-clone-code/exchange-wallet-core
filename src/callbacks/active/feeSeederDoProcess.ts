@@ -2,9 +2,10 @@ import { IWithdrawalProcessingResult, getLogger, BaseFeeSeeder, getFamily } from
 import { getConnection, EntityManager } from 'typeorm';
 import * as rawdb from '../../rawdb';
 import { InternalTransferType, WithdrawalStatus } from '../../Enums';
-import { Address, WalletBalance, Wallet } from '../../entities';
+import { Address, WalletBalance } from '../../entities';
 import BigNumber from 'bignumber.js';
 import { InternalTransfer } from '../../entities/InternalTransfer';
+import { hotWalletToPrivateKey } from './signerDoProcess';
 
 const logger = getLogger('feeSeederDoProcess');
 
@@ -82,7 +83,8 @@ async function _feeSeederDoProcess(
     return emptyResult;
   }
 
-  const tx = await seeder.getGateway().seedFee(hotWallet.coinKeys, hotWallet.address, toAddress, feeAmount);
+  const rawPrivateKey = await hotWalletToPrivateKey(hotWallet);
+  const tx = await seeder.getGateway().seedFee(rawPrivateKey, hotWallet.address, toAddress, feeAmount);
 
   const internalTransferRecord = new InternalTransfer();
   internalTransferRecord.currency = feeSeederCurrency;

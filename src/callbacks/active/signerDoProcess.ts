@@ -68,6 +68,30 @@ async function _signerSubDoProcess(manager: EntityManager, currency: string, gat
     throw new Error(`Only support normal hot wallet at the moment.`);
   }
 
+  const rawPrivateKey = await hotWalletToPrivateKey(hotWallet);
+  const signedTx = await gateway.signRawTxBySinglePrivateKey(withdrawalTx.unsignedRaw, rawPrivateKey);
+  const status = WithdrawalStatus.SIGNED;
+  const txid = signedTx.txid;
+
+  withdrawalTx.status = status;
+  withdrawalTx.txid = txid;
+  withdrawalTx.signedRaw = signedTx.signedRaw;
+
+  await Utils.PromiseAll([
+    manager.getRepository(WithdrawalTx).save(withdrawalTx),
+    manager.getRepository(Withdrawal).update({ withdrawalTxId }, { status, txid }),
+  ]);
+
+  return {
+    needNextProcess: true,
+    withdrawalTxId: withdrawalTx.id,
+  };
+}
+
+/**
+ * Parse coin key value
+ */
+export async function hotWalletToPrivateKey(hotWallet: HotWallet): Promise<string> {
   let rawPrivateKey = hotWallet.coinKeys;
 
   try {
@@ -90,24 +114,7 @@ async function _signerSubDoProcess(manager: EntityManager, currency: string, gat
   } catch (e) {
     //
   }
-
-  const signedTx = await gateway.signRawTxBySinglePrivateKey(withdrawalTx.unsignedRaw, rawPrivateKey);
-  const status = WithdrawalStatus.SIGNED;
-  const txid = signedTx.txid;
-
-  withdrawalTx.status = status;
-  withdrawalTx.txid = txid;
-  withdrawalTx.signedRaw = signedTx.signedRaw;
-
-  await Utils.PromiseAll([
-    manager.getRepository(WithdrawalTx).save(withdrawalTx),
-    manager.getRepository(Withdrawal).update({ withdrawalTxId }, { status, txid }),
-  ]);
-
-  return {
-    needNextProcess: true,
-    withdrawalTxId: withdrawalTx.id,
-  };
+  return rawPrivateKey;
 }
 
 /**
