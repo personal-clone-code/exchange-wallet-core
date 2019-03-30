@@ -9,6 +9,7 @@ import {
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection } from 'typeorm';
 import { CollectStatus, DepositEvent } from '../../Enums';
+import { HotWallet } from '../../entities';
 
 const logger = getLogger('collectorVerifierDoProcess');
 const emptyResult: IWithdrawalProcessingResult = {
@@ -54,13 +55,16 @@ async function _verifierDoProcess(
   }
   logger.info(`Transaction ${collectingRecord.collectedTxid} is ${transactionStatus}`);
 
+  // TODO: yuu - verify
   const resTx = await verifier.getGateway().getOneTransaction(collectingRecord.collectedTxid);
+  const hotWalletAddress = resTx.extractRecipientAddresses()[0];
+  const hotWallet = await manager.getRepository(HotWallet).findOne({ address: hotWalletAddress });
   const fee = resTx.getNetworkFee();
   const timestamp = resTx.timestamp;
 
   const tasks = [
     rawdb.updateDepositCollectStatus(manager, collectingRecord.id, verifiedStatus, timestamp),
-    rawdb.updateDepositCollectWallets(manager, collectingRecord, event, '0', fee, true),
+    rawdb.updateDepositCollectWallets(manager, collectingRecord, event, '0', fee, hotWallet.isExternal),
   ];
   await Utils.PromiseAll(tasks);
 
