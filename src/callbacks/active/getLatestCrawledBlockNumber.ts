@@ -25,11 +25,17 @@ async function _updateLatestBlock(manager: EntityManager, type: string, crawler:
 
   const blockNumbers: number[] = await Promise.all(
     tokens.map(async tokenSymbol => {
+      // create new latest block record
+      const allLatestBlocks = await repository.find({ currency: type });
       const record = new LatestBlock();
       record.blockNumber = crawler.getFirstBlockNumberToCrawl();
+      if (allLatestBlocks.length) {
+        const maxLatest = Math.max(...allLatestBlocks.map(tokenLatestRec => tokenLatestRec.blockNumber));
+        record.blockNumber = maxLatest;
+      }
       record.type = type;
-      const tokenLatestBlock = await repository.findOne({ currency: tokenSymbol, type });
 
+      const tokenLatestBlock = await repository.findOne({ currency: tokenSymbol, type });
       // If the record is existed, return the result
       if (tokenLatestBlock) {
         return tokenLatestBlock.blockNumber;
