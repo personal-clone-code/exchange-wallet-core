@@ -215,14 +215,16 @@ async function _collectDepositTransaction(
 
   await Utils.PromiseAll([manager.save(satisfyDeposit), manager.save(unsatisfyDeposit)]);
 
-  return {
-    deposits,
-    satisfiedDeposits: satisfyDeposit,
-    rawTransaction: forwardResult.signedRaw,
-    needNextProcess: true,
-    withdrawalTxId: 0,
-    receiver: hotWallet.address,
-  };
+  return forwardResult
+    ? {
+        deposits,
+        satisfiedDeposits: satisfyDeposit,
+        rawTransaction: forwardResult.signedRaw,
+        needNextProcess: true,
+        withdrawalTxId: 0,
+        receiver: hotWallet.address,
+      }
+    : emptyResult;
 }
 
 /**
