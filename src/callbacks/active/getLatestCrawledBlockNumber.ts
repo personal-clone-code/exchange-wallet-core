@@ -1,6 +1,6 @@
 import { LatestBlock } from '../../entities';
 import { BaseCrawler, getListTokenSymbols } from 'sota-common';
-import { EntityManager, getConnection } from 'typeorm';
+import { EntityManager, getConnection, In } from 'typeorm';
 
 /**
  * This callback is invoked when a block is processed. We'll update latest_block table then
@@ -22,11 +22,11 @@ export default async function getLatestCrawledBlockNumber(crawler: BaseCrawler):
 async function _updateLatestBlock(manager: EntityManager, type: string, crawler: BaseCrawler): Promise<number> {
   const tokens: string[] = getListTokenSymbols().tokenSymbols;
   const repository = manager.getRepository(LatestBlock);
+  const allLatestBlocks = await repository.find({ currency: In(tokens), type });
 
   const blockNumbers: number[] = await Promise.all(
     tokens.map(async tokenSymbol => {
       // create new latest block record
-      const allLatestBlocks = await repository.find({ currency: type });
       const record = new LatestBlock();
       record.blockNumber = crawler.getFirstBlockNumberToCrawl();
       if (allLatestBlocks.length) {
