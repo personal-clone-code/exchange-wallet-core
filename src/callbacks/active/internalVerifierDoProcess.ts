@@ -60,6 +60,14 @@ async function _verifierDoProcess(
   return emptyResult;
 }
 
+/**
+ * This can be replaced for collector processing
+ * @param manager
+ * @param transfer
+ * @param status
+ * @param tx
+ * @private
+ */
 async function _collectVerify(
   manager: EntityManager,
   transfer: InternalTransfer,
@@ -67,12 +75,12 @@ async function _collectVerify(
   tx: Transaction
 ): Promise<IWithdrawalProcessingResult> {
   const toAddress = tx.extractRecipientAddresses()[0];
-  const [collectingRecord, hotWallet] = await Promise.all([
-    manager.getRepository(Deposit).findOne({ collectedTxid: transfer.txid }),
+  const [collectingRecords, hotWallet] = await Promise.all([
+    manager.getRepository(Deposit).find({ collectedTxid: transfer.txid }),
     manager.getRepository(HotWallet).findOne({ address: toAddress }),
   ]);
 
-  if (!collectingRecord || !hotWallet) {
+  if (!collectingRecords.length || !hotWallet) {
     logger.error('Missing data, cannot verify collecing deposit');
     return emptyResult;
   }
@@ -86,14 +94,25 @@ async function _collectVerify(
   const fee = tx.getNetworkFee();
   const timestamp = tx.timestamp;
 
-  const tasks = [
-    rawdb.updateDepositCollectStatus(manager, collectingRecord.id, verifiedStatus, timestamp),
-    rawdb.updateDepositCollectWallets(manager, collectingRecord, event, transfer.amount, fee, hotWallet.isExternal),
-    rawdb.updateInternalTransfer(manager, transfer, verifiedStatus, transfer.amount, fee, transfer.walletId),
-    rawdb.insertDepositLog(manager, collectingRecord.id, event),
-  ];
-  await Utils.PromiseAll(tasks);
+  // 1. update deposits collect status
+  // 2. update wallet balance
+  // 3. insert deposit log and fire webhook
+  // 4. update properties of internal transfer record
+  const tasks: any[] = [];
+  tasks.push(
+    ...collectingRecords.map(collectingRecord =>
+      rawdb.updateDepositCollectStatus(manager, collectingRecord.id, verifiedStatus, timestamp)
+    )
+  );
+  tasks.push(
+    ...collectingRecords.map(collectingRecord =>
+      rawdb.updateDepositCollectWallets(manager, collectingRecord, event, transfer.amount, fee, hotWallet.isExternal)
+    )
+  );
+  tasks.push(...collectingRecords.map(collectingRecord => rawdb.insertDepositLog(manager, collectingRecord.id, event)));
+  tasks.push(rawdb.updateInternalTransfer(manager, transfer, verifiedStatus, transfer.amount, fee, transfer.walletId));
 
+  await Utils.PromiseAll(tasks);
   return emptyResult;
 }
 
