@@ -12,10 +12,7 @@ export default async function getLatestCrawledBlockNumber(crawler: BaseCrawler):
   const type = 'deposit';
   // Look up in database
   const connection = await getConnection();
-  let result: number = 0;
-  await connection.transaction(async manager => {
-    result = await _updateLatestBlock(manager, type, crawler);
-  });
+  const result: number = await _updateLatestBlock(connection.manager, type, crawler);
   return result;
 }
 
