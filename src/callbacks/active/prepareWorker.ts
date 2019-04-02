@@ -8,12 +8,13 @@ import {
   setTokenData,
   updateValidApiEndpoint,
   setEnvConfig,
+  TokenType,
 } from 'sota-common';
 import { createConnection, getConnection } from 'typeorm';
 
 const logger = getLogger('prepareWorker');
 
-export async function prepareCurrencyWorker(currency: Currency, tokenType?: string): Promise<void> {
+export async function prepareCurrencyWorker(currency: Currency, tokenType?: TokenType): Promise<void> {
   await prepareCommonWorker();
   const connection = getConnection();
 
