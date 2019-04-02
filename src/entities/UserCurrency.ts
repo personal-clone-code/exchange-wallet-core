@@ -1,9 +1,12 @@
 import { Utils } from 'sota-common';
-import { Entity, BeforeInsert, BeforeUpdate, PrimaryColumn, Column } from 'typeorm';
+import { Entity, BeforeInsert, BeforeUpdate, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity('user_currency')
 export class UserCurrency {
-  @PrimaryColumn({ name: 'user_id', nullable: false })
+  @PrimaryGeneratedColumn()
+  public id: number;
+
+  @Column({ name: 'user_id', nullable: false })
   public userId: number;
 
   @Column({ name: 'symbol', nullable: false })
@@ -12,7 +15,7 @@ export class UserCurrency {
   @Column({ name: 'type', nullable: false })
   public type: string;
 
-  @PrimaryColumn({ name: 'contract_address', nullable: false })
+  @Column({ name: 'contract_address', nullable: false })
   public contractAddress: string;
 
   @Column({ name: 'created_at', type: 'bigint' })
