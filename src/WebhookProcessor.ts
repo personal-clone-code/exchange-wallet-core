@@ -2,7 +2,7 @@ import fetch from 'node-fetch';
 import { EntityManager, getConnection } from 'typeorm';
 import { BaseIntervalWorker, getLogger, Utils } from 'sota-common';
 import { WebhookType } from './Enums';
-import { Webhook, WebhookProgress, Deposit, Withdrawal } from './entities';
+import { Webhook, WebhookProgress, Deposit, Withdrawal, UserCurrency, CurrencyToken } from './entities';
 import * as rawdb from './rawdb';
 
 const logger = getLogger('WebhookProcessor');
@@ -50,7 +50,7 @@ export class WebhookProcessor extends BaseIntervalWorker {
     const type = progressRecord.type as WebhookType;
     const refId = progressRecord.refId;
     const event = progressRecord.event;
-    const data = await this._getRefData(manager, type, refId);
+    const data = await this._getRefData(manager, type, refId, webhookRecord.userId);
 
     // Call webhook
     const method = 'POST';
@@ -90,7 +90,12 @@ export class WebhookProcessor extends BaseIntervalWorker {
   /**
    * @deprecated returned data of this function will be deprecated
    */
-  private async _getRefData(manager: EntityManager, type: WebhookType, refId: number): Promise<Deposit | Withdrawal> {
+  private async _getRefData(
+    manager: EntityManager,
+    type: WebhookType,
+    refId: number,
+    userId: number
+  ): Promise<Deposit | Withdrawal> {
     let data;
     switch (type) {
       case WebhookType.DEPOSIT:
@@ -100,6 +105,14 @@ export class WebhookProcessor extends BaseIntervalWorker {
         }
 
         if (data.typeCurrency === 'erc20') {
+          const currencyToken = await manager.getRepository(CurrencyToken).findOne({ symbol: data.currency });
+          const userCurrency = await manager
+            .getRepository(UserCurrency)
+            .findOne({ userId, contractAddress: currencyToken.contractAddress });
+          if (userCurrency) {
+            data.currency = userCurrency.symbol;
+          }
+
           data.typeCurrency = data.currency;
         }
 
