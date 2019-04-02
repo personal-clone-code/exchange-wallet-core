@@ -23,3 +23,4 @@ export * from './Config';
 export * from './KmsDataKey';
 export * from './CurrencyToken';
 export * from './EnvConfig';
+export * from './UserCurrency';
