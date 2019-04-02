@@ -26,7 +26,7 @@ export async function insertDeposit(manager: EntityManager, output: TransferOutp
   const toAddress = output.toAddress;
   const existed = await manager.getRepository(Deposit).count({ currency: subCurrency, txid, toAddress });
   if (existed > 0) {
-    logger.warn(`Deposit was recorded already: subCurrency=${subCurrency}, txid=${txid}, address=${toAddress}`);
+    logger.info(`Deposit was recorded already: subCurrency=${subCurrency}, txid=${txid}, address=${toAddress}`);
     return;
   }
 
