@@ -104,17 +104,17 @@ export class WebhookProcessor extends BaseIntervalWorker {
           throw new Error(`Could not find deposit id=${refId}`);
         }
 
-        if (data.typeCurrency === 'erc20') {
-          const currencyToken = await manager.getRepository(CurrencyToken).findOne({ symbol: data.currency });
+        const currencyToken = await manager.getRepository(CurrencyToken).findOne({ symbol: data.currency });
+        if (currencyToken.contractAddress) {
           const userCurrency = await manager
             .getRepository(UserCurrency)
-            .findOne({ userId, contractAddress: currencyToken.contractAddress });
+            .findOne({ userId, type: data.typeCurrency, contractAddress: currencyToken.contractAddress });
           if (userCurrency) {
             data.currency = userCurrency.symbol;
           }
-
-          data.typeCurrency = data.currency;
         }
+
+        data.typeCurrency = data.currency;
 
         return data;
 
