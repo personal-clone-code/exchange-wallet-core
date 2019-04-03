@@ -43,7 +43,7 @@ export async function updateByCollectTransaction(
     currency: depositCurrency,
     balanceChange,
     event: walletLogEvent,
-    refId: deposits.map(deposit => deposit.id),
+    refId: JSON.stringify(deposits.map(deposit => deposit.id)),
   };
 
   const token = getTokenBySymbol(depositCurrency);
@@ -59,7 +59,7 @@ export async function updateByCollectTransaction(
     currency: family,
     balanceChange: `-${fee}`,
     event: WalletEvent.COLLECT_FEE,
-    refId: deposits.map(deposit => deposit.id),
+    refId: JSON.stringify(deposits.map(deposit => deposit.id)),
   };
 
   await Utils.PromiseAll([
