@@ -253,7 +253,7 @@ async function _checkDepositAmount(manager: EntityManager, deposits: Deposit[]):
   const minNumber = new BN(minimumDepositAmount).multipliedBy(factor);
 
   if (amountNumber.lt(minNumber)) {
-    logger.error(
+    logger.warn(
       `Deposit amount less than threshold` +
         ` depositId=${deposits.map(deposit => deposit.id)}` +
         ` currency=${deposits[0].currency}` +
