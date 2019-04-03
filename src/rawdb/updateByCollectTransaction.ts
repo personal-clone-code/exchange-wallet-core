@@ -38,13 +38,15 @@ export async function updateByCollectTransaction(
     balanceChange = isExternal ? '-' + amount : '0';
   }
 
-  const walletLog = {
-    walletId: walletBalance.walletId,
-    currency: depositCurrency,
-    balanceChange,
-    event: walletLogEvent,
-    refId: JSON.stringify(deposits.map(deposit => deposit.id)),
-  };
+  const walletLogs = deposits.map(deposit => {
+    return {
+      walletId: walletBalance.walletId,
+      currency: depositCurrency,
+      balanceChange,
+      event: walletLogEvent,
+      refId: deposit.id,
+    };
+  });
 
   const token = getTokenBySymbol(depositCurrency);
   if (!token) {
@@ -54,13 +56,15 @@ export async function updateByCollectTransaction(
   // find family of the currency to update fee
   const family = token.family;
 
-  const collectFeeLog = {
-    walletId,
-    currency: family,
-    balanceChange: `-${fee}`,
-    event: WalletEvent.COLLECT_FEE,
-    refId: JSON.stringify(deposits.map(deposit => deposit.id)),
-  };
+  const collectFeeLogs = deposits.map(deposit => {
+    return {
+      walletId,
+      currency: family,
+      balanceChange: `-${fee}`,
+      event: WalletEvent.COLLECT_FEE,
+      refId: deposit.id,
+    };
+  });
 
   await Utils.PromiseAll([
     manager
@@ -92,8 +96,8 @@ export async function updateByCollectTransaction(
       })
       .execute(),
 
-    rawdb.insertWalletLog(manager, collectFeeLog),
-    rawdb.insertWalletLog(manager, walletLog),
+    rawdb.insertWalletLog(manager, collectFeeLogs),
+    rawdb.insertWalletLog(manager, walletLogs),
   ]);
 
   return null;
