@@ -9,7 +9,6 @@ import {
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection } from 'typeorm';
 import { CollectStatus, DepositEvent } from '../../Enums';
-import { HotWallet } from '../../entities';
 
 const logger = getLogger('collectorVerifierDoProcess');
 const emptyResult: IWithdrawalProcessingResult = {
@@ -20,7 +19,7 @@ const emptyResult: IWithdrawalProcessingResult = {
 export async function collectorVerifierDoProcess(
   verfifier: BaseDepositCollectorVerifier
 ): Promise<IWithdrawalProcessingResult> {
-  let result: IWithdrawalProcessingResult;
+  let result: IWithdrawalProcessingResult = null;
   await getConnection().transaction(async manager => {
     result = await _verifierDoProcess(manager, verfifier);
   });
@@ -40,9 +39,8 @@ async function _verifierDoProcess(
     return emptyResult;
   }
 
-  let event = DepositEvent.COLLECTED;
+  // verify collect transaction information from blockchain network
   let verifiedStatus = CollectStatus.COLLECTED;
-  // verify withdrawal information from blockchain network
   const transactionStatus = await verifier.getGateway().getTransactionStatus(collectingRecord.collectedTxid);
   if (transactionStatus === TransactionStatus.UNKNOWN || transactionStatus === TransactionStatus.CONFIRMING) {
     logger.info(`Wait until new tx state ${collectingRecord.collectedTxid}, is ${transactionStatus} now`);
@@ -50,26 +48,15 @@ async function _verifierDoProcess(
   }
 
   if (transactionStatus === TransactionStatus.FAILED) {
-    event = DepositEvent.COLLECTED_FAILED;
     verifiedStatus = CollectStatus.UNCOLLECTED;
   }
-  logger.info(`Transaction ${collectingRecord.collectedTxid} is ${transactionStatus}`);
 
-  // TODO: yuu - verify
+  logger.info(`Transaction ${collectingRecord.collectedTxid} is ${transactionStatus}`);
   const resTx = await verifier.getGateway().getOneTransaction(collectingRecord.collectedTxid);
-  const hotWalletAddress = resTx.extractRecipientAddresses()[0];
-  const hotWallet = await manager.getRepository(HotWallet).findOne({ address: hotWalletAddress });
-  const fee = resTx.getNetworkFee();
   const timestamp = resTx.timestamp;
 
-  const tasks = [
-    rawdb.updateDepositCollectStatus(manager, collectingRecord.id, verifiedStatus, timestamp),
-    rawdb.updateDepositCollectWallets(manager, collectingRecord, event, '0', fee, hotWallet.isExternal),
-  ];
+  const tasks = [rawdb.updateDepositCollectStatus(manager, collectingRecord.id, verifiedStatus, timestamp)];
   await Utils.PromiseAll(tasks);
-
-  // for collectedtimestamp
-  await rawdb.insertDepositLog(manager, collectingRecord.id, event);
 
   return emptyResult;
 }

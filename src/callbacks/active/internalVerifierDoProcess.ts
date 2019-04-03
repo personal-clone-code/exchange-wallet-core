@@ -61,7 +61,6 @@ async function _verifierDoProcess(
 }
 
 /**
- * This can be replaced for collector processing
  * @param manager
  * @param transfer
  * @param status
@@ -92,25 +91,16 @@ async function _collectVerify(
     verifiedStatus = CollectStatus.UNCOLLECTED;
   }
   const fee = tx.getNetworkFee();
-  const timestamp = tx.timestamp;
+  const outputs = tx.extractTransferOutputs();
+  const amount = outputs[0].amount; // assume one out
 
-  // 1. update deposits collect status
-  // 2. update wallet balance
-  // 3. insert deposit log and fire webhook
-  // 4. update properties of internal transfer record
+  // 1. update wallet balance
+  // 2. insert deposit log and fire webhook
+  // 3. update properties of internal transfer record
   const tasks: any[] = [];
-  tasks.push(
-    ...collectingRecords.map(collectingRecord =>
-      rawdb.updateDepositCollectStatus(manager, collectingRecord.id, verifiedStatus, timestamp)
-    )
-  );
-  tasks.push(
-    ...collectingRecords.map(collectingRecord =>
-      rawdb.updateDepositCollectWallets(manager, collectingRecord, event, transfer.amount, fee, hotWallet.isExternal)
-    )
-  );
+  tasks.push(rawdb.updateByCollectTransaction(manager, collectingRecords, event, tx, hotWallet.isExternal));
   tasks.push(...collectingRecords.map(collectingRecord => rawdb.insertDepositLog(manager, collectingRecord.id, event)));
-  tasks.push(rawdb.updateInternalTransfer(manager, transfer, verifiedStatus, transfer.amount, fee, transfer.walletId));
+  tasks.push(rawdb.updateInternalTransfer(manager, transfer, verifiedStatus, amount, fee, transfer.walletId));
 
   await Utils.PromiseAll(tasks);
   return emptyResult;
@@ -127,10 +117,12 @@ async function _seedVerify(
     verifiedStatus = CollectStatus.UNCOLLECTED;
   }
   const fee = tx.getNetworkFee();
+  const outputs = tx.extractTransferOutputs();
+  const amount = outputs[0].amount; // assume one out
 
   const tasks = [
     rawdb.updateWalletBalanceOnlyFee(manager, transfer, verifiedStatus, fee),
-    rawdb.updateInternalTransfer(manager, transfer, verifiedStatus, transfer.amount, fee, transfer.walletId),
+    rawdb.updateInternalTransfer(manager, transfer, verifiedStatus, amount, fee, transfer.walletId),
   ];
   await Utils.PromiseAll(tasks);
 
