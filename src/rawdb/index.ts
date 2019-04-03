@@ -19,7 +19,7 @@ export * from './insertWalletLog';
 export * from './insertWithdrawalTx';
 export * from './findDepositByCollectStatus';
 export * from './updateDepositCollectStatus';
-export * from './updateDepositCollectWallets';
+export * from './updateByCollectTransaction';
 export * from './insertInternalTransfer';
 export * from './updateInternalTransfer';
 export * from './findInternalTransferByCollectStatus';

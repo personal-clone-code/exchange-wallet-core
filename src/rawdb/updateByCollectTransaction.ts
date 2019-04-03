@@ -3,21 +3,25 @@ import { WalletEvent, DepositEvent } from '../Enums';
 import { WalletBalance, Deposit } from '../entities';
 
 import * as rawdb from './index';
-import { Utils, getTokenBySymbol } from 'sota-common';
+import { Utils, getTokenBySymbol, Transaction } from 'sota-common';
 
-export async function updateDepositCollectWallets(
+export async function updateByCollectTransaction(
   manager: EntityManager,
-  deposit: Deposit,
+  deposits: Deposit[],
   event: DepositEvent,
-  amount: string,
-  fee: string,
+  tx: Transaction,
   isExternal: boolean = false
 ): Promise<WalletBalance> {
-  let walletEvent: WalletEvent;
+  const fee = tx.getNetworkFee();
+  const outputs = tx.extractTransferOutputs();
+  const amount = outputs[0].amount; // assume one output
+  const depositCurrency = deposits[0].currency;
+  const walletId = deposits[0].walletId;
+  let walletLogEvent: WalletEvent;
 
   let balanceChange: string;
   const walletBalance = await manager.findOne(WalletBalance, {
-    walletId: deposit.walletId,
+    walletId,
   });
 
   if (!walletBalance) {
@@ -25,37 +29,37 @@ export async function updateDepositCollectWallets(
   }
 
   if (event === DepositEvent.COLLECTED_FAILED) {
-    walletEvent = WalletEvent.COLLECTED_FAIL;
+    walletLogEvent = WalletEvent.COLLECTED_FAIL;
     balanceChange = '0';
   }
 
   if (event === DepositEvent.COLLECTED) {
-    walletEvent = WalletEvent.COLLECTED;
+    walletLogEvent = WalletEvent.COLLECTED;
     balanceChange = isExternal ? '-' + amount : '0';
   }
 
   const walletLog = {
     walletId: walletBalance.walletId,
-    currency: deposit.currency,
+    currency: depositCurrency,
     balanceChange,
-    event: walletEvent,
-    refId: deposit.id,
+    event: walletLogEvent,
+    refId: deposits.map(deposit => deposit.id),
   };
 
-  const token = getTokenBySymbol(deposit.currency);
+  const token = getTokenBySymbol(depositCurrency);
   if (!token) {
-    console.log('Cannot find currency configuration for ', deposit.currency);
-    throw new Error('Cannot find currency configuration for ' + deposit.currency);
+    console.log('Cannot find currency configuration for ', depositCurrency);
+    throw new Error('Cannot find currency configuration for ' + depositCurrency);
   }
   // find family of the currency to update fee
   const family = token.family;
 
-  const withdrawalFeeLog = {
-    walletId: deposit.walletId,
+  const collectFeeLog = {
+    walletId,
     currency: family,
     balanceChange: `-${fee}`,
     event: WalletEvent.COLLECT_FEE,
-    refId: deposit.id,
+    refId: deposits.map(deposit => deposit.id),
   };
 
   await Utils.PromiseAll([
@@ -64,13 +68,13 @@ export async function updateDepositCollectWallets(
       .update(WalletBalance)
       .set({
         balance: () => {
-          return event === DepositEvent.COLLECTED && isExternal ? `balance - ${deposit.amount}` : `balance`;
+          return event === DepositEvent.COLLECTED && isExternal ? `balance - ${amount}` : `balance`;
         },
         updatedAt: Utils.nowInMillis(),
       })
       .where({
-        walletId: deposit.walletId,
-        coin: deposit.currency,
+        walletId,
+        coin: depositCurrency,
       })
       .execute(),
     manager
@@ -83,12 +87,12 @@ export async function updateDepositCollectWallets(
         updatedAt: Utils.nowInMillis(),
       })
       .where({
-        walletId: deposit.walletId,
+        walletId,
         coin: family,
       })
       .execute(),
 
-    rawdb.insertWalletLog(manager, withdrawalFeeLog),
+    rawdb.insertWalletLog(manager, collectFeeLog),
     rawdb.insertWalletLog(manager, walletLog),
   ]);
 
