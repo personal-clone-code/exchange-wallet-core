@@ -9,6 +9,8 @@ import {
   updateValidApiEndpoint,
   setEnvConfig,
   TokenType,
+  setCurrencyGateway,
+  setTokenGateway,
 } from 'sota-common';
 import { createConnection, getConnection } from 'typeorm';
 
@@ -39,6 +41,8 @@ export async function prepareCurrencyWorker(currency: Currency, tokenType?: Toke
   buildListTokenSymbols(currency, tokenType);
   setCurrencyConfig(currency, configByTokenType ? configByTokenType : configByCurrency);
   setBlockchainNetworkEnv();
+  await setCurrencyGateway();
+  await setTokenGateway();
   await updateValidApiEndpoint();
 
   return;
