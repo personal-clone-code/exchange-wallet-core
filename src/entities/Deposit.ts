@@ -9,12 +9,6 @@ export class Deposit {
   @Column({ name: 'wallet_id', nullable: false })
   public walletId: number;
 
-  /**
-   * @deprecated this column will be deprecated
-   */
-  @Column({ name: 'type_currency', nullable: false })
-  public typeCurrency: string;
-
   @Column({ name: 'currency', nullable: false })
   public currency: string;
 
@@ -24,18 +18,6 @@ export class Deposit {
   @Column({ nullable: false })
   public txid: string;
 
-  @Column({ name: 'collect_status', nullable: false })
-  public collectStatus: string;
-
-  @Column({ name: 'collected_txid' })
-  public collectedTxid: string;
-
-  @Column({ name: 'collected_timestamp', nullable: false })
-  public collectedTimestamp: number;
-
-  @Column({ type: 'bigint', name: 'next_check_at', nullable: false })
-  public nextCheckAt: number;
-
   @Column({ type: 'decimal', precision: 32, scale: 0, nullable: false })
   public amount: string;
 
@@ -44,6 +26,15 @@ export class Deposit {
 
   @Column({ name: 'block_timestamp', nullable: false })
   public blockTimestamp: number;
+
+  @Column({ name: 'collect_status', nullable: false })
+  public collectStatus: string;
+
+  @Column({ name: 'collected_txid' })
+  public collectedTxid: string;
+
+  @Column({ name: 'collected_timestamp', nullable: false })
+  public collectedTimestamp: number;
 
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;

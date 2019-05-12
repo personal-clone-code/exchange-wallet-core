@@ -3,7 +3,7 @@ import { WalletEvent, DepositEvent } from '../Enums';
 import { WalletBalance, Deposit } from '../entities';
 
 import * as rawdb from './index';
-import { Utils, getTokenBySymbol, Transaction } from 'sota-common';
+import { Utils, Transaction } from 'sota-common';
 
 export async function updateByCollectTransaction(
   manager: EntityManager,
@@ -12,6 +12,8 @@ export async function updateByCollectTransaction(
   tx: Transaction,
   isExternal: boolean = false
 ): Promise<WalletBalance> {
+  throw new Error(`TODO: Revive me...`);
+  /*
   const fee = tx.getNetworkFee();
   const outputs = tx.extractTransferOutputs();
   const amount = outputs[0].amount; // assume one output
@@ -78,7 +80,7 @@ export async function updateByCollectTransaction(
       })
       .where({
         walletId,
-        coin: depositCurrency,
+        currency: depositCurrency,
       })
       .execute(),
     manager
@@ -92,7 +94,7 @@ export async function updateByCollectTransaction(
       })
       .where({
         walletId,
-        coin: family,
+        currency: family,
       })
       .execute(),
 
@@ -101,4 +103,5 @@ export async function updateByCollectTransaction(
   ]);
 
   return null;
+  */
 }

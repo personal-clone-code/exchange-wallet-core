@@ -6,8 +6,8 @@ export class WalletBalance {
   @PrimaryColumn({ name: 'wallet_id', nullable: false })
   public walletId: number;
 
-  @PrimaryColumn({ name: 'coin', nullable: false })
-  public coin: string;
+  @PrimaryColumn({ name: 'currency', nullable: false })
+  public currency: string;
 
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;

@@ -1,5 +1,4 @@
 export * from './active/doNothing';
-export * from './active/prepareWorker';
 export * from './active/prepareWalletBalance';
 export * from './active/getLatestCrawledBlockNumber';
 export * from './active/getAddressesDepositCrawler';

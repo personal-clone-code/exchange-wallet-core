@@ -12,11 +12,17 @@ export class Address {
   @PrimaryColumn({ name: 'address' })
   public address: string;
 
+  @Column({ name: 'is_external' })
+  public isExternal: boolean;
+
+  @Column({ name: 'is_hd' })
+  public isHd: boolean;
+
+  @PrimaryColumn({ name: 'hd_path' })
+  public hdPath: string;
+
   @PrimaryColumn({ name: 'secret' })
   public secret: string;
-
-  @Column({ name: 'is_external' })
-  public isExternal: number;
 
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;

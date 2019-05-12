@@ -1,8 +1,7 @@
 import { HotWallet, InternalTransfer, Withdrawal } from '../entities';
 import { EntityManager, In } from 'typeorm';
 import { InternalTransferType, WithdrawalStatus } from '../Enums';
-import { getFamily, TransferOutput, BaseGateway, getLogger, Transaction } from 'sota-common';
-import BigNumber from 'bignumber.js';
+import { TransferEntry, BaseGateway, getLogger, Transaction, BigNumber } from 'sota-common';
 
 const logger = getLogger('findAvaiableHotWallet');
 
@@ -16,14 +15,14 @@ const logger = getLogger('findAvaiableHotWallet');
 export async function findTransferableHotWallet(
   manager: EntityManager,
   walletId: number,
-  transferOutputs: TransferOutput[],
+  transferEntries: TransferEntry[],
   currency: string,
   isExternal: boolean,
   gateway: BaseGateway
 ): Promise<HotWallet> {
-  let total: BigNumber = new BigNumber('0');
-  transferOutputs.forEach(transferOutput => {
-    total = total.plus(transferOutput.amount, 10);
+  let total: BigNumber = new BigNumber(0);
+  transferEntries.forEach(entry => {
+    total = total.plus(entry.amount);
   });
   let foundHotWallet: HotWallet = null;
   const hotWallets = await _findAvailableHotWallets(manager, walletId, currency, gateway, isExternal);
@@ -41,7 +40,7 @@ export async function findTransferableHotWallet(
   );
   if (!foundHotWallet) {
     logger.error(
-      `Cannot find any hot wallet that have available balance for walletId=${walletId} currency=${currency.toUpperCase()}`
+      `Cannot find any hot wallet that have available balance for walletId=${walletId} currency=${currency}`
     );
   }
   return foundHotWallet;
@@ -141,6 +140,7 @@ async function _getSeedPendingAddresses(
     status: In(pendingStatuses),
   });
   return [];
+  /*
   if (!seedTransactions.length) {
     return [];
   }
@@ -152,6 +152,7 @@ async function _getSeedPendingAddresses(
     })
   );
   return pendingAddresses;
+  */
 }
 
 /**

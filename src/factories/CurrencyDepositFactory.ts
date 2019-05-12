@@ -1,21 +1,21 @@
-import { Currency } from 'sota-common';
+import { ICurrency } from 'sota-common';
 import { XDeposit } from '../entities';
 
 /**
  * To instantiate XxxDeposit entity
  */
 
-const registry = new Map<Currency, () => XDeposit>();
+const registry = new Map<string, () => XDeposit>();
 
 export const CurrencyDepositFactory = {
-  register(currency: Currency, callback: () => XDeposit) {
-    registry.set(currency, callback);
+  register(currency: ICurrency, callback: () => XDeposit) {
+    registry.set(currency.symbol, callback);
   },
 
-  create(currency: Currency): XDeposit {
-    const callback = registry.get(currency);
+  create(currency: ICurrency): XDeposit {
+    const callback = registry.get(currency.symbol);
     if (!callback) {
-      throw new Error(`Callback for currency ${currency} wasn't set yet.`);
+      throw new Error(`Callback for currency ${currency.symbol} wasn't set yet.`);
     }
 
     return callback();

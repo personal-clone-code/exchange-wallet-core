@@ -1,5 +1,3 @@
-import { Const } from 'sota-common';
-
 async function pickerSendQueue(currency: string, data: string) {
   // const conn = await QueueConnector.connectService();
   // const chan = await conn.createChannel();

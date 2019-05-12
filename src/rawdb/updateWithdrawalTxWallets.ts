@@ -1,15 +1,16 @@
+import { BigNumber, CurrencyRegistry } from 'sota-common';
 import { EntityManager } from 'typeorm';
 import { WithdrawalEvent, WalletEvent } from '../Enums';
 import { WalletBalance, Withdrawal, WithdrawalTx } from '../entities';
 
 import * as rawdb from './index';
-import { Utils, getTokenBySymbol } from 'sota-common';
+import { Utils } from 'sota-common';
 
 export async function updateWithdrawalTxWallets(
   manager: EntityManager,
   withdrawalTx: WithdrawalTx,
   event: WithdrawalEvent.COMPLETED | WithdrawalEvent.FAILED,
-  fee: string
+  fee: BigNumber
 ): Promise<WalletBalance> {
   const withdrawals = await manager.find(Withdrawal, {
     withdrawalTxId: withdrawalTx.id,
@@ -46,17 +47,12 @@ export async function updateWithdrawalTxWallets(
         refId: record.id,
       };
 
-      const currency = getTokenBySymbol(record.currency);
-      if (!currency) {
-        console.log('Cannot find currency configuration for ', record.currency);
-        throw new Error('Cannot find currency configuration for ' + record.currency);
-      }
-
-      const familyCurrency = currency.family;
+      const currency = CurrencyRegistry.getOneCurrency(record.currency);
+      const feeCurrency = currency.platform;
 
       const withdrawalFeeLog = {
         walletId: withdrawals[0].walletId,
-        currency: familyCurrency,
+        currency: feeCurrency,
         balanceChange: `-${fee}`,
         event: WalletEvent.WITHDRAW_FEE,
         refId: withdrawalTx.id,
@@ -80,7 +76,7 @@ export async function updateWithdrawalTxWallets(
           })
           .where({
             walletId: record.walletId,
-            coin: record.currency,
+            currency: record.currency,
           })
           .execute(),
         manager
@@ -92,7 +88,7 @@ export async function updateWithdrawalTxWallets(
           })
           .where({
             walletId: withdrawals[0].walletId,
-            coin: familyCurrency,
+            currency: feeCurrency,
           })
           .execute(),
 

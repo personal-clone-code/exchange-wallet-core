@@ -1,5 +1,4 @@
 import { WithdrawalTx } from '../../entities/WithdrawalTx';
-import { Const } from 'sota-common';
 /**
  * This callback is invoked when a withdrawal withdrawalRaw is signed once
  * @param {WithdrawalTx} withdrawalRaw: the raw of withdrawal transaction

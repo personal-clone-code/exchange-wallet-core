@@ -16,7 +16,7 @@ export async function processOneDepositTransaction(
   watchingAddresses: string[]
 ): Promise<void> {
   // Extract transfer outputs from transaction that we care
-  const outputs = tx.extractTransferOutputs().filter(output => watchingAddresses.indexOf(output.toAddress) > -1);
+  const outputs = tx.extractOutputEntries().filter(output => watchingAddresses.indexOf(output.address) > -1);
 
   // If there's no output we care, just do nothing
   if (!outputs.length) {

@@ -12,6 +12,12 @@ export class WithdrawalTx {
   @PrimaryGeneratedColumn()
   public id: number;
 
+  @Column('int', { name: 'user_id', nullable: false })
+  public userId: number;
+
+  @Column('int', { name: 'wallet_id', nullable: false })
+  public walletId: number;
+
   @Column('varchar', { name: 'hot_wallet_address', nullable: false })
   public hotWalletAddress: string;
 

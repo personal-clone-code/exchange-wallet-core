@@ -9,11 +9,14 @@ export class DepositLog {
   @Column({ name: 'deposit_id', nullable: false })
   public depositId: number;
 
+  @Column({ name: 'event', nullable: false })
+  public event: string;
+
   @Column({ name: 'ref_id', nullable: false })
   public refId: number;
 
-  @Column({ name: 'event', nullable: false })
-  public event: string;
+  @Column({ name: 'data', nullable: false })
+  public data: string;
 
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;

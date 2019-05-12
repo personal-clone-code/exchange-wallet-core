@@ -1,14 +1,10 @@
-import {
-  Const,
-  getLogger,
-  BaseWithdrawalSigner,
-  IWithdrawalProcessingResult,
-  HotWalletType,
-  Utils,
-  BaseGateway,
-  getListTokenSymbols,
-  getFamily,
-} from 'sota-common';
+// TODO: Revive me please
+export async function signerDoProcess(): Promise<void> {
+  return;
+}
+
+/*
+import { getLogger, HotWalletType, Utils, BaseGateway } from 'sota-common';
 import { EntityManager, getConnection } from 'typeorm';
 import { WithdrawalTx, HotWallet, Withdrawal } from '../../entities';
 import { WithdrawalStatus } from '../../Enums';
@@ -87,28 +83,27 @@ async function _signerSubDoProcess(manager: EntityManager, currency: string, gat
     withdrawalTxId: withdrawalTx.id,
   };
 }
+*/
 
 /**
  * Parse coin key value
  */
+/*
 export async function hotWalletToPrivateKey(hotWallet: HotWallet): Promise<string> {
-  let rawPrivateKey = hotWallet.coinKeys;
+  let rawPrivateKey = hotWallet.secret;
 
   try {
-    const coinKeys = JSON.parse(hotWallet.coinKeys);
-    if (coinKeys.private_key) {
-      rawPrivateKey = coinKeys.private_key;
-      if (coinKeys.kms_data_key_id > 0) {
-        rawPrivateKey = await Kms.getInstance().decrypt(coinKeys.private_key, coinKeys.kms_data_key_id);
+    const secret = JSON.parse(hotWallet.secret);
+    if (secret.private_key) {
+      rawPrivateKey = secret.private_key;
+      if (secret.kms_data_key_id > 0) {
+        rawPrivateKey = await Kms.getInstance().decrypt(secret.private_key, secret.kms_data_key_id);
       }
     }
-    if (coinKeys.spending_password) {
-      if (coinKeys.kms_data_key_id > 0) {
-        coinKeys.spending_password = await Kms.getInstance().decrypt(
-          coinKeys.spending_password,
-          coinKeys.kms_data_key_id
-        );
-        rawPrivateKey = JSON.stringify(coinKeys);
+    if (secret.spending_password) {
+      if (secret.kms_data_key_id > 0) {
+        secret.spending_password = await Kms.getInstance().decrypt(secret.spending_password, secret.kms_data_key_id);
+        rawPrivateKey = JSON.stringify(secret);
       }
     }
   } catch (e) {
@@ -116,12 +111,14 @@ export async function hotWalletToPrivateKey(hotWallet: HotWallet): Promise<strin
   }
   return rawPrivateKey;
 }
+*/
 
 /**
  * Find hot wallet that associated with withdrawalTx record
  * @param manager
  * @param withdrawalTx
  */
+/*
 async function findHotWalletWithdrawalTx(manager: EntityManager, withdrawalTx: WithdrawalTx) {
   const walletDef = {
     address: withdrawalTx.hotWalletAddress,
@@ -142,3 +139,4 @@ async function findHotWalletWithdrawalTx(manager: EntityManager, withdrawalTx: W
   }
   return hotWallet;
 }
+*/

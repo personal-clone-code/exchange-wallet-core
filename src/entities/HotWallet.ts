@@ -9,43 +9,20 @@ export class HotWallet {
   @Column('int', { name: 'wallet_id', nullable: false })
   public walletId: number;
 
-  @PrimaryColumn('varchar', {
-    length: 100,
-    name: 'address',
-    nullable: false,
-    primary: true,
-  })
+  @PrimaryColumn({ name: 'address', nullable: false })
   public address: string;
 
-  @Column('varchar', {
-    length: 20,
-    name: 'type',
-    nullable: false,
-  })
-  public type: string;
-
-  @Column('varchar', {
-    length: 100,
-    name: 'currency',
-    nullable: false,
-  })
+  @Column({ name: 'currency', nullable: false })
   public currency: string;
 
-  @Column('decimal', {
-    default: '0',
-    name: 'balance',
-    nullable: false,
-    precision: 32,
-    scale: 0,
-  })
-  public balance: string;
+  @Column({ name: 'type' })
+  public type: string;
 
-  @Column('varchar', {
-    length: 255,
-    name: 'coin_keys',
-    nullable: false,
-  })
-  public coinKeys: string;
+  @Column({ name: 'secret', nullable: false })
+  public secret: string;
+
+  @Column({ name: 'balance', nullable: false, precision: 40, scale: 8 })
+  public balance: string;
 
   @Column({ type: 'tinyint', name: 'is_external', nullable: false })
   public isExternal: boolean;

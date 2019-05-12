@@ -1,4 +1,4 @@
-import { GenericTransactions, Transaction, BaseCrawler, getFamily, Transactions, Utils } from 'sota-common';
+import { GenericTransactions, Transaction, BaseCrawler, Transactions, Utils } from 'sota-common';
 import { EntityManager, getConnection } from 'typeorm';
 import { getLogger } from 'sota-common';
 import * as rawdb from '../../rawdb';
@@ -39,7 +39,8 @@ async function _onCrawlingTxs(
   const allAddresses: string[] = Array.from(txsByAddress.keys());
 
   // Filter out related addresses
-  const watchingAddresses = await rawdb.filterWatchingAddresses(manager, getFamily(), allAddresses);
+  const watchingAddresses = await rawdb.filterWatchingAddresses(manager, allAddresses);
+
   // Ger related transactions
   const watchingTxs = watchingAddresses.reduce((memo, watchingAddress) => {
     return memo.concat(txsByAddress.get(watchingAddress));

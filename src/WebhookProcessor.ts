@@ -2,13 +2,17 @@ import fetch from 'node-fetch';
 import { EntityManager, getConnection } from 'typeorm';
 import { BaseIntervalWorker, getLogger, Utils } from 'sota-common';
 import { WebhookType } from './Enums';
-import { Webhook, WebhookProgress, Deposit, Withdrawal, UserCurrency, CurrencyToken } from './entities';
+import { Webhook, WebhookProgress, Deposit, Withdrawal, UserCurrency } from './entities';
 import * as rawdb from './rawdb';
 
 const logger = getLogger('WebhookProcessor');
 
 export class WebhookProcessor extends BaseIntervalWorker {
   protected _nextTickTimer: number = 10000;
+
+  protected async prepare(): Promise<void> {
+    // Nothing to do...
+  }
 
   protected async doProcess(): Promise<void> {
     return getConnection().transaction(async manager => {
@@ -104,17 +108,10 @@ export class WebhookProcessor extends BaseIntervalWorker {
           throw new Error(`Could not find deposit id=${refId}`);
         }
 
-        const currencyToken = await manager.getRepository(CurrencyToken).findOne({ symbol: data.currency });
-        if (currencyToken.contractAddress) {
-          const userCurrency = await manager
-            .getRepository(UserCurrency)
-            .findOne({ userId, type: data.typeCurrency, contractAddress: currencyToken.contractAddress });
-          if (userCurrency) {
-            data.currency = userCurrency.symbol;
-          }
+        const userCurrency = await manager.getRepository(UserCurrency).findOne({ userId, systemSymbol: data.currency });
+        if (userCurrency) {
+          data.currency = userCurrency.customSymbol;
         }
-
-        data.typeCurrency = data.currency;
 
         return data;
 

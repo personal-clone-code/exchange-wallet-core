@@ -1,12 +1,10 @@
-import {
-  BaseWithdrawalVerifier,
-  TransactionStatus,
-  getLogger,
-  IWithdrawalProcessingResult,
-  Utils,
-  BaseGateway,
-  getListTokenSymbols,
-} from 'sota-common';
+// TODO: Revive me please
+export async function verifierDoProcess(): Promise<void> {
+  return;
+}
+
+/*
+import { TransactionStatus, getLogger, Utils, BaseGateway } from 'sota-common';
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection } from 'typeorm';
 import { WithdrawalStatus, WithdrawalEvent } from '../../Enums';
@@ -24,6 +22,7 @@ export async function verifierDoProcess(verfifier: BaseWithdrawalVerifier): Prom
   });
   return result;
 }
+
 
 async function _verifierDoProcess(
   manager: EntityManager,
@@ -77,3 +76,4 @@ async function _verifierSubDoProcess(manager: EntityManager, currency: string, g
 
   return emptyResult;
 }
+*/

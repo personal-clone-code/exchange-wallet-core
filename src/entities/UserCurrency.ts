@@ -9,14 +9,11 @@ export class UserCurrency {
   @Column({ name: 'user_id', nullable: false })
   public userId: number;
 
-  @Column({ name: 'symbol', nullable: false })
-  public symbol: string;
+  @Column({ name: 'system_symbol', nullable: false })
+  public systemSymbol: string;
 
-  @Column({ name: 'type', nullable: false })
-  public type: string;
-
-  @Column({ name: 'contract_address', nullable: false })
-  public contractAddress: string;
+  @Column({ name: 'custom_symbol', nullable: false })
+  public customSymbol: string;
 
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;

@@ -1,11 +1,7 @@
-import { Index, Entity, PrimaryGeneratedColumn, Column, BeforeInsert, BeforeUpdate } from 'typeorm';
-import { Utils } from 'sota-common';
+import { Entity, PrimaryGeneratedColumn, Column, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { Utils, BigNumber } from 'sota-common';
 
 @Entity('withdrawal')
-@Index('withdrawal_user_id_index', ['userId'])
-@Index('withdrawal_wallet_id_index', ['walletId'])
-@Index('withdrawal_from_address_index', ['fromAddress'])
-@Index('withdrawal_to_address_index', ['toAddress'])
 export class Withdrawal {
   @PrimaryGeneratedColumn({ name: 'id', type: 'bigint' })
   public id: number;
@@ -16,14 +12,14 @@ export class Withdrawal {
   @Column('int', { name: 'wallet_id', nullable: false })
   public walletId: number;
 
+  @Column('varchar', { name: 'currency', nullable: false })
+  public currency: string;
+
   @Column('int', { name: 'withdrawal_tx_id', nullable: false })
   public withdrawalTxId: number;
 
   @Column('varchar', { length: 100, name: 'txid', nullable: false })
   public txid: string;
-
-  @Column('varchar', { length: 10, name: 'currency', nullable: false })
-  public currency: string;
 
   @Column('varchar', { length: 100, name: 'from_address', nullable: false })
   public fromAddress: string;
@@ -49,8 +45,8 @@ export class Withdrawal {
   @Column({ name: 'updated_at', type: 'bigint' })
   public updatedAt: number;
 
-  public getAmount(): string {
-    return Utils.handleAmountPrecision(this.amount, this.currency);
+  public getAmount(): BigNumber {
+    return new BigNumber(this.amount);
   }
 
   @BeforeInsert()

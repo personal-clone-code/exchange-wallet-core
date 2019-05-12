@@ -1,4 +1,4 @@
-import { BaseCrawler, Block, getListTokenSymbols } from 'sota-common';
+import { BaseCrawler, Block } from 'sota-common';
 import { getConnection, In } from 'typeorm';
 import { LatestBlock } from '../../entities/LatestBlock';
 /**
@@ -7,13 +7,13 @@ import { LatestBlock } from '../../entities/LatestBlock';
  * @param {Block} block: the block data that has been crawled
  */
 export default async function onBlockCrawled(crawler: BaseCrawler, block: Block): Promise<void> {
-  const tokens: string[] = getListTokenSymbols().tokenSymbols;
+  const currency = crawler.getOptions().crawlingCurrenciesName();
   const type = crawler.getCrawlType();
   const blockNumber = block.number;
 
   await getConnection()
     .getRepository(LatestBlock)
-    .update({ currency: In(tokens), type }, { blockNumber });
+    .update({ currency, type }, { blockNumber });
 }
 
 export { onBlockCrawled };

@@ -15,8 +15,11 @@ export class Wallet {
   @Column({ name: 'currency', nullable: false })
   public currency: string;
 
-  @Column({ name: 'meta', nullable: false })
-  public meta: string;
+  @Column({ name: 'secret', nullable: false })
+  public secret: string;
+
+  @Column({ name: 'is_hd', nullable: false })
+  public isHd: boolean;
 
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;

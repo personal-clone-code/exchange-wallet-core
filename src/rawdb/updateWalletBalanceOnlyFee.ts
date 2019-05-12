@@ -3,7 +3,7 @@ import { WalletEvent, CollectStatus } from '../Enums';
 import { WalletBalance } from '../entities';
 
 import * as rawdb from './index';
-import { getTokenBySymbol, Utils } from 'sota-common';
+import { Utils, CurrencyRegistry } from 'sota-common';
 import { InternalTransfer } from '../entities/InternalTransfer';
 
 export async function updateWalletBalanceOnlyFee(
@@ -41,6 +41,9 @@ export async function updateWalletBalanceOnlyFee(
     refId: transfer.id,
   };
 
+  const currency = CurrencyRegistry.getOneCurrency(transfer.currency);
+  const feeCurrency = currency.platform;
+
   await Utils.PromiseAll([
     manager
       .createQueryBuilder()
@@ -53,7 +56,7 @@ export async function updateWalletBalanceOnlyFee(
       })
       .where({
         walletId: transfer.walletId,
-        coin: getTokenBySymbol(transfer.currency).family,
+        currency: feeCurrency,
       })
       .execute(),
 

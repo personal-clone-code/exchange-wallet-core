@@ -11,6 +11,9 @@ export class OmniToken {
   @Column({ name: 'property_id', nullable: false })
   public propertyId: number;
 
+  @Column({ name: 'scale', nullable: false })
+  public scale: number;
+
   @Column({ name: 'network', nullable: false })
   public network: string;
 }

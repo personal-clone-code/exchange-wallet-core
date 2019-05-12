@@ -1,5 +1,5 @@
 import { LatestBlock } from '../../entities';
-import { BaseCrawler, getListTokenSymbols } from 'sota-common';
+import { BaseCrawler } from 'sota-common';
 import { EntityManager, getConnection, In } from 'typeorm';
 
 /**
@@ -8,7 +8,7 @@ import { EntityManager, getConnection, In } from 'typeorm';
  * @param type
  * @param blockNumber
  */
-export default async function getLatestCrawledBlockNumber(crawler: BaseCrawler): Promise<number> {
+export async function getLatestCrawledBlockNumber(crawler: BaseCrawler): Promise<number> {
   const type = 'deposit';
   // Look up in database
   const connection = await getConnection();
@@ -17,36 +17,21 @@ export default async function getLatestCrawledBlockNumber(crawler: BaseCrawler):
 }
 
 async function _updateLatestBlock(manager: EntityManager, type: string, crawler: BaseCrawler): Promise<number> {
-  const tokens: string[] = getListTokenSymbols().tokenSymbols;
+  const crawlingCurrencyName: string = crawler.getOptions().crawlingCurrenciesName();
   const repository = manager.getRepository(LatestBlock);
-  const allLatestBlocks = await repository.find({ currency: In(tokens), type });
+  const latestBlock = await repository.findOne({ currency: crawlingCurrencyName, type });
+  if (latestBlock) {
+    return latestBlock.blockNumber;
+  }
 
-  const blockNumbers: number[] = await Promise.all(
-    tokens.map(async tokenSymbol => {
-      // create new latest block record
-      const record = new LatestBlock();
-      record.blockNumber = crawler.getFirstBlockNumberToCrawl();
-      if (allLatestBlocks.length) {
-        const maxLatest = Math.max(...allLatestBlocks.map(tokenLatestRec => tokenLatestRec.blockNumber));
-        record.blockNumber = maxLatest;
-      }
-      record.type = type;
+  // create new latest block record
+  const record = new LatestBlock();
+  record.type = type;
+  record.currency = crawlingCurrencyName;
+  record.blockNumber = await crawler.getPlatformGateway().getBlockCount();
+  await repository.save(record);
 
-      const tokenLatestBlock = await repository.findOne({ currency: tokenSymbol, type });
-      // If the record is existed, return the result
-      if (tokenLatestBlock) {
-        return tokenLatestBlock.blockNumber;
-      }
-
-      record.currency = tokenSymbol;
-      await repository.save(record);
-
-      return record.blockNumber;
-    })
-  );
-
-  const latestBlock = Math.min(...blockNumbers);
-  return latestBlock;
+  return record.blockNumber;
 }
 
-export { getLatestCrawledBlockNumber };
+export default getLatestCrawledBlockNumber;

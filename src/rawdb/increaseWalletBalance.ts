@@ -1,6 +1,6 @@
 import { EntityManager } from 'typeorm';
 import { WalletBalance } from '../entities';
-import { Utils } from 'sota-common';
+import { Utils, BigNumber } from 'sota-common';
 
 /**
  * Increase wallet balance due to incoming deposit
@@ -9,14 +9,14 @@ import { Utils } from 'sota-common';
 export async function increaseWalletBalance(
   manager: EntityManager,
   walletId: number,
-  coin: string,
-  amount: string
+  currency: string,
+  amount: BigNumber
 ): Promise<void> {
   await manager
     .createQueryBuilder()
     .update(WalletBalance)
-    .set({ balance: () => `balance + ${amount}`, updatedAt: Utils.nowInMillis() })
-    .where({ coin, walletId })
+    .set({ balance: () => `balance + ${amount.toString()}`, updatedAt: Utils.nowInMillis() })
+    .where({ currency, walletId })
     .execute();
 
   return;

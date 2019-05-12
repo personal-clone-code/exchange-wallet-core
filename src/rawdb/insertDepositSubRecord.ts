@@ -1,5 +1,5 @@
 import { EntityManager } from 'typeorm';
-import { TransferOutput } from 'sota-common';
+import { TransferEntry } from 'sota-common';
 import { CurrencyDepositFactory } from '../factories/CurrencyDepositFactory';
 
 /**
@@ -10,7 +10,7 @@ import { CurrencyDepositFactory } from '../factories/CurrencyDepositFactory';
 export async function insertDepositSubRecord(
   manager: EntityManager,
   depositId: number,
-  output: TransferOutput
+  output: TransferEntry
 ): Promise<void> {
   const currency = output.currency;
   const record = CurrencyDepositFactory.create(currency);

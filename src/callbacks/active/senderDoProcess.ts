@@ -1,3 +1,9 @@
+// TODO: Revive me please...
+export async function senderDoProcess(): Promise<void> {
+  return;
+}
+
+/*
 import {
   BaseGateway,
   BaseWithdrawalSender,
@@ -123,3 +129,4 @@ async function updateWithdrawalAndWithdrawalTx(
 }
 
 export { senderDoProcess };
+*/

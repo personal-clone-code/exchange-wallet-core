@@ -18,8 +18,8 @@ export class WalletLog {
   @Column({ name: 'balance_change', nullable: false })
   public balanceChange: string;
 
-  @Column({ name: 'metadata', nullable: false })
-  public metadata: string;
+  @Column({ name: 'data', nullable: false })
+  public data: string;
 
   @Column({ name: 'ref_id', nullable: false })
   public refId: number;
