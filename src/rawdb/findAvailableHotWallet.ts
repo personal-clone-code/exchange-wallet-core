@@ -1,7 +1,7 @@
 import { HotWallet, InternalTransfer, Withdrawal } from '../entities';
 import { EntityManager, In } from 'typeorm';
 import { InternalTransferType, WithdrawalStatus } from '../Enums';
-import { TransferEntry, BaseGateway, getLogger, Transaction, BigNumber } from 'sota-common';
+import { TransferEntry, BaseGateway, getLogger, BigNumber } from 'sota-common';
 
 const logger = getLogger('findAvaiableHotWallet');
 
@@ -31,8 +31,8 @@ export async function findTransferableHotWallet(
   }
   await Promise.all(
     hotWallets.map(async hotWallet => {
-      const hotWalletBalance: BigNumber = new BigNumber(await gateway.getAddressBalance(hotWallet.address), 10);
-      if (hotWalletBalance.isGreaterThanOrEqualTo(total)) {
+      const hotWalletBalance = await gateway.getAddressBalance(hotWallet.address);
+      if (hotWalletBalance.gte(total)) {
         foundHotWallet = hotWallet;
         return;
       }
