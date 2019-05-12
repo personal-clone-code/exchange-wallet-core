@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import { EntityManager, getConnection } from 'typeorm';
-import { BaseIntervalWorker, getLogger, Utils } from 'sota-common';
+import { BaseIntervalWorker, getLogger, Utils, CurrencyRegistry } from 'sota-common';
 import { WebhookType } from './Enums';
 import { Webhook, WebhookProgress, Deposit, Withdrawal, UserCurrency } from './entities';
 import * as rawdb from './rawdb';
@@ -111,6 +111,9 @@ export class WebhookProcessor extends BaseIntervalWorker {
         const userCurrency = await manager.getRepository(UserCurrency).findOne({ userId, systemSymbol: data.currency });
         if (userCurrency) {
           data.currency = userCurrency.customSymbol;
+        } else {
+          const currency = CurrencyRegistry.getOneCurrency(data.currency);
+          data.currency = currency.networkSymbol;
         }
 
         return data;
