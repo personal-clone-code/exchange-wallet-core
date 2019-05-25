@@ -57,6 +57,10 @@ async function isInternalTransfer(manager: EntityManager, tx: Transaction): Prom
   }
 
   const senderAddresses: string[] = tx.extractSenderAddresses();
+  if (!senderAddresses.length) {
+    return false;
+  }
+
   const addressRecord = await manager.getRepository(Address).findOne({ address: In(senderAddresses) });
   if (addressRecord) {
     logger.error(`Tx ${tx.txid} is sent from an internal address, but it's not in internal transfer table.`);
