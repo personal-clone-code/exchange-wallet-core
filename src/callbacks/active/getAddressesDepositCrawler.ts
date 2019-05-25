@@ -8,7 +8,7 @@ import { getConnection } from 'typeorm';
  * @param typeCurrency
  */
 export default async function getAddressesDepositCrawler(crawler: BaseCrawler): Promise<string[]> {
-  const currency = crawler.getOptions().crawlingCurrenciesName();
+  const currency = crawler.getNativeCurrency().symbol;
 
   // Look up in database
   const connection = await getConnection();

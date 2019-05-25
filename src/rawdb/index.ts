@@ -17,7 +17,7 @@ export * from './insertWithdrawalLog';
 export * from './insertWithdrawalLogs';
 export * from './insertWalletLog';
 export * from './insertWithdrawalTx';
-export * from './findDepositByCollectStatus';
+export * from './updateRecordsTimestamp';
 export * from './updateDepositCollectStatus';
 export * from './updateByCollectTransaction';
 export * from './insertInternalTransfer';

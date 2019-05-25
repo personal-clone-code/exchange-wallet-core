@@ -17,7 +17,7 @@ export async function getLatestCrawledBlockNumber(crawler: BaseCrawler): Promise
 }
 
 async function _updateLatestBlock(manager: EntityManager, type: string, crawler: BaseCrawler): Promise<number> {
-  const crawlingCurrencyName: string = crawler.getOptions().crawlingCurrenciesName();
+  const crawlingCurrencyName: string = crawler.getNativeCurrency().symbol;
   const repository = manager.getRepository(LatestBlock);
   const latestBlock = await repository.findOne({ currency: crawlingCurrencyName, type });
   if (latestBlock) {

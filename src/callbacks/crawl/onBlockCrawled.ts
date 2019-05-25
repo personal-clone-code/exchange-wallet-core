@@ -7,7 +7,7 @@ import { LatestBlock } from '../../entities/LatestBlock';
  * @param {Block} block: the block data that has been crawled
  */
 export default async function onBlockCrawled(crawler: BaseCrawler, block: Block): Promise<void> {
-  const currency = crawler.getOptions().crawlingCurrenciesName();
+  const currency = crawler.getNativeCurrency().symbol;
   const type = crawler.getCrawlType();
   const blockNumber = block.number;
 
