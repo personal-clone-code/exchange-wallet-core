@@ -10,11 +10,13 @@ import {
   BigNumber,
   IBoiledVOut,
   IInsightUtxoInfo,
+  ISignedRawTransaction,
+  ICurrency,
 } from 'sota-common';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
-import { CollectStatus } from '../../Enums';
-import { Deposit } from '../../entities';
+import { CollectStatus, InternalTransferType, WithdrawalStatus } from '../../Enums';
+import { Deposit, Address, InternalTransfer } from '../../entities';
 
 const logger = getLogger('collectorDoProcess');
 
@@ -55,14 +57,26 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     ? await _constructUtxoBasedCollectTx(records, hotWallet.address)
     : await _constructAccountBasedCollectTx(records, hotWallet.address);
 
+  if (!rawTx) {
+    throw new Error('rawTx is undefined because of unknown problem');
+  }
+
+  const signedTx = await _collectorSignDoProcess(manager, currency, records, rawTx);
+  await _collectorSubmitDoProcess(manager, currency, walletId, signedTx);
+
   const now = Utils.nowInMillis();
   await manager.update(Deposit, records.map(r => r.id), {
     updatedAt: now,
-    collectedTxid: rawTx.txid,
+    collectedTxid: signedTx.txid,
     collectStatus: CollectStatus.COLLECTING,
   });
 }
 
+/**
+ * construct utxo collect tx
+ * @param deposits
+ * @param toAddress
+ */
 async function _constructUtxoBasedCollectTx(deposits: Deposit[], toAddress: string): Promise<IRawTransaction> {
   const currency = CurrencyRegistry.getOneCurrency(deposits[0].currency);
   const gateway = GatewayRegistry.getGatewayInstance(currency) as BitcoinBasedGateway;
@@ -125,5 +139,71 @@ async function _constructAccountBasedCollectTx(deposits: Deposit[], toAddress: s
     return memo.plus(new BigNumber(deposit.amount));
   }, new BigNumber(0));
 
-  return gateway.constructRawTransaction(deposits[0].toAddress, toAddress, amount);
+  return gateway.constructRawTransaction(deposits[0].toAddress, toAddress, amount, currency.isNative);
+}
+
+async function _collectorSignDoProcess(
+  manager: EntityManager,
+  currency: ICurrency,
+  deposits: Deposit[],
+  rawTx: IRawTransaction
+): Promise<ISignedRawTransaction> {
+  const gateway = GatewayRegistry.getGatewayInstance(currency);
+  const secrets = await Promise.all(
+    deposits.map(async deposit => {
+      const address = await manager.findOne(Address, {
+        address: deposit.toAddress,
+      });
+      if (!address) {
+        throw new Error(`${deposit.toAddress} is not in database`);
+      }
+      return address.extractRawPrivateKey();
+    })
+  );
+
+  if (currency.isUTXOBased) {
+    return gateway.signRawTransaction(rawTx.unsignedRaw, secrets);
+  }
+
+  if (secrets.length > 1) {
+    throw new Error('Account-base tx is only use one secret');
+  }
+
+  return gateway.signRawTransaction(rawTx.unsignedRaw, secrets[0]);
+}
+
+/**
+ * Picker do process
+ * @param manager
+ * @param picker
+ * @private
+ */
+async function _collectorSubmitDoProcess(
+  manager: EntityManager,
+  currency: ICurrency,
+  walletId: number,
+  signedTx: ISignedRawTransaction
+): Promise<void> {
+  const gateway = GatewayRegistry.getGatewayInstance(currency);
+
+  try {
+    await gateway.sendRawTransaction(signedTx.signedRaw);
+  } catch (e) {
+    logger.error(`Can not send transaction txid=${signedTx.txid}`);
+    logger.error(`===============================`);
+    logger.error(e);
+    logger.error(`===============================`);
+  }
+
+  const internalTransferRecord = new InternalTransfer();
+  internalTransferRecord.currency = currency.symbol;
+  internalTransferRecord.txid = signedTx.txid;
+  internalTransferRecord.walletId = walletId;
+  internalTransferRecord.type = InternalTransferType.COLLECT;
+  internalTransferRecord.status = WithdrawalStatus.SENT;
+  internalTransferRecord.fromAddress = 'will remove this field';
+  internalTransferRecord.toAddress = 'will remove this field';
+
+  await Utils.PromiseAll([manager.save(internalTransferRecord)]);
+  return;
 }

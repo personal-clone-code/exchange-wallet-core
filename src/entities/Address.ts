@@ -1,5 +1,6 @@
 import { Entity, PrimaryColumn, Column, BeforeInsert, BeforeUpdate } from 'typeorm';
 import { Utils } from 'sota-common';
+import Kms from '../encrypt/Kms';
 
 @Entity('address')
 export class Address {
@@ -39,5 +40,30 @@ export class Address {
   @BeforeUpdate()
   public updateUpdateDates() {
     this.updatedAt = Utils.nowInMillis();
+  }
+
+  public async extractRawPrivateKey(): Promise<string> {
+    let rawPrivateKey = this.secret;
+
+    try {
+      const secret = JSON.parse(rawPrivateKey);
+      if (secret.private_key) {
+        rawPrivateKey = secret.private_key;
+        if (secret.kms_data_key_id > 0) {
+          rawPrivateKey = await Kms.getInstance().decrypt(secret.private_key, secret.kms_data_key_id);
+        }
+      }
+
+      if (secret.spending_password) {
+        if (secret.kms_data_key_id > 0) {
+          secret.spending_password = await Kms.getInstance().decrypt(secret.spending_password, secret.kms_data_key_id);
+          rawPrivateKey = JSON.stringify(secret);
+        }
+      }
+    } catch (e) {
+      // If raw private key is not stored in JSON format, we'll just leave as it is
+    }
+
+    return rawPrivateKey;
   }
 }

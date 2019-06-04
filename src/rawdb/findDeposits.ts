@@ -50,11 +50,11 @@ export async function findOneGroupOfCollectableDeposits(
   // TODO: Check whether the total value is greater than the threshold here...
   // If the value does not satisfy the condition, update their timestamp and leave as it is
   // We'll check it again next time, hopefully the deposit is enough at that time
-  const isCollectable = false;
-  if (!isCollectable) {
-    rawdb.updateRecordsTimestamp(manager, Deposit, finalRecords.map(r => r.id));
-    return { walletId: 0, currency: null, records: [] };
-  }
+  // const isCollectable = false;
+  // if (!isCollectable) {
+  //   rawdb.updateRecordsTimestamp(manager, Deposit, finalRecords.map(r => r.id));
+  //   return { walletId: 0, currency: null, records: [] };
+  // }
 
   return { walletId, currency, records: finalRecords };
 }
