@@ -1,4 +1,4 @@
-import { ISubmittedTransaction } from 'sota-common';
+import { ISubmittedTransaction, BigNumber } from 'sota-common';
 import { WithdrawalTx } from '../entities';
 import { EntityManager } from 'typeorm';
 import { WithdrawalStatus } from '../Enums';
@@ -8,7 +8,7 @@ export async function updateWithdrawalTxStatus(
   id: number,
   status: WithdrawalStatus,
   transactionResult?: ISubmittedTransaction,
-  fee?: string
+  fee?: BigNumber
 ): Promise<WithdrawalTx> {
   // Find wallet of record
   const record = await manager.findOne(WithdrawalTx, id);
@@ -22,8 +22,9 @@ export async function updateWithdrawalTxStatus(
       record.blockNumber = transactionResult.blockNumber;
     }
   }
+
   if (fee) {
-    record.feeAmount = fee;
+    record.feeAmount = fee.toFixed();
   }
 
   await manager.save(record);
