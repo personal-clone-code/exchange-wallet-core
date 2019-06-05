@@ -1,21 +1,17 @@
 import { EntityManager } from 'typeorm';
-import { WithdrawalEvent, WalletEvent, DepositEvent, CollectStatus, WithdrawalStatus } from '../Enums';
-import { WalletBalance, Withdrawal, WithdrawalTx, Deposit } from '../entities';
-
-import * as rawdb from './index';
+import { CollectStatus, WithdrawalStatus } from '../Enums';
 import { InternalTransfer } from '../entities/InternalTransfer';
+import { BigNumber, CurrencyRegistry } from 'sota-common';
 
 export async function updateInternalTransfer(
   manager: EntityManager,
   transfer: InternalTransfer,
-  status: CollectStatus,
-  amount: string,
-  fee: string,
-  walletId: number
+  status: WithdrawalStatus,
+  fee: BigNumber
 ): Promise<InternalTransfer> {
-  transfer.amount = amount;
-  transfer.fee = fee;
-  transfer.status = status === CollectStatus.COLLECTED ? WithdrawalStatus.COMPLETED : WithdrawalStatus.FAILED;
-  transfer.walletId = walletId;
+  const currencyInfo = CurrencyRegistry.getOneCurrency(transfer.currency);
+  transfer.fee = fee.toString();
+  transfer.status = status;
+  transfer.feeCurrency = currencyInfo.platform;
   return manager.save(transfer);
 }

@@ -3,41 +3,37 @@ import { WalletEvent, CollectStatus } from '../Enums';
 import { WalletBalance } from '../entities';
 
 import * as rawdb from './index';
-import { Utils, CurrencyRegistry } from 'sota-common';
+import { Utils, CurrencyRegistry, BigNumber } from 'sota-common';
 import { InternalTransfer } from '../entities/InternalTransfer';
 
 export async function updateWalletBalanceOnlyFee(
   manager: EntityManager,
   transfer: InternalTransfer,
   status: CollectStatus,
-  fee: string
+  fee: BigNumber
 ): Promise<WalletBalance> {
-  let walletEvent: WalletEvent;
   let balanceChange: string;
   const walletBalance = await manager.findOne(WalletBalance, {
     walletId: transfer.walletId,
   });
 
   if (!walletBalance) {
-    console.log('walletBalance is not existed');
-    throw new Error('walletBalance is not existed');
+    throw new Error(`walletBalance id=${transfer.walletId} is not existed`);
   }
 
   if (status === CollectStatus.UNCOLLECTED) {
-    walletEvent = WalletEvent.SEEDED_FAIL;
     balanceChange = '0';
   }
 
   if (status === CollectStatus.COLLECTED) {
-    walletEvent = WalletEvent.SEEDED;
-    balanceChange = '-' + fee;
+    balanceChange = '-' + fee.toString();
   }
 
   const withdrawalFeeLog = {
     walletId: transfer.walletId,
     currency: transfer.currency,
     balanceChange,
-    event: WalletEvent.SEED_FEE,
+    event: transfer.type,
     refId: transfer.id,
   };
 

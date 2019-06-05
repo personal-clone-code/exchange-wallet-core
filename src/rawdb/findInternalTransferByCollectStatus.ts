@@ -2,17 +2,18 @@ import { EntityManager, In } from 'typeorm';
 import { WithdrawalStatus } from '../Enums';
 import { InternalTransfer } from '../entities/InternalTransfer';
 
-export async function findInternalTransferByCollectStatus(
+export async function findOneInternalTransferByCollectStatus(
   manager: EntityManager,
-  currencies: string[],
-  statuses: WithdrawalStatus[]
+  currencies: string | string[],
+  statuses: WithdrawalStatus | WithdrawalStatus[]
 ): Promise<InternalTransfer> {
-  const unCollected = await manager.getRepository(InternalTransfer).findOne({
-    currency: In(currencies),
-    status: In(statuses),
+  return manager.findOne(InternalTransfer, {
+    order: { updatedAt: 'ASC' },
+    where: {
+      currency: Array.isArray(currencies) ? In(currencies) : currencies,
+      status: Array.isArray(statuses) ? In(statuses) : statuses,
+    },
   });
-
-  return unCollected;
 }
 
-export default findInternalTransferByCollectStatus;
+export default findOneInternalTransferByCollectStatus;

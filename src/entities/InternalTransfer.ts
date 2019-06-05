@@ -24,14 +24,17 @@ export class InternalTransfer {
   @Column({ nullable: false })
   public txid: string;
 
-  @Column({ type: 'decimal', precision: 40, scale: 8, nullable: false })
+  @Column({ type: 'decimal', precision: 40, scale: 8, nullable: true })
   public amount: string;
 
-  @Column({ type: 'decimal', precision: 40, scale: 8, nullable: false })
+  @Column({ type: 'decimal', precision: 40, scale: 8, nullable: true })
   public fee: string;
 
   @Column('varchar', { length: 20, name: 'status', nullable: false })
   public status: string;
+
+  @Column('varchar', { length: 200, name: 'fee_currency', nullable: true })
+  public feeCurrency: string;
 
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;
