@@ -1,7 +1,8 @@
 import { createConnection, getConnection } from 'typeorm';
-import { getLogger, BlockchainPlatform, CurrencyRegistry, EnvConfigRegistry } from 'sota-common';
+import { getLogger, BlockchainPlatform, CurrencyRegistry, EnvConfigRegistry, ICurrency } from 'sota-common';
 import { CurrencyConfig, EnvConfig, Erc20Token } from './entities';
 import _ from 'lodash';
+import { prepareWalletBalanceAll } from './callbacks';
 
 const logger = getLogger('prepareEnvironment');
 
@@ -46,9 +47,13 @@ export async function prepareEnvironment(): Promise<void> {
     EnvConfigRegistry.setCustomEnvConfig(config.key, config.value);
   });
 
+  const erc20Currencies: ICurrency[] = [];
   erc20Tokens.forEach(token => {
     CurrencyRegistry.registerErc20Token(token.contractAddress, token.symbol, token.name, token.decimal);
+    erc20Currencies.push(CurrencyRegistry.getOneCurrency(`erc20.${token.contractAddress}`));
   });
+
+  await prepareWalletBalanceAll(erc20Currencies);
 
   logger.info(`Environment has been setup successfully...`);
   return;

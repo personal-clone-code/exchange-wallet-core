@@ -5,11 +5,12 @@ import {
   BasePlatformWorker,
   CurrencyRegistry,
   GatewayRegistry,
+  BigNumber,
 } from 'sota-common';
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection } from 'typeorm';
-import { WithdrawalStatus, WithdrawalEvent, InternalTransferType, CollectStatus } from '../../Enums';
-import { WithdrawalTx, InternalTransfer } from '../../entities';
+import { WithdrawalStatus, WithdrawalEvent, InternalTransferType, CollectStatus, DepositEvent } from '../../Enums';
+import { WithdrawalTx, InternalTransfer, DepositLog } from '../../entities';
 
 const logger = getLogger('verifierDoProcess');
 
@@ -36,7 +37,7 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
 
   if (sentRecord) {
     logger.info(`Found withdrawal tx need vefifying: txid=${sentRecord.txid}`);
-    return _verifierWithdrawalDoProcess(manager, sentRecord);
+    return verifierWithdrawalDoProcess(manager, sentRecord);
   }
 
   logger.info(`There are not sent withdrawals to be verified: platform=${platformCurrency.platform}`);
@@ -51,10 +52,10 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
   }
 
   logger.info(`Found internal tx need vefifying: txid=${internalRecord.txid}`);
-  return _verifierInternalDoProcess(manager, internalRecord);
+  return verifierInternalDoProcess(manager, internalRecord);
 }
 
-async function _verifierWithdrawalDoProcess(manager: EntityManager, sentRecord: WithdrawalTx): Promise<void> {
+async function verifierWithdrawalDoProcess(manager: EntityManager, sentRecord: WithdrawalTx): Promise<void> {
   const currency = CurrencyRegistry.getOneCurrency(sentRecord.currency);
   const gateway = GatewayRegistry.getGatewayInstance(currency);
 
@@ -85,7 +86,7 @@ async function _verifierWithdrawalDoProcess(manager: EntityManager, sentRecord: 
   ]);
 }
 
-async function _verifierInternalDoProcess(manager: EntityManager, internalRecord: InternalTransfer): Promise<void> {
+async function verifierInternalDoProcess(manager: EntityManager, internalRecord: InternalTransfer): Promise<void> {
   const currency = CurrencyRegistry.getOneCurrency(internalRecord.currency);
   const gateway = GatewayRegistry.getGatewayInstance(currency);
 
@@ -108,16 +109,58 @@ async function _verifierInternalDoProcess(manager: EntityManager, internalRecord
   const fee = resTx.getNetworkFee();
 
   if (internalRecord.type === InternalTransferType.COLLECT) {
-    const tasks: Array<Promise<any>> = [
-      rawdb.updateInternalTransfer(manager, internalRecord, verifiedStatus, fee),
-      rawdb.updateDepositCollectStatus(manager, internalRecord, event),
-    ];
-    const currencyInfo = CurrencyRegistry.getOneCurrency(internalRecord.currency);
-    if (currencyInfo.isNative) {
-      // update fee in wallet balance
-      tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, fee));
-    }
-    await Utils.PromiseAll(tasks);
-    return;
+    return verifyCollectDoProcess(manager, internalRecord, verifiedStatus, event, fee);
   }
+
+  if (internalRecord.type === InternalTransferType.SEED) {
+    return verifySeedDoProcess(manager, internalRecord, verifiedStatus, event, fee);
+  }
+}
+
+async function verifyCollectDoProcess(
+  manager: EntityManager,
+  internalRecord: InternalTransfer,
+  verifiedStatus: WithdrawalStatus,
+  event: CollectStatus,
+  fee: BigNumber
+): Promise<void> {
+  const tasks: Array<Promise<any>> = [
+    rawdb.updateInternalTransfer(manager, internalRecord, verifiedStatus, fee),
+    rawdb.updateDepositCollectStatus(manager, internalRecord, event),
+  ];
+  const currencyInfo = CurrencyRegistry.getOneCurrency(internalRecord.currency);
+  if (currencyInfo.isNative) {
+    // update fee in wallet balance
+    tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, fee));
+  }
+  await Utils.PromiseAll(tasks);
+}
+
+async function verifySeedDoProcess(
+  manager: EntityManager,
+  internalRecord: InternalTransfer,
+  verifiedStatus: WithdrawalStatus,
+  event: CollectStatus,
+  fee: BigNumber
+): Promise<void> {
+  const seeding = await manager.findOne(DepositLog, {
+    data: internalRecord.txid,
+  });
+
+  if (!seeding) {
+    throw new Error(`txid=${internalRecord.txid} is not a seeding tx`);
+  }
+
+  const amount = new BigNumber(internalRecord.amount);
+
+  const tasks: Array<Promise<any>> = [
+    rawdb.updateInternalTransfer(manager, internalRecord, verifiedStatus, fee),
+    manager.insert(DepositLog, {
+      depositId: seeding.depositId,
+      event: DepositEvent.SEEDED,
+      refId: internalRecord.id,
+    }),
+    rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, amount.plus(fee)),
+  ];
+  await Utils.PromiseAll(tasks);
 }

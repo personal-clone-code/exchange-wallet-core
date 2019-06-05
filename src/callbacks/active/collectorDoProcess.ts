@@ -52,10 +52,22 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     return;
   }
 
-  const hotWallet = await rawdb.findAnyInternalHotWallet(manager, walletId, currency.symbol);
-  const rawTx: IRawTransaction = currency.isUTXOBased
-    ? await _constructUtxoBasedCollectTx(records, hotWallet.address)
-    : await _constructAccountBasedCollectTx(records, hotWallet.address);
+  const hotWallet = await rawdb.findAnyInternalHotWallet(manager, walletId, currency.platform);
+
+  if (!hotWallet) {
+    throw new Error(`Hot wallet for symbol=${currency.platform} not found`);
+  }
+
+  let rawTx: IRawTransaction;
+  try {
+    rawTx = currency.isUTXOBased
+      ? await _constructUtxoBasedCollectTx(records, hotWallet.address)
+      : await _constructAccountBasedCollectTx(records, hotWallet.address);
+  } catch (err) {
+    logger.error(`Cannot create raw transaction, may need fee seeder`);
+    await rawdb.updateRecordsTimestamp(manager, Deposit, records.map(r => r.id)); // TBD: copy from findOneGroupOfCollectableDeposits
+    throw err;
+  }
 
   if (!rawTx) {
     throw new Error('rawTx is undefined because of unknown problem');
@@ -190,9 +202,7 @@ async function _collectorSubmitDoProcess(
     await gateway.sendRawTransaction(signedTx.signedRaw);
   } catch (e) {
     logger.error(`Can not send transaction txid=${signedTx.txid}`);
-    logger.error(`===============================`);
-    logger.error(e);
-    logger.error(`===============================`);
+    throw e;
   }
 
   const internalTransferRecord = new InternalTransfer();

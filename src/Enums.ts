@@ -3,6 +3,8 @@ export enum DepositEvent {
   CONFIRMED = 'confirmed',
   COLLECTED = 'collected',
   COLLECTED_FAILED = 'collected_failed',
+  SEEDING = 'seeding',
+  SEEDED = 'seeded',
   NOTCOLLECT = 'notcollect',
 }
 

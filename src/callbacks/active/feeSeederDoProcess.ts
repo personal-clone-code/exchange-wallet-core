@@ -1,108 +1,120 @@
-// TODO: Revive me...
-export async function feeSeederDoProcess() {
-  // Do nothing
+import {
+  getLogger,
+  Utils,
+  BasePlatformWorker,
+  CurrencyRegistry,
+  IRawTransaction,
+  GatewayRegistry,
+  BitcoinBasedGateway,
+  AccountBasedGateway,
+} from 'sota-common';
+import { EntityManager, getConnection, In } from 'typeorm';
+import _ from 'lodash';
+import * as rawdb from '../../rawdb';
+import { CollectStatus, InternalTransferType, WithdrawalStatus, DepositEvent } from '../../Enums';
+import { Deposit, InternalTransfer, DepositLog } from '../../entities';
+
+const logger = getLogger('feeSeederDoProcess');
+
+export async function feeSeederDoProcess(seeder: BasePlatformWorker): Promise<void> {
+  await getConnection().transaction(async manager => {
+    await _feeSeederDoProcess(manager, seeder);
+  });
 }
 
-// import { IWithdrawalProcessingResult, getLogger, BaseFeeSeeder, getFamily } from 'sota-common';
-// import { getConnection, EntityManager } from 'typeorm';
-// import * as rawdb from '../../rawdb';
-// import { InternalTransferType, WithdrawalStatus } from '../../Enums';
-// import { Address, WalletBalance } from '../../entities';
-// import BigNumber from 'bignumber.js';
-// import { InternalTransfer } from '../../entities/InternalTransfer';
-// import { hotWalletToPrivateKey } from './signerDoProcess';
+async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformWorker): Promise<void> {
+  const platformCurrency = seeder.getCurrency();
+  const platformCurrencies = CurrencyRegistry.getCurrenciesOfPlatform(platformCurrency.platform);
+  const allSymbols = platformCurrencies.map(c => c.symbol);
 
-// const logger = getLogger('feeSeederDoProcess');
+  let deposits = await manager.find(Deposit, {
+    collectStatus: CollectStatus.UNCOLLECTED,
+    currency: In(allSymbols),
+  });
+  deposits = await Utils.PromiseAll(
+    deposits.map(async deposit => {
+      if (CurrencyRegistry.getOneCurrency(deposit.currency).isNative) {
+        return null;
+      }
+      const seeding = await manager.findOne(DepositLog, {
+        depositId: deposit.id,
+        event: DepositEvent.SEEDING,
+      });
+      if (seeding) {
+        return null;
+      }
+      return deposit;
+    })
+  );
+  deposits = deposits.filter(deposit => !_.isNil(deposit));
 
-// const emptyResult: IWithdrawalProcessingResult = {
-//   needNextProcess: false,
-//   withdrawalTxId: 0,
-// };
+  if (deposits.length === 0) {
+    logger.info('No deposit need seeding');
+    return;
+  }
 
-// export async function feeSeederDoProcess(seeder: BaseFeeSeeder): Promise<IWithdrawalProcessingResult> {
-//   let result: IWithdrawalProcessingResult = null;
-//   await getConnection().transaction(async manager => {
-//     result = await _feeSeederDoProcess(manager, seeder);
-//   });
-//   return result;
-// }
+  const seedDeposit = deposits[0];
+  const currency = platformCurrency;
+  logger.info(`Found deposit need seeding id=${seedDeposit.id}`);
 
-// async function _feeSeederDoProcess(
-//   manager: EntityManager,
-//   seeder: BaseFeeSeeder
-// ): Promise<IWithdrawalProcessingResult> {
-//   if (seeder.requests.length === 0) {
-//     logger.info('No Seed Request');
-//     return emptyResult;
-//   }
-//   const feeSeederCurrency = getFamily();
-//   const request = seeder.requests.shift();
-//   const { toAddress, amount, depositId } = request;
+  const hotWallet = await rawdb.findAnyInternalHotWallet(manager, seedDeposit.walletId, currency.platform);
 
-//   const feeAmount = amount;
-//   const seeded = await manager.getRepository(InternalTransfer).findOne({
-//     toAddress,
-//     status: WithdrawalStatus.SENT,
-//     type: InternalTransferType.SEED,
-//     currency: feeSeederCurrency,
-//   });
-//   if (seeded) {
-//     logger.info(`${depositId} is seeded previously`);
-//     return emptyResult;
-//   }
+  if (!hotWallet) {
+    throw new Error(`Hot wallet for symbol=${currency.platform} not found`);
+  }
 
-//   const address = await manager.getRepository(Address).findOne({ address: toAddress });
-//   if (!address) {
-//     logger.error(`${toAddress} is not a deposit address`);
-//     return emptyResult;
-//   }
+  const gateway = GatewayRegistry.getGatewayInstance(currency);
+  const seedAmount = await gateway.getAverageSeedingFee();
+  let rawTx: IRawTransaction;
+  try {
+    rawTx = currency.isUTXOBased
+      ? await (gateway as BitcoinBasedGateway).constructRawTransaction(hotWallet.address, [
+          { toAddress: seedDeposit.toAddress, amount: seedAmount },
+        ])
+      : await (gateway as AccountBasedGateway).constructRawTransaction(
+          hotWallet.address,
+          seedDeposit.toAddress,
+          seedAmount
+        );
+  } catch (err) {
+    logger.error(`Cannot create raw transaction, hot wallet balance may be not enough`);
+    await rawdb.updateRecordsTimestamp(manager, Deposit, [seedDeposit.id]);
+    throw err;
+  }
 
-//   const walletId = address.walletId;
-//   // Find internal hot wallet to seed fee for funds collector
-//   const hotWallet = await rawdb.findTransferableHotWallet(
-//     manager,
-//     walletId,
-//     [{ toAddress, amount: feeAmount } as any],
-//     feeSeederCurrency,
-//     false,
-//     seeder.getGateway()
-//   );
-//   if (!hotWallet) {
-//     logger.error(`No transferable internal hot wallet walletId=${walletId} currency=${feeSeederCurrency}`);
-//     return emptyResult;
-//   }
+  if (!rawTx) {
+    throw new Error('rawTx is undefined because of unknown problem');
+  }
 
-//   const walletBalance = await manager.getRepository(WalletBalance).findOne({ walletId, currency: feeSeederCurrency });
-//   if (!walletBalance) {
-//     logger.error(`Wallet ${walletId} is missed wallet balance record`);
-//     return emptyResult;
-//   }
+  const signedTx = await gateway.signRawTransaction(rawTx.unsignedRaw, await hotWallet.extractRawPrivateKey());
+  try {
+    await gateway.sendRawTransaction(signedTx.signedRaw);
+  } catch (e) {
+    logger.error(`Can not send transaction txid=${signedTx.txid}`);
+    throw e;
+  }
 
-//   const feeWalletBalance = walletBalance.balance;
-//   if (new BigNumber(feeWalletBalance).lt(feeAmount)) {
-//     logger.error(
-//       `Wallet ${walletId} has not enough ${feeSeederCurrency.toUpperCase()} fund to seed fee for address=${
-//         address.address
-//       }`
-//     );
-//     return emptyResult;
-//   }
+  // create internal
+  const internalTransferRecord = new InternalTransfer();
+  internalTransferRecord.currency = currency.platform;
+  internalTransferRecord.walletId = hotWallet.walletId;
+  internalTransferRecord.fromAddress = 'will remove this field'; // remove
+  internalTransferRecord.toAddress = 'will remove this field'; // remove
+  internalTransferRecord.type = InternalTransferType.SEED;
+  internalTransferRecord.txid = signedTx.txid;
+  internalTransferRecord.status = WithdrawalStatus.SENT;
+  internalTransferRecord.amount = seedAmount.toString();
+  internalTransferRecord.feeCurrency = currency.platform;
 
-//   const rawPrivateKey = await hotWalletToPrivateKey(hotWallet);
-//   const tx = await seeder.getGateway().seedFee(rawPrivateKey, hotWallet.address, toAddress, feeAmount);
+  await Utils.PromiseAll([
+    rawdb.insertInternalTransfer(manager, internalTransferRecord),
+    manager.insert(DepositLog, {
+      depositId: seedDeposit.id,
+      event: DepositEvent.SEEDING,
+      refId: seedDeposit.id,
+      data: signedTx.txid,
+    }),
+  ]);
 
-//   const internalTransferRecord = new InternalTransfer();
-//   internalTransferRecord.currency = feeSeederCurrency;
-//   internalTransferRecord.walletId = hotWallet.walletId;
-//   internalTransferRecord.fromAddress = 'will remove this field'; // remove
-//   internalTransferRecord.toAddress = 'will remove this field'; // remove
-//   internalTransferRecord.type = InternalTransferType.SEED;
-//   internalTransferRecord.txid = tx.txid;
-//   internalTransferRecord.status = WithdrawalStatus.SENT;
-
-//   await rawdb.insertInternalTransfer(manager, internalTransferRecord);
-
-//   logger.info(`Seed Successfully address=${toAddress}`);
-
-//   return emptyResult;
-// }
+  logger.info(`Seed Successfully address=${seedDeposit.toAddress}`);
+}

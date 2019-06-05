@@ -5,6 +5,10 @@ import { ICurrency, Utils } from 'sota-common';
 export async function prepareWalletBalanceAll(currencies: ICurrency[]): Promise<void> {
   const connection = getConnection();
 
+  if (!currencies || currencies.length === 0) {
+    return;
+  }
+
   const platform = currencies[0].platform;
   const [wallets] = await Promise.all([connection.getRepository(Wallet).find({ currency: platform })]);
 
