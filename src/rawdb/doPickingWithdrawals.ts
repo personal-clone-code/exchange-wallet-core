@@ -1,6 +1,6 @@
 import { EntityManager } from 'typeorm';
 import { IRawTransaction, Utils } from 'sota-common';
-import { HotWallet, WithdrawalTx, Withdrawal } from '../entities';
+import { HotWallet, WithdrawalTx, Withdrawal, Deposit } from '../entities';
 import { WithdrawalStatus, WithdrawalEvent } from '../Enums';
 import * as rawdb from './index';
 
@@ -26,6 +26,8 @@ export async function doPickingWithdrawals(
   record.status = WithdrawalStatus.SIGNING;
   record.unsignedRaw = unsignedTx.unsignedRaw;
   record.unsignedTxid = unsignedTx.txid;
+  record.walletId = hotWallet.walletId;
+  record.userId = hotWallet.userId;
   record.createdAt = Utils.nowInMillis();
   record.updatedAt = Utils.nowInMillis();
 

@@ -1,7 +1,7 @@
 import { getLogger, HotWalletType, Utils, BasePlatformWorker, CurrencyRegistry, GatewayRegistry } from 'sota-common';
 import { EntityManager, getConnection } from 'typeorm';
 import { WithdrawalTx, Withdrawal } from '../../entities';
-import { WithdrawalStatus } from '../../Enums';
+import { WithdrawalStatus, WithdrawalEvent } from '../../Enums';
 import * as rawdb from '../../rawdb';
 
 const logger = getLogger('signerDoProcess');
@@ -59,6 +59,7 @@ async function _signerDoProcess(manager: EntityManager, signer: BasePlatformWork
   await Utils.PromiseAll([
     manager.getRepository(WithdrawalTx).save(withdrawalTx),
     manager.getRepository(Withdrawal).update({ withdrawalTxId }, { status, txid }),
+    rawdb.insertWithdrawalLogs(manager, [withdrawalTx.id], WithdrawalEvent.SIGNED, withdrawalTx.id, withdrawalTx.txid),
   ]);
 
   logger.info(`Signed withdrawalTx id=${withdrawalTxId}, platform=${platformCurrency.platform}, txid=${txid}`);

@@ -33,11 +33,11 @@ export class Withdrawal {
   @Column('varchar', { length: 20, name: 'status', nullable: false })
   public status: string;
 
-  @Column('varchar', { length: 255, name: 'hash_check', nullable: false })
-  public hashCheck: string;
+  // @Column('varchar', { length: 255, name: 'hash_check', nullable: false })
+  // public hashCheck: string;
 
-  @Column('int', { name: 'kms_data_key_id', nullable: true })
-  public kmsDataKeyId: number | null;
+  // @Column('int', { name: 'kms_data_key_id', nullable: true })
+  // public kmsDataKeyId: number | null;
 
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;
