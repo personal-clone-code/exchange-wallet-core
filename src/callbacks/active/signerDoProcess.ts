@@ -40,7 +40,7 @@ async function _signerDoProcess(manager: EntityManager, signer: BasePlatformWork
   const gateway = GatewayRegistry.getGatewayInstance(currency);
 
   const withdrawalTxId = withdrawalTx.id;
-  const hotWallet = await rawdb.getOneHotWallet(manager, withdrawalTx.currency, withdrawalTx.hotWalletAddress);
+  const hotWallet = await rawdb.getOneHotWallet(manager, currency.platform, withdrawalTx.hotWalletAddress);
 
   // TODO: handle multisig hot wallet
   if (hotWallet.type !== HotWalletType.Normal) {
