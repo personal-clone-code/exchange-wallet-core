@@ -10,7 +10,7 @@ import {
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection } from 'typeorm';
 import { WithdrawalStatus, WithdrawalEvent, InternalTransferType, CollectStatus, DepositEvent } from '../../Enums';
-import { WithdrawalTx, InternalTransfer, DepositLog } from '../../entities';
+import { WithdrawalTx, InternalTransfer, DepositLog, Deposit } from '../../entities';
 
 const logger = getLogger('verifierDoProcess');
 
@@ -152,15 +152,18 @@ async function verifySeedDoProcess(
   }
 
   const amount = new BigNumber(internalRecord.amount);
+  const deposit = await manager.findOne(Deposit, seeding.depositId);
 
   const tasks: Array<Promise<any>> = [
     rawdb.updateInternalTransfer(manager, internalRecord, verifiedStatus, fee),
-    manager.insert(DepositLog, {
-      depositId: seeding.depositId,
-      event: DepositEvent.SEEDED,
-      refId: internalRecord.id,
-    }),
     rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, amount.plus(fee)),
   ];
+
+  if (event === CollectStatus.COLLECTED) {
+    deposit.collectStatus = CollectStatus.UNCOLLECTED;
+    tasks.push(manager.save(deposit));
+    tasks.push(rawdb.insertDepositLog(manager, seeding.depositId, DepositEvent.SEEDED, internalRecord.id));
+  }
+
   await Utils.PromiseAll(tasks);
 }

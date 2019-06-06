@@ -8,7 +8,7 @@ import {
   BitcoinBasedGateway,
   AccountBasedGateway,
 } from 'sota-common';
-import { EntityManager, getConnection, In } from 'typeorm';
+import { EntityManager, getConnection, In, Not } from 'typeorm';
 import _ from 'lodash';
 import * as rawdb from '../../rawdb';
 import { CollectStatus, InternalTransferType, WithdrawalStatus, DepositEvent } from '../../Enums';
@@ -27,33 +27,38 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
   const platformCurrencies = CurrencyRegistry.getCurrenciesOfPlatform(platformCurrency.platform);
   const allSymbols = platformCurrencies.map(c => c.symbol);
 
-  let deposits = await manager.find(Deposit, {
-    collectStatus: CollectStatus.UNCOLLECTED,
-    currency: In(allSymbols),
-  });
-  deposits = await Utils.PromiseAll(
-    deposits.map(async deposit => {
-      if (CurrencyRegistry.getOneCurrency(deposit.currency).isNative) {
-        return null;
-      }
-      const seeding = await manager.findOne(DepositLog, {
-        depositId: deposit.id,
-        event: DepositEvent.SEEDING,
-      });
-      if (seeding) {
-        return null;
-      }
-      return deposit;
+  let seedingDepositIds = await manager
+    .getRepository(Deposit)
+    .createQueryBuilder('deposit')
+    .innerJoin(DepositLog, 'deposit_log', 'deposit_log.deposit_id = deposit.id')
+    .where('deposit.currency IN (:...symbols)', { symbols: allSymbols })
+    .andWhere('deposit.collect_status = :status', {
+      status: CollectStatus.SEEDING,
     })
-  );
-  deposits = deposits.filter(deposit => !_.isNil(deposit));
+    .andWhere('deposit_log.event = :event', { event: DepositEvent.SEEDING })
+    .select('deposit.id')
+    .getRawMany();
+  seedingDepositIds = seedingDepositIds.map(s => s.deposit_id);
 
-  if (deposits.length === 0) {
+  let seedDeposit;
+  if (seedingDepositIds.length === 0) {
+    seedDeposit = await manager.findOne(Deposit, {
+      currency: In(allSymbols),
+      collectStatus: CollectStatus.SEEDING,
+    });
+  } else {
+    seedDeposit = await manager.findOne(Deposit, {
+      currency: In(allSymbols),
+      id: Not(In(seedingDepositIds)),
+      collectStatus: CollectStatus.SEEDING,
+    });
+  }
+
+  if (!seedDeposit) {
     logger.info('No deposit need seeding');
     return;
   }
 
-  const seedDeposit = deposits[0];
   const currency = platformCurrency;
   logger.info(`Found deposit need seeding id=${seedDeposit.id}`);
 

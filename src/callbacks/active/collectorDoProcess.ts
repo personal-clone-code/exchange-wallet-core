@@ -15,8 +15,8 @@ import {
 } from 'sota-common';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
-import { CollectStatus, InternalTransferType, WithdrawalStatus } from '../../Enums';
-import { Deposit, Address, InternalTransfer } from '../../entities';
+import { CollectStatus, InternalTransferType, WithdrawalStatus, DepositEvent } from '../../Enums';
+import { Deposit, Address, InternalTransfer, DepositLog } from '../../entities';
 
 const logger = getLogger('collectorDoProcess');
 
@@ -64,9 +64,17 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
       ? await _constructUtxoBasedCollectTx(records, hotWallet.address)
       : await _constructAccountBasedCollectTx(records, hotWallet.address);
   } catch (err) {
-    logger.error(`Cannot create raw transaction, may need fee seeder`);
-    await rawdb.updateRecordsTimestamp(manager, Deposit, records.map(r => r.id)); // TBD: copy from findOneGroupOfCollectableDeposits
-    throw err;
+    logger.error(`Cannot create raw transaction, may need fee seeder err=${err}`);
+    await rawdb.updateRecordsTimestamp(manager, Deposit, records.map(r => r.id));
+    if (!currency.isNative) {
+      if (records.length > 1) {
+        throw new Error('multiple tx seeding is not supported now');
+      }
+      const record = records[0];
+      record.collectStatus = CollectStatus.SEEDING;
+      await manager.save(record);
+    }
+    return;
   }
 
   if (!rawTx) {
