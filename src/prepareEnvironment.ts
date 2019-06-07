@@ -1,8 +1,9 @@
 import { createConnection, getConnection } from 'typeorm';
-import { getLogger, BlockchainPlatform, CurrencyRegistry, EnvConfigRegistry, ICurrency } from 'sota-common';
+import { getLogger, CurrencyRegistry, EnvConfigRegistry, ICurrency, Utils, settleEnvironment } from 'sota-common';
 import { CurrencyConfig, EnvConfig, Erc20Token } from './entities';
 import _ from 'lodash';
 import { prepareWalletBalanceAll } from './callbacks';
+import { OmniToken } from './entities/OmniToken';
 
 const logger = getLogger('prepareEnvironment');
 
@@ -27,21 +28,12 @@ export async function prepareEnvironment(): Promise<void> {
   const connection = getConnection();
   logger.info(`Loading environment configurations from database...`);
 
-  const [currencyConfigs, envConfigs, erc20Tokens] = await Promise.all([
+  const [currencyConfigs, envConfigs, erc20Tokens, omniTokens] = await Promise.all([
     connection.getRepository(CurrencyConfig).find({}),
     connection.getRepository(EnvConfig).find({}),
     connection.getRepository(Erc20Token).find({}),
+    connection.getRepository(OmniToken).find({}),
   ]);
-
-  currencyConfigs.forEach(config => {
-    const platforms = _.values(BlockchainPlatform);
-    if (!_.includes(platforms, config.currency)) {
-      return;
-    }
-
-    const currency = CurrencyRegistry.getOneNativeCurrency(config.currency as BlockchainPlatform);
-    CurrencyRegistry.setCurrencyConfig(currency, config);
-  });
 
   envConfigs.forEach(config => {
     EnvConfigRegistry.setCustomEnvConfig(config.key, config.value);
@@ -53,7 +45,25 @@ export async function prepareEnvironment(): Promise<void> {
     erc20Currencies.push(CurrencyRegistry.getOneCurrency(`erc20.${token.contractAddress}`));
   });
 
-  await prepareWalletBalanceAll(erc20Currencies);
+  const omniCurrencies: ICurrency[] = [];
+  omniTokens.forEach(token => {
+    CurrencyRegistry.registerOmniAsset(token.propertyId, token.symbol, token.name, token.scale);
+    omniCurrencies.push(CurrencyRegistry.getOneCurrency(`omni.${token.propertyId}`));
+  });
+
+  currencyConfigs.forEach(config => {
+    if (!CurrencyRegistry.hasOneCurrency(config.currency)) {
+      throw new Error(`There's config for unknown currency: ${config.currency}`);
+    }
+
+    const currency = CurrencyRegistry.getOneCurrency(config.currency);
+    CurrencyRegistry.setCurrencyConfig(currency, config);
+  });
+
+  await settleEnvironment();
+
+  // seperate command by platform
+  await Utils.PromiseAll([prepareWalletBalanceAll(erc20Currencies), prepareWalletBalanceAll(omniCurrencies)]);
 
   logger.info(`Environment has been setup successfully...`);
   return;

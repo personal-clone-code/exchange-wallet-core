@@ -33,7 +33,7 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
     .innerJoin(DepositLog, 'deposit_log', 'deposit_log.deposit_id = deposit.id')
     .where('deposit.currency IN (:...symbols)', { symbols: allSymbols })
     .andWhere('deposit.collect_status = :status', {
-      status: CollectStatus.SEEDING,
+      status: CollectStatus.SEED_REQUESTED,
     })
     .andWhere('deposit_log.event = :event', { event: DepositEvent.SEEDING })
     .select('deposit.id')
@@ -44,13 +44,13 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
   if (seedingDepositIds.length === 0) {
     seedDeposit = await manager.findOne(Deposit, {
       currency: In(allSymbols),
-      collectStatus: CollectStatus.SEEDING,
+      collectStatus: CollectStatus.SEED_REQUESTED,
     });
   } else {
     seedDeposit = await manager.findOne(Deposit, {
       currency: In(allSymbols),
       id: Not(In(seedingDepositIds)),
-      collectStatus: CollectStatus.SEEDING,
+      collectStatus: CollectStatus.SEED_REQUESTED,
     });
   }
 

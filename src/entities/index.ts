@@ -20,6 +20,7 @@ export * from './Webhook';
 export * from './WebhookLog';
 export * from './WebhookProgress';
 export * from './CurrencyConfig';
+export * from './Currency';
 export * from './KmsDataKey';
 export * from './EnvConfig';
 export * from './UserCurrency';

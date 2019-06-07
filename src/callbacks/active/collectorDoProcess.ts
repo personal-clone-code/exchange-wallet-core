@@ -71,7 +71,7 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
         throw new Error('multiple tx seeding is not supported now');
       }
       const record = records[0];
-      record.collectStatus = CollectStatus.SEEDING;
+      record.collectStatus = CollectStatus.SEED_REQUESTED;
       await manager.save(record);
     }
     return;
@@ -90,6 +90,8 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     collectedTxid: signedTx.txid,
     collectStatus: CollectStatus.COLLECTING,
   });
+
+  logger.info(`Collect tx sent: address=${hotWallet.address}, txid=${signedTx.txid}`);
 }
 
 /**
