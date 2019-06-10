@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import { EntityManager, In } from 'typeorm';
-import { HotWallet, InternalTransfer, Withdrawal } from '../entities';
+import { HotWallet, InternalTransfer, Withdrawal, RallyWallet } from '../entities';
 import { InternalTransferType, WithdrawalStatus } from '../Enums';
 import { getLogger, BigNumber, ICurrency, GatewayRegistry } from 'sota-common';
 
@@ -58,7 +58,11 @@ export async function findFreeHotWallets(
   const isExternal = false;
 
   // Firstly find all hot wallet with given conditions
-  const hotWallets = await manager.find(HotWallet, { walletId, currency, isExternal });
+  const hotWallets = await manager.find(HotWallet, {
+    walletId,
+    currency,
+    isExternal,
+  });
 
   if (!hotWallets.length) {
     return [];
@@ -84,8 +88,28 @@ export async function findAnyHotWallet(
   currency: string,
   isExternal: boolean
 ): Promise<HotWallet> {
-  const hotWallet = await manager.findOne(HotWallet, { walletId, currency, isExternal });
+  const hotWallet = await manager.findOne(HotWallet, {
+    walletId,
+    currency,
+    isExternal,
+  });
   return hotWallet;
+}
+
+export async function findHotWalletByAddress(manager: EntityManager, address: string): Promise<HotWallet> {
+  const hotWallet = await manager.findOne(HotWallet, {
+    address,
+  });
+  return hotWallet;
+}
+
+export async function findAnyRallyWallet(
+  manager: EntityManager,
+  walletId: number,
+  currency: string
+): Promise<RallyWallet> {
+  const wallet = await manager.findOne(RallyWallet, { walletId, currency });
+  return wallet;
 }
 
 export async function findAnyInternalHotWallet(manager: EntityManager, walletId: number, currency: string) {

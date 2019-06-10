@@ -10,6 +10,8 @@ export * from './LatestBlock';
 export * from './User';
 export * from './Address';
 export * from './HotWallet';
+export * from './ColdWallet';
+export * from './RallyWallet';
 export * from './Wallet';
 export * from './WalletBalance';
 export * from './WalletLog';

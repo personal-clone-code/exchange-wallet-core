@@ -24,6 +24,33 @@ export class Currency {
   })
   public minimumCollectAmount: string;
 
+  @Column({
+    name: 'lower_threshold',
+    type: 'decimal',
+    precision: 40,
+    scale: 8,
+    nullable: false,
+  })
+  public lowerThreshold: string;
+
+  @Column({
+    name: 'upper_threshold',
+    type: 'decimal',
+    precision: 40,
+    scale: 8,
+    nullable: false,
+  })
+  public upperThreshold: string;
+
+  @Column({
+    name: 'middle_threshold',
+    type: 'decimal',
+    precision: 40,
+    scale: 8,
+    nullable: true,
+  })
+  public middleThreshold: string;
+
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;
 

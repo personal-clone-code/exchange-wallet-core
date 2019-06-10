@@ -10,7 +10,7 @@ export async function prepareWalletBalanceAll(currencies: ICurrency[]): Promise<
   }
 
   const platform = currencies[0].platform;
-  const [wallets] = await Promise.all([connection.getRepository(Wallet).find({ currency: platform })]);
+  const wallets = await connection.getRepository(Wallet).find({ currency: platform });
 
   const values: any[] = [];
 

@@ -37,6 +37,13 @@ export async function insertWebhookProgress(
     return record;
   });
 
+  if (progressRecords.length === 0) {
+    logger.debug(
+      `Webhook is ignored because user does not have webhook registered : userId=${userId}, type=${type}, refId=${refId}, event=${event}`
+    );
+    return;
+  }
+
   // And persist them to database
   await manager.getRepository(WebhookProgress).save(progressRecords);
 

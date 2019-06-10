@@ -124,16 +124,34 @@ async function verifyCollectDoProcess(
   event: CollectStatus,
   fee: BigNumber
 ): Promise<void> {
+  const { toAddress } = internalRecord;
+  if (!toAddress) {
+    throw new Error(`internalTx id=${internalRecord.id} does not have toAddress`);
+  }
+
   const tasks: Array<Promise<any>> = [
     rawdb.updateInternalTransfer(manager, internalRecord, verifiedStatus, fee),
     rawdb.updateDepositCollectStatus(manager, internalRecord, event),
   ];
   const currencyInfo = CurrencyRegistry.getOneCurrency(internalRecord.currency);
-  if (currencyInfo.isNative) {
-    // update fee in wallet balance
-    tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, fee));
+
+  const hotWallet = await rawdb.findHotWalletByAddress(manager, toAddress);
+
+  if (!hotWallet) {
+    // transfer to cold wallet
+    tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, new BigNumber(internalRecord.amount)));
+  } else {
+    // only minus fee for native coin
+    if (currencyInfo.isNative) {
+      tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, fee));
+    }
   }
+
   await Utils.PromiseAll(tasks);
+
+  // TODO: check threshold
+  // if upper so transfer to random cold wallet address
+  // collect or transfer
 }
 
 async function verifySeedDoProcess(

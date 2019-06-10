@@ -25,7 +25,12 @@ const logger = getLogger('rawdb::findDeposits');
 export async function findOneGroupOfCollectableDeposits(
   manager: EntityManager,
   currencies: string[]
-): Promise<{ walletId: number; currency: ICurrency; records: Deposit[] }> {
+): Promise<{
+  walletId: number;
+  currency: ICurrency;
+  records: Deposit[];
+  amount: BigNumber;
+}> {
   const uncollectStatuses = [CollectStatus.UNCOLLECTED];
   const deltaTime = 10 * 60 * 1000; // 10 minutes
   const { walletId, currency, records } = await findOneGroupOfDeposits(
@@ -36,7 +41,12 @@ export async function findOneGroupOfCollectableDeposits(
   );
 
   if (!currency || !records.length) {
-    return { walletId: 0, currency: null, records: [] };
+    return {
+      walletId: 0,
+      currency: null,
+      records: [],
+      amount: new BigNumber(0),
+    };
   }
 
   const finalRecords: Deposit[] = [];
@@ -50,26 +60,32 @@ export async function findOneGroupOfCollectableDeposits(
   // TODO: Check whether the total value is greater than the threshold here...
   // If the value does not satisfy the condition, update their timestamp and leave as it is
   // We'll check it again next time, hopefully the deposit is enough at that time
+  let totalAmount = new BigNumber(0);
+  finalRecords.map(record => {
+    totalAmount = totalAmount.plus(new BigNumber(record.amount));
+  });
+
   const currencyInfo = await manager.findOne(Currency, {
     symbol: currency.symbol,
   });
 
   if (!currencyInfo) {
     logger.info(`${currency.symbol} does not have a minimum collect amount, so collect`);
-    return { walletId, currency, records: finalRecords };
+    return { walletId, currency, records: finalRecords, amount: totalAmount };
   }
 
-  let totalAmount = new BigNumber(0);
-  finalRecords.map(record => {
-    totalAmount = totalAmount.plus(new BigNumber(record.amount));
-  });
   if (totalAmount.lt(new BigNumber(currencyInfo.minimumCollectAmount))) {
     logger.info(`${currency.symbol} does not have a enough collect amount, next time`);
     rawdb.updateRecordsTimestamp(manager, Deposit, finalRecords.map(r => r.id));
-    return { walletId: 0, currency: null, records: [] };
+    return {
+      walletId: 0,
+      currency: null,
+      records: [],
+      amount: new BigNumber(0),
+    };
   }
 
-  return { walletId, currency, records: finalRecords };
+  return { walletId, currency, records: finalRecords, amount: totalAmount };
 }
 
 /**
