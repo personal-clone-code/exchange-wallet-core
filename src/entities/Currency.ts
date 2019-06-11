@@ -3,6 +3,9 @@ import { Utils } from 'sota-common';
 
 @Entity('currency')
 export class Currency {
+  @PrimaryColumn('bigint', { name: 'id', nullable: false })
+  public id: number;
+
   @Column('int', { name: 'user_id', nullable: false })
   public userId: number;
 
