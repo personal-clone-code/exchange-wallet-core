@@ -46,7 +46,7 @@ export async function updateWalletBalanceOnlyFee(
       .update(WalletBalance)
       .set({
         balance: () => {
-          return status === CollectStatus.COLLECTED ? `balance - ${fee}` : `balance`;
+          return status === CollectStatus.COLLECTED ? `balance - ${fee.toFixed(currency.nativeScale)}` : `balance`;
         },
         updatedAt: Utils.nowInMillis(),
       })

@@ -8,7 +8,6 @@ import {
   CurrencyRegistry,
   BigNumber,
   IRawVOut,
-  IRawVIn,
   IRawTransaction,
   AccountBasedGateway,
 } from 'sota-common';

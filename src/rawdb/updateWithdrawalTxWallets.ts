@@ -83,7 +83,7 @@ export async function updateWithdrawalTxWallets(
           .createQueryBuilder()
           .update(WalletBalance)
           .set({
-            balance: () => `balance - ${fee}`,
+            balance: () => `balance - ${fee.toFixed(currency.nativeScale)}`,
             updatedAt: Utils.nowInMillis(),
           })
           .where({

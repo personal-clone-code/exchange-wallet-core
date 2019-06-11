@@ -1,5 +1,5 @@
 import { EntityManager } from 'typeorm';
-import { TransferEntry, getLogger, Utils } from 'sota-common';
+import { TransferEntry, getLogger, Utils, CurrencyRegistry } from 'sota-common';
 import * as rawdb from './';
 import { Deposit, Address, Wallet, WalletBalance, HotWallet } from '../entities';
 import { DepositEvent, WalletEvent, CollectStatus } from '../Enums';
@@ -33,6 +33,9 @@ export async function insertDeposit(manager: EntityManager, output: TransferEntr
     return;
   }
 
+  const currencyInfo = CurrencyRegistry.getOneCurrency(currency);
+  const amount = output.amount.toFixed(currencyInfo.nativeScale);
+
   // Create and store deposit record
   const deposit = new Deposit();
   deposit.walletId = wallet.id;
@@ -41,7 +44,7 @@ export async function insertDeposit(manager: EntityManager, output: TransferEntr
   deposit.txid = txid;
   deposit.blockNumber = output.tx.height;
   deposit.blockTimestamp = output.tx.timestamp;
-  deposit.amount = output.amount.toString();
+  deposit.amount = amount;
 
   if (address.isExternal) {
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
@@ -76,7 +79,7 @@ export async function insertDeposit(manager: EntityManager, output: TransferEntr
       walletId,
       currency: deposit.currency,
       event: WalletEvent.DEPOSIT,
-      balanceChange: output.amount.toString(),
+      balanceChange: amount,
       refId,
     }),
     // Persist deposit data in sub table
