@@ -3,7 +3,13 @@ import { Utils } from 'sota-common';
 
 @Entity('currency')
 export class Currency {
-  @PrimaryColumn({ name: 'symbol', nullable: false })
+  @Column('int', { name: 'user_id', nullable: false })
+  public userId: number;
+
+  @Column('int', { name: 'wallet_id', nullable: false })
+  public walletId: number;
+
+  @Column({ name: 'symbol', nullable: false })
   public symbol: string;
 
   @Column({

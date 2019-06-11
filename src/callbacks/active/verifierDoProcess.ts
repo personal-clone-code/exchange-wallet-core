@@ -219,9 +219,7 @@ async function upperThresholdHandle(
     logger.error(`Wallet id=${internalRecord.walletId} is not found`);
     return;
   }
-  const currencyConfig = await manager.findOne(Currency, {
-    symbol: internalRecord.currency,
-  });
+  const currencyConfig = await rawdb.findOneCurrency(manager, internalRecord.currency, internalRecord.walletId);
   if (!currencyConfig) {
     logger.error(`Currency threshold symbol=${internalRecord.currency} is not found`);
     return;
@@ -332,9 +330,7 @@ async function lowerThresholdHandle(manager: EntityManager, sentRecord: Withdraw
     logger.error(`hotWallet address=${sentRecord.hotWalletAddress} not found`);
     return;
   }
-  const currencyConfig = await manager.findOne(Currency, {
-    symbol: sentRecord.currency,
-  });
+  const currencyConfig = await rawdb.findOneCurrency(manager, sentRecord.currency, sentRecord.walletId);
   if (!currencyConfig || !currencyConfig.lowerThreshold) {
     logger.error(`Currency threshold symbol=${sentRecord.currency} is not found or lower threshold is not setted`);
     return;

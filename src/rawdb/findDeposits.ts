@@ -65,9 +65,7 @@ export async function findOneGroupOfCollectableDeposits(
     totalAmount = totalAmount.plus(new BigNumber(record.amount));
   });
 
-  const currencyInfo = await manager.findOne(Currency, {
-    symbol: currency.symbol,
-  });
+  const currencyInfo = await rawdb.findOneCurrency(manager, currency.symbol, walletId);
 
   if (!currencyInfo) {
     logger.info(`${currency.symbol} does not have a minimum collect amount, so collect`);

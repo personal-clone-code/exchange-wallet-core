@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import { EntityManager, In } from 'typeorm';
-import { HotWallet, InternalTransfer, Withdrawal, RallyWallet, ColdWallet } from '../entities';
+import { HotWallet, InternalTransfer, Withdrawal, RallyWallet, ColdWallet, Currency } from '../entities';
 import { InternalTransferType, WithdrawalStatus } from '../Enums';
 import { getLogger, BigNumber, ICurrency, GatewayRegistry } from 'sota-common';
 
@@ -101,6 +101,14 @@ export async function findHotWalletByAddress(manager: EntityManager, address: st
     address,
   });
   return hotWallet;
+}
+
+export async function findOneCurrency(manager: EntityManager, symbol: string, walletId: number): Promise<Currency> {
+  const currency = await manager.findOne(Currency, {
+    symbol,
+    walletId,
+  });
+  return currency;
 }
 
 export async function findAnyRallyWallet(
