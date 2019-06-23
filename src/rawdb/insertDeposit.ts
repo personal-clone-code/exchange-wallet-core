@@ -1,5 +1,5 @@
 import { EntityManager } from 'typeorm';
-import { TransferEntry, getLogger, Utils, CurrencyRegistry } from 'sota-common';
+import { TransferEntry, getLogger, Utils, CurrencyRegistry, BigNumber } from 'sota-common';
 import * as rawdb from './';
 import { Deposit, Address, Wallet, WalletBalance, HotWallet } from '../entities';
 import { DepositEvent, WalletEvent, CollectStatus } from '../Enums';
@@ -46,12 +46,21 @@ export async function insertDeposit(manager: EntityManager, output: TransferEntr
   deposit.blockTimestamp = output.tx.timestamp;
   deposit.amount = amount;
 
+  const currencyThreshold = await rawdb.findOneCurrency(manager, deposit.currency, deposit.walletId);
+  let minimumCollectAmount = new BigNumber(0);
+  if (currencyThreshold && currencyThreshold.minimumCollectAmount) {
+    minimumCollectAmount = new BigNumber(currencyThreshold.minimumCollectAmount);
+  }
+
   if (address.isExternal) {
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
     deposit.collectedTxid = 'NO_COLLECT_EXTERNAL_ADDRESS';
   } else if (await _hasHotWallet(manager, deposit.toAddress)) {
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
     deposit.collectedTxid = 'NO_COLLECT_HOT_WALLET_ADDRESS';
+  } else if (new BigNumber(deposit.amount).lt(minimumCollectAmount)) {
+    deposit.collectStatus = CollectStatus.NOTCOLLECT;
+    deposit.collectedTxid = 'NO_COLLECT_DUST_AMOUNT';
   }
 
   // Persist deposit data in main table

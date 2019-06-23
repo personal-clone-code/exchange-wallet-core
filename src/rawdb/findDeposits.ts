@@ -74,7 +74,9 @@ export async function findOneGroupOfCollectableDeposits(
 
   if (totalAmount.lt(new BigNumber(currencyInfo.minimumCollectAmount))) {
     logger.info(`${currency.symbol} does not have a enough collect amount, next time`);
-    rawdb.updateRecordsTimestamp(manager, Deposit, finalRecords.map(r => r.id));
+    if (finalRecords.length > 0) {
+      await rawdb.updateRecordsTimestamp(manager, Deposit, finalRecords.map(r => r.id));
+    }
     return {
       walletId: 0,
       currency: null,

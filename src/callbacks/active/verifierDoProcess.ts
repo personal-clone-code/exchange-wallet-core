@@ -20,7 +20,6 @@ import {
   DepositLog,
   Deposit,
   WalletBalance,
-  Currency,
   Withdrawal,
   HotWallet,
 } from '../../entities';
@@ -224,9 +223,10 @@ async function upperThresholdHandle(
     logger.error(`Currency threshold symbol=${internalRecord.currency} is not found`);
     return;
   }
-  const coldWallet = await rawdb.findAnyColdWallet(manager, internalRecord.walletId, internalRecord.currency);
+  // platform cold wallet
+  const coldWallet = await rawdb.findAnyColdWallet(manager, internalRecord.walletId, hotWallet.currency);
   if (!coldWallet) {
-    logger.error(`Cold wallet symbol=${internalRecord.currency} is not found`);
+    logger.error(`Cold wallet symbol=${hotWallet.currency} is not found`);
     return;
   }
 
@@ -311,7 +311,7 @@ async function upperThresholdHandle(
       })
       .where({
         walletId: internalRecord.walletId,
-        currency: hotWallet.currency,
+        currency: internalRecord.currency,
       })
       .execute(),
   ]);
@@ -319,7 +319,7 @@ async function upperThresholdHandle(
   logger.info(
     `Withdrawal created from hot wallet address=${hotWallet.address} to cold wallet address=${
       coldWallet.address
-    } amount=${amount}`
+    } amount=${amount} symbol=${internalRecord.currency}`
   );
 }
 
