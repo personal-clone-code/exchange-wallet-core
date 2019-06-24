@@ -184,9 +184,14 @@ export async function findOneGroupOfDeposits(
   const selectedCurrency = uncollectedDeposits[0].currency;
   const currency = CurrencyRegistry.getOneCurrency(selectedCurrency);
 
-  const records = uncollectedDeposits.filter(deposit => {
+  let records = uncollectedDeposits.filter(deposit => {
     return deposit.walletId === selectedWalletId && deposit.currency === selectedCurrency;
   });
+
+  // in this version, account base is collect one by one
+  if (!currency.isUTXOBased) {
+    records = [records[0]];
+  }
 
   return { walletId: selectedWalletId, currency, records };
 }
