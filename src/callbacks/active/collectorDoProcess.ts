@@ -60,6 +60,20 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
 
   let rawTx: IRawTransaction;
   try {
+    // check balance in network to prevent misseeding error
+    if (!currency.isNative) {
+      const currencyConfig = await rawdb.findOneCurrency(manager, currency.platform, walletId);
+      const gateway = await GatewayRegistry.getGatewayInstance(currency.platform);
+      if (records.length > 1) {
+        throw new Error('multiple tx seeding is not supported now');
+      }
+      const record = records[0];
+      const balance = await gateway.getAddressBalance(record.toAddress);
+      if (balance.gte(new BigNumber(currencyConfig.minimumCollectAmount))) {
+        throw new Error(`panic: use deposit currency=${currency.platform} to collect token deposit`);
+      }
+    }
+
     rawTx = currency.isUTXOBased
       ? await _constructUtxoBasedCollectTx(records, rallyWallet.address)
       : await _constructAccountBasedCollectTx(records, rallyWallet.address);
@@ -67,9 +81,6 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     logger.error(`Cannot create raw transaction, may need fee seeder err=${err}`);
     await rawdb.updateRecordsTimestamp(manager, Deposit, records.map(r => r.id));
     if (!currency.isNative) {
-      if (records.length > 1) {
-        throw new Error('multiple tx seeding is not supported now');
-      }
       const record = records[0];
       record.collectStatus = CollectStatus.SEED_REQUESTED;
       await manager.save(record);

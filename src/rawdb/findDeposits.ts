@@ -1,4 +1,5 @@
 import { EntityManager, In, LessThan } from 'typeorm';
+import _ from 'lodash';
 import { Deposit, Currency } from '../entities';
 import { CollectStatus } from '../Enums';
 import {
@@ -32,7 +33,7 @@ export async function findOneGroupOfCollectableDeposits(
   amount: BigNumber;
 }> {
   const uncollectStatuses = [CollectStatus.UNCOLLECTED];
-  const deltaTime = 10 * 60 * 1000; // 10 minutes
+  const deltaTime = 1 * 60 * 1000; // 1 minutes
   const { walletId, currency, records } = await findOneGroupOfDeposits(
     manager,
     currencies,
@@ -178,6 +179,19 @@ export async function findOneGroupOfDeposits(
 
   if (!uncollectedDeposits.length) {
     return { walletId: 0, currency: null, records: [] };
+  }
+
+  // prefer collect platform deposit
+  let selected = uncollectedDeposits[0];
+  const currencyInfo = CurrencyRegistry.getOneCurrency(selected.currency);
+  if (!currencyInfo.isNative) {
+    const platformSelected = _.find(uncollectedDeposits, {
+      toAddress: selected.toAddress,
+      currency: currencyInfo.platform,
+    });
+    if (platformSelected) {
+      selected = platformSelected;
+    }
   }
 
   const selectedWalletId = uncollectedDeposits[0].walletId;

@@ -159,6 +159,9 @@ async function verifyCollectDoProcess(
     // only minus fee for native coin
     if (currencyInfo.isNative) {
       tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, fee));
+    } else {
+      logger.info(`${currencyInfo.symbol} is not native, do not minus fee`);
+      tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, new BigNumber(0)));
     }
   }
 
