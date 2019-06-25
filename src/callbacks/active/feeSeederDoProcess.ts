@@ -27,7 +27,7 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
   const platformCurrencies = CurrencyRegistry.getCurrenciesOfPlatform(platformCurrency.platform);
   const allSymbols = platformCurrencies.map(c => c.symbol);
 
-  let seedingDepositIds = await manager
+  let seedingDepositAddresses = await manager
     .getRepository(Deposit)
     .createQueryBuilder('deposit')
     .innerJoin(DepositLog, 'deposit_log', 'deposit_log.deposit_id = deposit.id')
@@ -36,12 +36,12 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
       status: CollectStatus.SEED_REQUESTED,
     })
     .andWhere('deposit_log.event = :event', { event: DepositEvent.SEEDING })
-    .select('deposit.id')
+    .select('deposit.to_address')
     .getRawMany();
-  seedingDepositIds = seedingDepositIds.map(s => s.deposit_id);
+  seedingDepositAddresses = seedingDepositAddresses.map(s => s.deposit_to_address);
 
   let seedDeposit;
-  if (seedingDepositIds.length === 0) {
+  if (seedingDepositAddresses.length === 0) {
     seedDeposit = await manager.findOne(Deposit, {
       currency: In(allSymbols),
       collectStatus: CollectStatus.SEED_REQUESTED,
@@ -49,7 +49,7 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
   } else {
     seedDeposit = await manager.findOne(Deposit, {
       currency: In(allSymbols),
-      id: Not(In(seedingDepositIds)),
+      toAddress: Not(In(seedingDepositAddresses)),
       collectStatus: CollectStatus.SEED_REQUESTED,
     });
   }

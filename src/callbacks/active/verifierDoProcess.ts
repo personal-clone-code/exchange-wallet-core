@@ -12,7 +12,7 @@ import {
   EnvConfigRegistry,
 } from 'sota-common';
 import * as rawdb from '../../rawdb';
-import { EntityManager, getConnection } from 'typeorm';
+import { EntityManager, getConnection, In } from 'typeorm';
 import { WithdrawalStatus, WithdrawalEvent, InternalTransferType, CollectStatus, DepositEvent } from '../../Enums';
 import {
   WithdrawalTx,
@@ -191,7 +191,14 @@ async function verifySeedDoProcess(
   }
 
   const amount = new BigNumber(internalRecord.amount);
-  const deposit = await manager.findOne(Deposit, seeding.depositId);
+  const platformCurrency = CurrencyRegistry.getOneCurrency(internalRecord.currency);
+  const platformCurrencies = CurrencyRegistry.getCurrenciesOfPlatform(platformCurrency.platform);
+  const allSymbols = platformCurrencies.map(c => c.symbol);
+  let deposits = await manager.find(Deposit, {
+    toAddress: internalRecord.toAddress,
+    collectStatus: CollectStatus.SEED_REQUESTED,
+    currency: In(allSymbols),
+  });
 
   const tasks: Array<Promise<any>> = [
     rawdb.updateInternalTransfer(manager, internalRecord, verifiedStatus, fee),
@@ -199,8 +206,11 @@ async function verifySeedDoProcess(
   ];
 
   if (event === CollectStatus.COLLECTED) {
-    deposit.collectStatus = CollectStatus.UNCOLLECTED;
-    tasks.push(manager.save(deposit));
+    deposits = deposits.map(deposit => {
+      deposit.collectStatus = CollectStatus.UNCOLLECTED;
+      return deposit;
+    });
+    tasks.push(manager.save(deposits));
     tasks.push(rawdb.insertDepositLog(manager, seeding.depositId, DepositEvent.SEEDED, internalRecord.id));
   }
 
