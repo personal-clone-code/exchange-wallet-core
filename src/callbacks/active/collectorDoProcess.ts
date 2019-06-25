@@ -62,15 +62,25 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
   try {
     // check balance in network to prevent misseeding error
     if (!currency.isNative) {
-      const currencyConfig = await rawdb.findOneCurrency(manager, currency.platform, walletId);
       const gateway = await GatewayRegistry.getGatewayInstance(currency.platform);
+      let minAmount;
+      const currencyConfig = await rawdb.findOneCurrency(manager, currency.platform, walletId);
+      if (currencyConfig && currencyConfig.minimumCollectAmount) {
+        minAmount = new BigNumber(currencyConfig.minimumCollectAmount);
+      } else {
+        minAmount = (await gateway.getAverageSeedingFee()).multipliedBy(new BigNumber(3));
+      }
       if (records.length > 1) {
         throw new Error('multiple tx seeding is not supported now');
       }
       const record = records[0];
       const balance = await gateway.getAddressBalance(record.toAddress);
-      if (balance.gte(new BigNumber(currencyConfig.minimumCollectAmount))) {
-        throw new Error(`panic: use deposit currency=${currency.platform} to collect token deposit`);
+      if (balance.gte(minAmount)) {
+        logger.error(`deposit id=${record.id} is pending, if it last for long, collect manually`);
+        manager.update(Deposit, record.id, {
+          updatedAt: Utils.nowInMillis() + 3 * 60 * 1000, // 3 minutes
+        });
+        return;
       }
     }
 

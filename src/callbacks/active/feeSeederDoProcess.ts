@@ -104,7 +104,7 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
   internalTransferRecord.currency = currency.platform;
   internalTransferRecord.walletId = hotWallet.walletId;
   internalTransferRecord.fromAddress = 'will remove this field'; // remove
-  internalTransferRecord.toAddress = 'will remove this field'; // remove
+  internalTransferRecord.toAddress = seedDeposit.toAddress; // remove
   internalTransferRecord.type = InternalTransferType.SEED;
   internalTransferRecord.txid = signedTx.txid;
   internalTransferRecord.status = WithdrawalStatus.SENT;
