@@ -61,15 +61,13 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
 
   const currency = platformCurrency;
   logger.info(`Found deposit need seeding id=${seedDeposit.id}`);
-
-  const hotWallet = await rawdb.findAnyInternalHotWallet(manager, seedDeposit.walletId, currency.platform);
+  const gateway = GatewayRegistry.getGatewayInstance(currency);
+  const seedAmount = await gateway.getAverageSeedingFee();
+  const hotWallet = await rawdb.findSufficientHotWallet(manager, seedDeposit.walletId, currency, seedAmount);
 
   if (!hotWallet) {
     throw new Error(`Hot wallet for symbol=${currency.platform} not found`);
   }
-
-  const gateway = GatewayRegistry.getGatewayInstance(currency);
-  const seedAmount = await gateway.getAverageSeedingFee();
   let rawTx: IRawTransaction;
   try {
     rawTx = currency.isUTXOBased
