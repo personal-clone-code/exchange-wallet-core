@@ -102,7 +102,7 @@ export class WebhookProcessor extends BaseIntervalWorker {
   ): Promise<Deposit | Withdrawal> {
     let data;
     switch (type) {
-      case WebhookType.DEPOSIT:
+      case WebhookType.DEPOSIT: {
         data = await manager.getRepository(Deposit).findOne(refId);
         if (!data) {
           throw new Error(`Could not find deposit id=${refId}`);
@@ -117,13 +117,24 @@ export class WebhookProcessor extends BaseIntervalWorker {
         }
 
         return data;
+      }
 
-      case WebhookType.WITHDRAWAL:
+      case WebhookType.WITHDRAWAL: {
         data = await manager.getRepository(Withdrawal).findOne(refId);
         if (!data) {
           throw new Error(`Could not find withdrawal id=${refId}`);
         }
+
+        const userCurrency = await manager.getRepository(UserCurrency).findOne({ userId, systemSymbol: data.currency });
+        if (userCurrency) {
+          data.currency = userCurrency.customSymbol;
+        } else {
+          const currency = CurrencyRegistry.getOneCurrency(data.currency);
+          data.currency = currency.networkSymbol;
+        }
+
         return data;
+      }
 
       default:
         throw new Error(`Could not build webhook data for invalid type: ${type}`);
