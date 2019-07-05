@@ -254,7 +254,16 @@ async function upperThresholdHandle(
 
   const gateway = GatewayRegistry.getGatewayInstance(internalRecord.currency);
   const currency = CurrencyRegistry.getOneCurrency(internalRecord.currency);
-  const balance = await gateway.getAddressBalance(hotWallet.address);
+  let balance = await gateway.getAddressBalance(hotWallet.address);
+
+  const pending = await rawdb.findWithdrawalsPendingBalance(
+    manager,
+    hotWallet.walletId,
+    hotWallet.userId,
+    internalRecord.currency,
+    hotWallet.address
+  );
+  balance = balance.minus(pending);
 
   if (balance.lt(upper)) {
     logger.info(
@@ -351,7 +360,16 @@ async function lowerThresholdHandle(manager: EntityManager, sentRecord: Withdraw
 
   const lower = new BigNumber(currencyConfig.lowerThreshold);
   const gateway = GatewayRegistry.getGatewayInstance(sentRecord.currency);
-  const balance = await gateway.getAddressBalance(hotWallet.address);
+  let balance = await gateway.getAddressBalance(hotWallet.address);
+
+  const pending = await rawdb.findWithdrawalsPendingBalance(
+    manager,
+    hotWallet.walletId,
+    hotWallet.userId,
+    sentRecord.currency,
+    hotWallet.address
+  );
+  balance = balance.minus(pending);
 
   if (balance.gte(lower)) {
     return;

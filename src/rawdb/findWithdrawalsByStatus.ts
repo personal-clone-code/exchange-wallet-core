@@ -1,6 +1,7 @@
-import { getLogger } from 'sota-common';
+import { getLogger, BigNumber } from 'sota-common';
 import { Withdrawal } from '../entities';
 import { EntityManager } from 'typeorm';
+import { WithdrawalStatus } from '../Enums';
 
 const logger = getLogger('rawdb::findSentWithdrawal');
 
@@ -19,6 +20,32 @@ export async function findWithdrawalsByStatus(
     take: limit,
     where: { walletId, currency, status },
   });
+}
+
+export async function findWithdrawalsPendingBalance(
+  manager: EntityManager,
+  walletId: number,
+  userId: number,
+  currency: string,
+  address: string
+): Promise<BigNumber> {
+  const result = await manager
+    .getRepository(Withdrawal)
+    .createQueryBuilder('withdrawal')
+    .select('SUM(amount)', 'pending')
+    .where('status NOT IN (:...statuses)', {
+      statuses: [WithdrawalStatus.COMPLETED, WithdrawalStatus.FAILED],
+    })
+    .andWhere('user_id = :id', { id: userId })
+    .andWhere('wallet_id = :id', { id: walletId })
+    .andWhere('currency = :currency', { currency })
+    .andWhere('from_address = :address', { address })
+    .getRawOne();
+
+  if (!result || !result.pending) {
+    return new BigNumber(0);
+  }
+  return new BigNumber(result.pending);
 }
 
 export default findWithdrawalsByStatus;
