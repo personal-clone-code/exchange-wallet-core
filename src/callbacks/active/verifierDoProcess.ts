@@ -250,7 +250,7 @@ async function upperThresholdHandle(
   // platform cold wallet
   const coldWallet = await rawdb.findAnyColdWallet(manager, internalRecord.walletId, hotWallet.currency);
   if (!coldWallet) {
-    logger.error(`Cold wallet symbol=${hotWallet.currency} is not found`);
+    logger.warn(`Cold wallet symbol=${hotWallet.currency} is not found, ignore forwarding`);
     return;
   }
 

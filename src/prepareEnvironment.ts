@@ -1,6 +1,6 @@
 import { createConnection, getConnection } from 'typeorm';
 import { getLogger, CurrencyRegistry, EnvConfigRegistry, ICurrency, Utils, settleEnvironment } from 'sota-common';
-import { CurrencyConfig, EnvConfig, Erc20Token } from './entities';
+import { CurrencyConfig, EnvConfig, Erc20Token, Trc20Token } from './entities';
 import _ from 'lodash';
 import { prepareWalletBalanceAll } from './callbacks';
 import { OmniToken } from './entities/OmniToken';
@@ -28,10 +28,11 @@ export async function prepareEnvironment(): Promise<void> {
   const connection = getConnection();
   logger.info(`Loading environment configurations from database...`);
 
-  const [currencyConfigs, envConfigs, erc20Tokens, omniTokens] = await Promise.all([
+  const [currencyConfigs, envConfigs, erc20Tokens, trc20Tokens, omniTokens] = await Promise.all([
     connection.getRepository(CurrencyConfig).find({}),
     connection.getRepository(EnvConfig).find({}),
     connection.getRepository(Erc20Token).find({}),
+    connection.getRepository(Trc20Token).find({}),
     connection.getRepository(OmniToken).find({}),
   ]);
 
@@ -43,6 +44,12 @@ export async function prepareEnvironment(): Promise<void> {
   erc20Tokens.forEach(token => {
     CurrencyRegistry.registerErc20Token(token.contractAddress, token.symbol, token.name, token.decimal);
     erc20Currencies.push(CurrencyRegistry.getOneCurrency(`erc20.${token.contractAddress}`));
+  });
+
+  const trc20Currencies: ICurrency[] = [];
+  trc20Tokens.forEach(token => {
+    CurrencyRegistry.registerTrc20Token(token.contractAddress, token.symbol, token.name, token.decimal);
+    trc20Currencies.push(CurrencyRegistry.getOneCurrency(`trc20.${token.contractAddress}`));
   });
 
   const omniCurrencies: ICurrency[] = [];
@@ -63,7 +70,11 @@ export async function prepareEnvironment(): Promise<void> {
   await settleEnvironment();
 
   // seperate command by platform
-  await Utils.PromiseAll([prepareWalletBalanceAll(erc20Currencies), prepareWalletBalanceAll(omniCurrencies)]);
+  await Utils.PromiseAll([
+    prepareWalletBalanceAll(erc20Currencies),
+    prepareWalletBalanceAll(trc20Currencies),
+    prepareWalletBalanceAll(omniCurrencies),
+  ]);
 
   logger.info(`Environment has been setup successfully...`);
   return;
