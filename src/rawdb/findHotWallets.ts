@@ -103,6 +103,13 @@ export async function findHotWalletByAddress(manager: EntityManager, address: st
   return hotWallet;
 }
 
+export async function findColdWalletByAddress(manager: EntityManager, address: string): Promise<ColdWallet> {
+  const wallet = await manager.findOne(ColdWallet, {
+    address,
+  });
+  return wallet;
+}
+
 export async function findOneCurrency(manager: EntityManager, symbol: string, walletId: number): Promise<Currency> {
   const currency = await manager.findOne(Currency, {
     symbol,
