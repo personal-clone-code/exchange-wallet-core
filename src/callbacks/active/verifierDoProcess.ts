@@ -236,6 +236,17 @@ async function upperThresholdHandle(
     logger.error(`Currency threshold symbol=${internalRecord.currency} is not found`);
     return;
   }
+
+  const sameWallet = await rawdb.findColdWalletByAddress(manager, hotWallet.address);
+  if (sameWallet) {
+    logger.info(
+      `Hot wallet symbol=${internalRecord.currency} address=${
+        hotWallet.address
+      } is registered as a cold wallet. Ignore collecting`
+    );
+    return;
+  }
+
   // platform cold wallet
   const coldWallet = await rawdb.findAnyColdWallet(manager, internalRecord.walletId, hotWallet.currency);
   if (!coldWallet) {
@@ -371,7 +382,12 @@ async function lowerThresholdHandle(manager: EntityManager, sentRecord: Withdraw
   );
   balance = balance.minus(pending);
 
-  if (balance.gte(lower)) {
+  if (balance.gt(lower)) {
+    logger.info(
+      `Hot wallet symbol=${sentRecord.currency} address=${
+        hotWallet.address
+      } is not in lower threshold, ignore notifying`
+    );
     return;
   }
 
