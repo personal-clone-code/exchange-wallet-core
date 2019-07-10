@@ -80,7 +80,7 @@ export async function prepareEnvironment(): Promise<void> {
     prepareWalletBalanceAll(erc20Currencies),
     prepareWalletBalanceAll(trc20Currencies),
     prepareWalletBalanceAll(omniCurrencies),
-    prepareWalletBalanceAll(eosCurrencies)
+    prepareWalletBalanceAll(eosCurrencies),
   ]);
 
   logger.info(`Environment has been setup successfully...`);
