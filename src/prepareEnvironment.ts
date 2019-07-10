@@ -54,7 +54,7 @@ export async function prepareEnvironment(): Promise<void> {
   eosTokens.forEach(token => {
     CurrencyRegistry.registerEosToken(token.code, token.symbol, token.scale);
   });
-  
+
   currencyConfigs.forEach(config => {
     if (!CurrencyRegistry.hasOneCurrency(config.currency)) {
       throw new Error(`There's config for unknown currency: ${config.currency}`);
