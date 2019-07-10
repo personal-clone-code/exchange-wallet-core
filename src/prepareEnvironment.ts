@@ -1,6 +1,6 @@
 import { createConnection, getConnection } from 'typeorm';
 import { getLogger, CurrencyRegistry, EnvConfigRegistry, ICurrency, Utils, settleEnvironment } from 'sota-common';
-import { CurrencyConfig, EnvConfig, Erc20Token } from './entities';
+import { CurrencyConfig, EnvConfig, Erc20Token, EosToken } from './entities';
 import _ from 'lodash';
 import { prepareWalletBalanceAll } from './callbacks';
 import { OmniToken } from './entities/OmniToken';
@@ -28,10 +28,11 @@ export async function prepareEnvironment(): Promise<void> {
   const connection = getConnection();
   logger.info(`Loading environment configurations from database...`);
 
-  const [currencyConfigs, envConfigs, erc20Tokens, omniTokens] = await Promise.all([
+  const [currencyConfigs, envConfigs, erc20Tokens, eosTokens, omniTokens] = await Promise.all([
     connection.getRepository(CurrencyConfig).find({}),
     connection.getRepository(EnvConfig).find({}),
     connection.getRepository(Erc20Token).find({}),
+    connection.getRepository(EosToken).find({}),
     connection.getRepository(OmniToken).find({}),
   ]);
 
@@ -50,7 +51,10 @@ export async function prepareEnvironment(): Promise<void> {
     CurrencyRegistry.registerOmniAsset(token.propertyId, token.symbol, token.name, token.scale);
     omniCurrencies.push(CurrencyRegistry.getOneCurrency(`omni.${token.propertyId}`));
   });
-
+  eosTokens.forEach(token => {
+    CurrencyRegistry.registerEosToken(token.code, token.symbol, token.scale);
+  });
+  
   currencyConfigs.forEach(config => {
     if (!CurrencyRegistry.hasOneCurrency(config.currency)) {
       throw new Error(`There's config for unknown currency: ${config.currency}`);
