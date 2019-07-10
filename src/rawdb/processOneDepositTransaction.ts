@@ -63,8 +63,13 @@ async function isInternalTransfer(manager: EntityManager, tx: Transaction): Prom
 
   const addressRecord = await manager.getRepository(Address).findOne({ address: In(senderAddresses) });
   if (addressRecord) {
-    logger.error(`Tx ${tx.txid} is sent from an internal address, but it's not in internal transfer table.`);
-    return true;
+    logger.warn(
+      `Tx ${tx.txid} is sent from an internal address sender=${senderAddresses} wallet_id=${addressRecord.walletId}`
+    );
+    if (!addressRecord.isExternal && addressRecord.secret !== '') {
+      logger.error(`Tx ${tx.txid} is sent from an internal address, but it's not in internal transfer table.`);
+      return true;
+    }
   }
 
   const hotAddressRecord = await manager.getRepository(HotWallet).findOne({ address: In(senderAddresses) });
