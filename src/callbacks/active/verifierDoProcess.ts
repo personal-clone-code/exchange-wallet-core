@@ -250,7 +250,7 @@ async function upperThresholdHandle(
   // platform cold wallet
   const coldWallet = await rawdb.findAnyColdWallet(manager, internalRecord.walletId, hotWallet.currency);
   if (!coldWallet) {
-    logger.error(`Cold wallet symbol=${hotWallet.currency} is not found`);
+    logger.warn(`Cold wallet symbol=${hotWallet.currency} is not found, ignore forwarding`);
     return;
   }
 
@@ -421,7 +421,12 @@ async function lowerThresholdHandle(manager: EntityManager, sentRecord: Withdraw
     }`,
   };
 
-  const info = await transporter.sendMail(mailOptions);
-  logger.info(`Message sent: ${info.messageId}`);
-  logger.info(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    logger.info(`Message sent: ${info.messageId}`);
+    logger.info(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+  } catch (err) {
+    logger.error('Cannot send email, ignore notifying');
+    logger.error(err);
+  }
 }

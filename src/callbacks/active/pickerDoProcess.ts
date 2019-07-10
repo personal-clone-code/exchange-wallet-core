@@ -48,11 +48,11 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
     return;
   }
 
-  const withdrawalIds = candidateWithdrawals.map(w => w.id);
   const walletId = candidateWithdrawals[0].walletId;
   const symbol = candidateWithdrawals[0].currency;
   const currency = CurrencyRegistry.getOneCurrency(symbol);
   const finalPickedWithdrawals = currency.isUTXOBased ? candidateWithdrawals : [candidateWithdrawals[0]];
+  const withdrawalIds = finalPickedWithdrawals.map(w => w.id);
   const vouts: IRawVOut[] = [];
   let amount = new BigNumber(0);
   finalPickedWithdrawals.forEach(withdrawal => {
