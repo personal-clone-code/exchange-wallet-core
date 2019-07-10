@@ -421,7 +421,12 @@ async function lowerThresholdHandle(manager: EntityManager, sentRecord: Withdraw
     }`,
   };
 
-  const info = await transporter.sendMail(mailOptions);
-  logger.info(`Message sent: ${info.messageId}`);
-  logger.info(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    logger.info(`Message sent: ${info.messageId}`);
+    logger.info(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+  } catch (err) {
+    logger.error('Cannot send email, ignore notifying');
+    logger.error(err);
+  }
 }
