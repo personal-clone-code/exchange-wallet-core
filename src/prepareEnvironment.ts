@@ -58,8 +58,10 @@ export async function prepareEnvironment(): Promise<void> {
     CurrencyRegistry.registerOmniAsset(token.propertyId, token.symbol, token.name, token.scale);
     omniCurrencies.push(CurrencyRegistry.getOneCurrency(`omni.${token.propertyId}`));
   });
+  const eosCurrencies: ICurrency[] = [];
   eosTokens.forEach(token => {
     CurrencyRegistry.registerEosToken(token.code, token.symbol, token.scale);
+    eosCurrencies.push(CurrencyRegistry.getOneCurrency(`eos.${token.symbol}`));
   });
 
   currencyConfigs.forEach(config => {
@@ -78,6 +80,7 @@ export async function prepareEnvironment(): Promise<void> {
     prepareWalletBalanceAll(erc20Currencies),
     prepareWalletBalanceAll(trc20Currencies),
     prepareWalletBalanceAll(omniCurrencies),
+    prepareWalletBalanceAll(eosCurrencies)
   ]);
 
   logger.info(`Environment has been setup successfully...`);
