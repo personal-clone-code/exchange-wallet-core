@@ -82,7 +82,7 @@ async function _senderDoProcess(manager: EntityManager, sender: BasePlatformWork
   }
 
   if (sentResultObj) {
-    return updateWithdrawalAndWithdrawalTx(manager, signedRecord, txid, WithdrawalStatus.SENT);
+    return updateWithdrawalAndWithdrawalTx(manager, signedRecord, sentResultObj.txid, WithdrawalStatus.SENT);
   } else {
     logger.error(`Could not send raw transaction withdrawalTxId=${signedRecord.id}. Result is empty, please check...`);
   }
