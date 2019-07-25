@@ -56,18 +56,18 @@ async function _senderDoProcess(manager: EntityManager, sender: BasePlatformWork
     try {
       const status = await gateway.getTransactionStatus(txid);
       if (status === TransactionStatus.COMPLETED || status === TransactionStatus.CONFIRMING) {
-        updateWithdrawalAndWithdrawalTx(manager, signedRecord, txid, WithdrawalStatus.SENT);
+        await updateWithdrawalAndWithdrawalTx(manager, signedRecord, txid, WithdrawalStatus.SENT);
         return;
       }
 
       // If transaction is determined as failed, the withdrawal is failed as well
       if (status === TransactionStatus.FAILED) {
-        updateWithdrawalAndWithdrawalTx(manager, signedRecord, txid, WithdrawalStatus.FAILED);
+        await updateWithdrawalAndWithdrawalTx(manager, signedRecord, txid, WithdrawalStatus.FAILED);
         return;
       }
     } catch (e) {
       const status = TransactionStatus.UNKNOWN;
-      // updateWithdrawalAndWithdrawalTx(manager, signedRecord, txid, WithdrawalStatus.FAILED);
+      // await updateWithdrawalAndWithdrawalTx(manager, signedRecord, txid, WithdrawalStatus.FAILED);
     }
     // If transaction status is completed or confirming, both mean the withdrawal was submitted to network successfully
   }

@@ -77,10 +77,10 @@ export async function prepareEnvironment(): Promise<void> {
 
   // seperate command by platform
   await Utils.PromiseAll([
-    prepareWalletBalanceAll(erc20Currencies),
-    prepareWalletBalanceAll(trc20Currencies),
-    prepareWalletBalanceAll(omniCurrencies),
-    prepareWalletBalanceAll(eosCurrencies),
+    prepareWalletBalanceAll([...eosCurrencies, CurrencyRegistry.EOS]),
+    prepareWalletBalanceAll([...trc20Currencies, CurrencyRegistry.Tomo]),
+    prepareWalletBalanceAll([...erc20Currencies, CurrencyRegistry.Ethereum]),
+    prepareWalletBalanceAll([...omniCurrencies, CurrencyRegistry.Bitcoin]),
   ]);
 
   logger.info(`Environment has been setup successfully...`);
