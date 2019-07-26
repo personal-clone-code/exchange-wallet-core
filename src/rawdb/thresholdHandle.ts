@@ -8,11 +8,13 @@ import {
   UTXOBasedGateway,
   AccountBasedGateway,
   ICurrency,
+  EnvConfigRegistry,
 } from 'sota-common';
-import * as rawdb from '../rawdb';
+import * as rawdb from '.';
 import { EntityManager, getConnection, In } from 'typeorm';
 import { WithdrawalStatus, WithdrawalEvent, InternalTransferType, CollectStatus, DepositEvent } from '../Enums';
 import { WithdrawalTx, InternalTransfer, DepositLog, Deposit, WalletBalance, Withdrawal, HotWallet } from '../entities';
+const nodemailer = require('nodemailer');
 const logger = getLogger('upperThresholdHandle');
 
 export async function upperThresholdHandle(
@@ -150,4 +152,79 @@ export async function upperThresholdHandle(
       coldWallet.address
     } amount=${amount} symbol=${iCurrency.symbol}`
   );
+}
+
+export async function lowerThresholdHandle(manager: EntityManager, sentRecord: WithdrawalTx) {
+  // do not throw Error in this function, this logic is optional
+  const hotWallet = await rawdb.findHotWalletByAddress(manager, sentRecord.hotWalletAddress);
+  if (!hotWallet) {
+    logger.error(`hotWallet address=${sentRecord.hotWalletAddress} not found`);
+    return;
+  }
+  const currencyConfig = await rawdb.findOneCurrency(manager, sentRecord.currency, sentRecord.walletId);
+  if (!currencyConfig || !currencyConfig.lowerThreshold) {
+    logger.error(`Currency threshold symbol=${sentRecord.currency} is not found or lower threshold is not setted`);
+    return;
+  }
+
+  const lower = new BigNumber(currencyConfig.lowerThreshold);
+  const gateway = GatewayRegistry.getGatewayInstance(sentRecord.currency);
+  let balance = await gateway.getAddressBalance(hotWallet.address);
+
+  const pending = await rawdb.findWithdrawalsPendingBalance(
+    manager,
+    hotWallet.walletId,
+    hotWallet.userId,
+    sentRecord.currency,
+    hotWallet.address
+  );
+  balance = balance.minus(pending);
+
+  if (balance.gt(lower)) {
+    logger.info(
+      `Hot wallet symbol=${sentRecord.currency} address=${
+        hotWallet.address
+      } is not in lower threshold, ignore notifying`
+    );
+    return;
+  }
+
+  // TBD: this code from Logger.ts, should move to Util or somewhere better
+  logger.info(`Hot wallet balance is in lower threshold address=${hotWallet.address}`);
+  const mailerAccount = EnvConfigRegistry.getCustomEnvConfig('MAILER_ACCOUNT');
+  const mailerPassword = EnvConfigRegistry.getCustomEnvConfig('MAILER_PASSWORD');
+  const mailerReceiver = EnvConfigRegistry.getCustomEnvConfig('MAILER_RECEIVER');
+
+  if (!mailerAccount || !mailerPassword || !mailerReceiver) {
+    logger.error(
+      `Revise this: MAILER_ACCOUNT=${mailerAccount}, MAILER_PASSWORD=${mailerPassword}, MAILER_RECEIVER=${mailerReceiver}`
+    );
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: mailerAccount,
+      pass: mailerPassword,
+    },
+  });
+
+  const mailOptions = {
+    from: mailerAccount,
+    to: mailerReceiver,
+    subject: `Hot wallet ${hotWallet.address} is near lower threshold`,
+    html: `lower_threshold=${lower}, current_balance=${balance}, address=${hotWallet.address}, currency=${
+      sentRecord.currency
+    }`,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    logger.info(`Message sent: ${info.messageId}`);
+    logger.info(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+  } catch (err) {
+    logger.error('Cannot send email, ignore notifying');
+    logger.error(err);
+  }
 }
