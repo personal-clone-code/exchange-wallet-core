@@ -172,7 +172,7 @@ async function verifyCollectDoProcess(
     return;
   }
 
-  await upperThresholdHandle(manager, internalRecord, hotWallet);
+  await rawdb.upperThresholdHandle(manager, CurrencyRegistry.getOneCurrency(internalRecord.currency), hotWallet);
 }
 
 async function verifySeedDoProcess(
@@ -215,14 +215,6 @@ async function verifySeedDoProcess(
   }
 
   await Utils.PromiseAll(tasks);
-}
-
-async function upperThresholdHandle(
-  manager: EntityManager,
-  internalRecord: InternalTransfer,
-  hotWallet: HotWallet
-): Promise<void> {
-  await rawdb.upperThresholdHandle(manager, CurrencyRegistry.getOneCurrency(internalRecord.currency), hotWallet);
 }
 
 async function lowerThresholdHandle(manager: EntityManager, sentRecord: WithdrawalTx) {
