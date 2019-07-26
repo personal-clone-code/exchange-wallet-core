@@ -47,11 +47,11 @@ export async function prepareEnvironment(): Promise<void> {
     erc20Currencies.push(CurrencyRegistry.getOneCurrency(`erc20.${token.contractAddress}`));
   });
 
-  const trc20Currencies: ICurrency[] = [];
-  trc20Tokens.forEach(token => {
-    CurrencyRegistry.registerTrc20Token(token.contractAddress, token.symbol, token.name, token.decimal);
-    trc20Currencies.push(CurrencyRegistry.getOneCurrency(`trc20.${token.contractAddress}`));
-  });
+  // const trc20Currencies: ICurrency[] = [];
+  // trc20Tokens.forEach(token => {
+  //   CurrencyRegistry.registerTrc20Token(token.contractAddress, token.symbol, token.name, token.decimal);
+  //   trc20Currencies.push(CurrencyRegistry.getOneCurrency(`trc20.${token.contractAddress}`));
+  // });
 
   const omniCurrencies: ICurrency[] = [];
   omniTokens.forEach(token => {
@@ -78,7 +78,7 @@ export async function prepareEnvironment(): Promise<void> {
   // seperate command by platform
   await Utils.PromiseAll([
     prepareWalletBalanceAll([...eosCurrencies, CurrencyRegistry.EOS]),
-    prepareWalletBalanceAll([...trc20Currencies, CurrencyRegistry.Tomo]),
+    // prepareWalletBalanceAll([...trc20Currencies, CurrencyRegistry.Tomo]),
     prepareWalletBalanceAll([...erc20Currencies, CurrencyRegistry.Ethereum]),
     prepareWalletBalanceAll([...omniCurrencies, CurrencyRegistry.Bitcoin]),
   ]);
