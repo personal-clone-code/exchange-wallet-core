@@ -28,13 +28,13 @@ export async function prepareEnvironment(): Promise<void> {
   const connection = getConnection();
   logger.info(`Loading environment configurations from database...`);
 
-  const [currencyConfigs, envConfigs, erc20Tokens, trc20Tokens, eosTokens, omniTokens] = await Promise.all([
+  const [currencyConfigs, envConfigs, erc20Tokens] = await Promise.all([
     connection.getRepository(CurrencyConfig).find({}),
     connection.getRepository(EnvConfig).find({}),
     connection.getRepository(Erc20Token).find({}),
-    connection.getRepository(Trc20Token).find({}),
-    connection.getRepository(EosToken).find({}),
-    connection.getRepository(OmniToken).find({}),
+    // connection.getRepository(Trc20Token).find({}),
+    // connection.getRepository(EosToken).find({}),
+    // connection.getRepository(OmniToken).find({}),
   ]);
 
   envConfigs.forEach(config => {
@@ -53,16 +53,16 @@ export async function prepareEnvironment(): Promise<void> {
   //   trc20Currencies.push(CurrencyRegistry.getOneCurrency(`trc20.${token.contractAddress}`));
   // });
 
-  const omniCurrencies: ICurrency[] = [];
-  omniTokens.forEach(token => {
-    CurrencyRegistry.registerOmniAsset(token.propertyId, token.symbol, token.name, token.scale);
-    omniCurrencies.push(CurrencyRegistry.getOneCurrency(`omni.${token.propertyId}`));
-  });
-  const eosCurrencies: ICurrency[] = [];
-  eosTokens.forEach(token => {
-    CurrencyRegistry.registerEosToken(token.code, token.symbol, token.scale);
-    eosCurrencies.push(CurrencyRegistry.getOneCurrency(`eos.${token.symbol}`));
-  });
+  // const omniCurrencies: ICurrency[] = [];
+  // omniTokens.forEach(token => {
+  //   CurrencyRegistry.registerOmniAsset(token.propertyId, token.symbol, token.name, token.scale);
+  //   omniCurrencies.push(CurrencyRegistry.getOneCurrency(`omni.${token.propertyId}`));
+  // });
+  // const eosCurrencies: ICurrency[] = [];
+  // eosTokens.forEach(token => {
+  //   CurrencyRegistry.registerEosToken(token.code, token.symbol, token.scale);
+  //   eosCurrencies.push(CurrencyRegistry.getOneCurrency(`eos.${token.symbol}`));
+  // });
 
   currencyConfigs.forEach(config => {
     if (!CurrencyRegistry.hasOneCurrency(config.currency)) {
@@ -77,10 +77,10 @@ export async function prepareEnvironment(): Promise<void> {
 
   // seperate command by platform
   await Utils.PromiseAll([
-    prepareWalletBalanceAll([...eosCurrencies, CurrencyRegistry.EOS]),
+    // prepareWalletBalanceAll([...eosCurrencies, CurrencyRegistry.EOS]),
     // prepareWalletBalanceAll([...trc20Currencies, CurrencyRegistry.Tomo]),
     prepareWalletBalanceAll([...erc20Currencies, CurrencyRegistry.Ethereum]),
-    prepareWalletBalanceAll([...omniCurrencies, CurrencyRegistry.Bitcoin]),
+    // prepareWalletBalanceAll([...omniCurrencies, CurrencyRegistry.Bitcoin]),
   ]);
 
   logger.info(`Environment has been setup successfully...`);
