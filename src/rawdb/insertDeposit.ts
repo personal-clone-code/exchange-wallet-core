@@ -1,5 +1,5 @@
 import { EntityManager } from 'typeorm';
-import { TransferEntry, getLogger, Utils, CurrencyRegistry, BigNumber } from 'sota-common';
+import { TransferEntry, getLogger, Utils, CurrencyRegistry, BigNumber, BlockchainPlatform } from 'sota-common';
 import * as rawdb from './';
 import { Deposit, Address, Wallet, WalletBalance, HotWallet } from '../entities';
 import { DepositEvent, WalletEvent, CollectStatus } from '../Enums';
@@ -96,6 +96,16 @@ export async function insertDeposit(manager: EntityManager, output: TransferEntr
     // Create deposit log and webhook progress
     rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId),
   ]);
+
+  if (currency === BlockchainPlatform.Cardano) {
+    const hotWallet = await rawdb.findAnyHotWallet(manager, wallet.id, output.currency.platform,false)
+    await rawdb.upperThresholdHandle(manager, output.currency, hotWallet);
+  } else {
+    const hotWallet = await rawdb.findHotWalletByAddress(manager, output.address);
+    if (hotWallet) {
+      await rawdb.upperThresholdHandle(manager, output.currency, hotWallet);
+    }    
+  }
 }
 
 export default insertDeposit;

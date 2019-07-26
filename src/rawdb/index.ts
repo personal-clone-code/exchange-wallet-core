@@ -29,3 +29,5 @@ export * from './updateWalletBalanceOnlyFee';
 export * from './doPickingWithdrawals';
 export * from './getNextPickedWithdrawals';
 export * from './getNextCurrencybyStatus';
+export * from './upperThresholdHandle';
+

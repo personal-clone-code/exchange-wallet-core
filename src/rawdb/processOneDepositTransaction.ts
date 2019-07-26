@@ -1,8 +1,9 @@
-import { EntityManager, In } from 'typeorm';
-import { getLogger, Utils } from 'sota-common';
+import { EntityManager, In, Raw } from 'typeorm';
+import { getLogger, Utils, BlockchainPlatform } from 'sota-common';
 import { BaseCrawler, Transaction } from 'sota-common';
 import insertDeposit from './insertDeposit';
 import { Address, HotWallet, InternalTransfer } from '../entities';
+import * as rawdb from '../rawdb';
 
 const logger = getLogger('processOneDepositTransaction');
 
