@@ -98,13 +98,13 @@ export async function insertDeposit(manager: EntityManager, output: TransferEntr
   ]);
 
   if (currency === BlockchainPlatform.Cardano) {
-    const hotWallet = await rawdb.findAnyHotWallet(manager, wallet.id, output.currency.platform,false)
+    const hotWallet = await rawdb.findAnyHotWallet(manager, wallet.id, output.currency.platform, false);
     await rawdb.upperThresholdHandle(manager, output.currency, hotWallet);
   } else {
     const hotWallet = await rawdb.findHotWalletByAddress(manager, output.address);
     if (hotWallet) {
       await rawdb.upperThresholdHandle(manager, output.currency, hotWallet);
-    }    
+    }
   }
 }
 
