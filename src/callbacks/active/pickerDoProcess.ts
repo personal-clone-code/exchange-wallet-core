@@ -99,7 +99,8 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
     } else {
       const fromAddress = hotWallet.address;
       const toAddress = vouts[0].toAddress;
-      unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(fromAddress, toAddress, amount);
+      const tag = JSON.parse(finalPickedWithdrawals[0].note).tag;
+      unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(fromAddress, toAddress, amount, tag);
     }
   } catch (err) {
     // Most likely the fail reason is insufficient balance from hot wallet

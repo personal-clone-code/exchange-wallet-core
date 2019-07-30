@@ -182,7 +182,7 @@ async function _constructAccountBasedCollectTx(deposits: Deposit[], toAddress: s
     return memo.plus(new BigNumber(deposit.amount));
   }, new BigNumber(0));
 
-  return gateway.constructRawTransaction(deposits[0].toAddress, toAddress, amount, currency.isNative);
+  return gateway.constructRawTransaction(deposits[0].toAddress, toAddress, amount, '', currency.isNative);
 }
 
 async function _collectorSignDoProcess(
