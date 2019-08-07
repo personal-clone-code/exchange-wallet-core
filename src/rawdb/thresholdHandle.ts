@@ -107,7 +107,8 @@ export async function upperThresholdHandle(
       unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
         withdrawal.fromAddress,
         withdrawal.toAddress,
-        amount
+        amount,
+        {}
       );
     }
   } catch (err) {

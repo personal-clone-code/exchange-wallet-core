@@ -77,7 +77,8 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
       : await (gateway as AccountBasedGateway).constructRawTransaction(
           hotWallet.address,
           seedDeposit.toAddress,
-          seedAmount
+          seedAmount,
+          {}
         );
   } catch (err) {
     logger.error(`Cannot create raw transaction, hot wallet balance may be not enough`);
