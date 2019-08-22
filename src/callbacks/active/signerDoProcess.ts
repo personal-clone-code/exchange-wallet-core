@@ -5,6 +5,7 @@ import { WithdrawalStatus, WithdrawalEvent } from '../../Enums';
 import * as rawdb from '../../rawdb';
 
 const logger = getLogger('signerDoProcess');
+let failedCounter = 0;
 
 export async function signerDoProcess(signer: BasePlatformWorker): Promise<void> {
   await getConnection().transaction(async manager => {
@@ -41,6 +42,26 @@ async function _signerDoProcess(manager: EntityManager, signer: BasePlatformWork
 
   const withdrawalTxId = withdrawalTx.id;
   const hotWallet = await rawdb.getOneHotWallet(manager, currency.platform, withdrawalTx.hotWalletAddress);
+  const isBusy = await rawdb.checkHotWalletIsBusy(manager, hotWallet, [WithdrawalStatus.SIGNED, WithdrawalStatus.SENT]);
+  // Check current hot wallet is busy?
+  if (isBusy) {
+    failedCounter += 1;
+    if (failedCounter % 50 === 0) {
+      // Raise issue if the hot wallet is not available for too long...
+      logger.error(
+        `No available hot wallet walletId=${hotWallet.walletId} currency=${currency} failedCounter=${failedCounter}`
+      );
+    } else {
+      // Else just print info and continue to wait
+      logger.info(`No available hot wallet at the moment: walletId=${hotWallet.walletId} currency=${currency.symbol}`);
+    }
+
+    await rawdb.updateRecordsTimestamp(manager, WithdrawalTx, [withdrawalTxId]);
+
+    return;
+  }
+
+  failedCounter = 0;
 
   // TODO: handle multisig hot wallet
   if (hotWallet.type !== HotWalletType.Normal) {
