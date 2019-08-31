@@ -1,5 +1,13 @@
 import { createConnection, getConnection } from 'typeorm';
-import { getLogger, CurrencyRegistry, EnvConfigRegistry, ICurrency, Utils, settleEnvironment } from 'sota-common';
+import {
+  getLogger,
+  CurrencyRegistry,
+  EnvConfigRegistry,
+  ICurrency,
+  Utils,
+  settleEnvironment,
+  getRedisSubscriber,
+} from 'sota-common';
 import { CurrencyConfig, EnvConfig, Erc20Token, EosToken, Trc20Token } from './entities';
 import _ from 'lodash';
 import { prepareWalletBalanceAll } from './callbacks';
@@ -73,6 +81,9 @@ export async function prepareEnvironment(): Promise<void> {
     CurrencyRegistry.setCurrencyConfig(currency, config);
   });
 
+  const redisSubscriber = getRedisSubscriber();
+  redisSubscriber.on('message', onRedisMessage);
+
   await settleEnvironment();
 
   // seperate command by platform
@@ -85,4 +96,67 @@ export async function prepareEnvironment(): Promise<void> {
 
   logger.info(`Environment has been setup successfully...`);
   return;
+}
+
+function onRedisMessage(channel: any, message: any) {
+  const appId = EnvConfigRegistry.getAppId();
+  if (appId !== channel) {
+    return;
+  }
+
+  // To reload data, just exit and let supervisor starts process again
+  // This is deprecated now. Will be removed shortly, when all the publishers are updated
+  if (message === 'EVENT_NEW_ERC20_TOKEN_ADDED' || message === 'EVENT_NEW_ERC20_TOKEN_REMOVED') {
+    logger.warn(`RedisChannel::subscribeRedisChannel on message=${message}. Will exit to respawn...`);
+    process.exit(0);
+  }
+
+  let messageObj: any = null;
+  try {
+    messageObj = JSON.parse(message);
+  } catch (e) {
+    logger.warn(`Unexpected message from redis: ${message}`);
+  }
+
+  if (!messageObj) {
+    return;
+  }
+
+  if (messageObj) {
+    const contractAddress = messageObj.data.toString();
+    switch (messageObj.event) {
+      case 'EVENT_NEW_ERC20_TOKEN_ADDED':
+        findAndRegisterNewErc20Token(contractAddress).catch(e => {
+          logger.error(`Could not find and load new added ERC20 token [${contractAddress}] due to error:`);
+          logger.error(e);
+        });
+        break;
+
+      case 'EVENT_NEW_ERC20_TOKEN_REMOVED':
+        findAndUnregisterErc20Token(contractAddress).catch(e => {
+          logger.error(`Could not find and delete added ERC20 token [${contractAddress}] due to error:`);
+          logger.error(e);
+        });
+        break;
+
+      default:
+        break;
+    }
+  }
+}
+
+async function findAndRegisterNewErc20Token(contractAddress: string) {
+  const connection = getConnection();
+  const token = await connection.getRepository(Erc20Token).findOne({ contractAddress });
+  if (!token) {
+    throw new Error(`Could not find ERC20 token in database: ${contractAddress}`);
+  }
+
+  CurrencyRegistry.registerErc20Token(token.contractAddress, token.symbol, token.name, token.decimal);
+  logger.info(`Register new added ERC20 token: contract=${token.contractAddress} symbol=${token.symbol}`);
+}
+
+async function findAndUnregisterErc20Token(contractAddress: string) {
+  CurrencyRegistry.unregisterErc20Token(contractAddress);
+  logger.info(`Unregister new added ERC20 token: contract=${contractAddress}`);
 }
