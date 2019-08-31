@@ -9,19 +9,45 @@ import {
   AccountBasedGateway,
   ICurrency,
   EnvConfigRegistry,
+  BlockchainPlatform,
 } from 'sota-common';
 import * as rawdb from '.';
-import { EntityManager, getConnection, In } from 'typeorm';
-import { WithdrawalStatus, WithdrawalEvent, InternalTransferType, CollectStatus, DepositEvent } from '../Enums';
-import { WithdrawalTx, InternalTransfer, DepositLog, Deposit, WalletBalance, Withdrawal, HotWallet } from '../entities';
+import { EntityManager } from 'typeorm';
+import { WithdrawalStatus } from '../Enums';
+import { WithdrawalTx, WalletBalance, Withdrawal, HotWallet, Wallet } from '../entities';
 const nodemailer = require('nodemailer');
-const logger = getLogger('upperThresholdHandle');
+const logger = getLogger('ThresholdHandle');
+
+export async function checkUpperThreshold(manager: EntityManager, platform: BlockchainPlatform) {
+  const allCurrencies = CurrencyRegistry.getCurrenciesOfPlatform(platform);
+  const wallets = await manager.getRepository(Wallet).find({
+    where: {
+      currency: platform,
+    },
+  });
+  await Promise.all(
+    wallets.map(async wallet => {
+      const hotWallets = await rawdb.findFreeHotWallets(manager, wallet.id, platform);
+      await Promise.all(
+        allCurrencies.map(
+          async _currency =>
+            await Promise.all(hotWallets.map(_hotWallet => rawdb.upperThresholdHandle(manager, _currency, _hotWallet)))
+        )
+      );
+    })
+  );
+}
 
 export async function upperThresholdHandle(
   manager: EntityManager,
   iCurrency: ICurrency,
   hotWallet: HotWallet
 ): Promise<void> {
+  const pendingStatuses = [WithdrawalStatus.SENT, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING];
+  if (await rawdb.checkHotWalletIsBusy(manager, hotWallet, pendingStatuses)) {
+    logger.info(`Hot wallet address=${hotWallet.address} is busy, ignore collecting`);
+    return;
+  }
   //  do not throw Error in this function, this logic is optional
   const walletBalance = await manager.findOne(WalletBalance, {
     walletId: hotWallet.walletId,
@@ -84,75 +110,39 @@ export async function upperThresholdHandle(
   }
 
   const withdrawal = new Withdrawal();
-  const amount = balance.minus(middle);
+  const amount = balance.minus(middle).toFixed(currency.nativeScale);
   withdrawal.currency = iCurrency.symbol;
   withdrawal.fromAddress = hotWallet.address;
   withdrawal.note = 'from machine';
-  withdrawal.amount = amount.toString();
+  withdrawal.amount = amount;
   withdrawal.userId = 0;
   withdrawal.walletId = hotWallet.walletId;
   withdrawal.toAddress = coldWallet.address;
   withdrawal.status = WithdrawalStatus.UNSIGNED;
-
-  let unsignedTx: IRawTransaction = null;
-  try {
-    if (currency.isUTXOBased) {
-      unsignedTx = await (gateway as UTXOBasedGateway).constructRawTransaction(hotWallet.address, [
-        {
-          toAddress: withdrawal.toAddress,
-          amount,
-        },
-      ]);
-    } else {
-      unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
-        withdrawal.fromAddress,
-        withdrawal.toAddress,
-        amount,
-        {}
-      );
-    }
-  } catch (err) {
-    // Most likely the fail reason is insufficient balance from hot wallet
-    // Or there was problem with connection to the full node
-    logger.error(
-      `Could not create raw tx address=${withdrawal.fromAddress}, to=${withdrawal.toAddress}, amount=${amount}`
-    );
-    return;
-  }
-
-  if (!unsignedTx) {
-    logger.error(`Could not construct unsigned tx. Just wait until the next tick...`);
-    return;
-  }
-
   // Create withdrawal tx record
   await manager.save(withdrawal);
-  await Utils.PromiseAll([
-    rawdb.doPickingWithdrawals(manager, unsignedTx, hotWallet, currency.symbol, [withdrawal.id]),
-    manager
-      .createQueryBuilder()
-      .update(WalletBalance)
-      .set({
-        balance: () => {
-          return `balance - ${amount.toFixed(currency.nativeScale)}`;
-        },
-        withdrawalPending: () => {
-          return `withdrawal_pending + ${amount.toFixed(currency.nativeScale)}`;
-        },
-        updatedAt: Utils.nowInMillis(),
-      })
-      .where({
-        walletId: hotWallet.walletId,
-        currency: iCurrency.symbol,
-      })
-      .execute(),
-  ]);
-
-  logger.info(
-    `Withdrawal created from hot wallet address=${hotWallet.address} to cold wallet address=${
-      coldWallet.address
-    } amount=${amount} symbol=${iCurrency.symbol}`
-  );
+  await manager
+    .createQueryBuilder()
+    .update(WalletBalance)
+    .set({
+      balance: () => {
+        return `balance - ${amount}`;
+      },
+      withdrawalPending: () => {
+        return `withdrawal_pending + ${amount}`;
+      },
+      updatedAt: Utils.nowInMillis(),
+    })
+    .where({
+      walletId: hotWallet.walletId,
+      currency: iCurrency.symbol,
+    })
+    .execute(),
+    logger.info(
+      `Withdrawal created from hot wallet address=${hotWallet.address} to cold wallet address=${
+        coldWallet.address
+      } amount=${amount} symbol=${iCurrency.symbol}`
+    );
 }
 
 export async function lowerThresholdHandle(manager: EntityManager, sentRecord: WithdrawalTx) {
@@ -228,4 +218,13 @@ export async function lowerThresholdHandle(manager: EntityManager, sentRecord: W
     logger.error('Cannot send email, ignore notifying');
     logger.error(err);
   }
+}
+
+export async function checkHotWalletIsSufficient(hotWallet: HotWallet, amount: BigNumber) {
+  const gateway = GatewayRegistry.getGatewayInstance(hotWallet.currency);
+  const hotWalletBalance = await gateway.getAddressBalance(hotWallet.address);
+  if (hotWalletBalance.gte(amount)) {
+    return true;
+  }
+  return false;
 }

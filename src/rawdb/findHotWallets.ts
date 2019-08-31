@@ -219,3 +219,26 @@ export async function getOneHotWallet(manager: EntityManager, currency: string, 
 
   return hotWallet;
 }
+
+export async function checkHotWalletIsBusy(
+  manager: EntityManager,
+  hotWallet: HotWallet,
+  pendingStatuses: string[]
+): Promise<boolean> {
+  const [allPendingWithdrawals, seedTransactions] = await Promise.all([
+    manager.find(Withdrawal, {
+      fromAddress: hotWallet.address,
+      status: In(pendingStatuses),
+    }),
+    manager.find(InternalTransfer, {
+      type: InternalTransferType.SEED,
+      status: In(pendingStatuses),
+    }),
+  ]);
+
+  if (!allPendingWithdrawals.length && !seedTransactions.length) {
+    return false;
+  }
+
+  return true;
+}
