@@ -10,8 +10,8 @@ import {
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection } from 'typeorm';
 import { WithdrawalEvent, WithdrawalStatus } from '../../Enums';
+import { WithdrawalTx, Withdrawal } from '../../entities';
 import util from 'util';
-import { WithdrawalTx } from '../../entities';
 
 const logger = getLogger('senderDoProcess');
 
@@ -77,17 +77,40 @@ async function _senderDoProcess(manager: EntityManager, sender: BasePlatformWork
   try {
     sentResultObj = await gateway.sendRawTransaction(signedRecord.signedRaw);
   } catch (e) {
-    logger.error(`Cannot broadcast withdrawlTxId=${signedRecord.id} due to error=${util.inspect(e)}`);
+    let errInfo = e;
+    let extraInfo = null;
+
+    // Axios error
+    if (e.isAxiosError) {
+      extraInfo = {
+        url: e.config.url,
+        method: e.config.method,
+        data: e.config.data,
+        headers: e.config.headers,
+        auth: e.config.auth,
+        timeout: e.config.timeout,
+        status: e.response.status,
+      };
+      errInfo = JSON.stringify(e.response.data);
+    }
+
+    logger.error(
+      `Cannot broadcast withdrawlTxId=${signedRecord.id} due to error\
+        errInfo=${util.inspect(errInfo)} \
+        extraInfo=${util.inspect(extraInfo)}`
+    );
+
+    // The withdrawal record is created wrongly. It must be reconstructed
+    if ((errInfo.toString() as string).includes('nonce too low')) {
+      await reconstructWithdrawal(manager, signedRecord);
+    }
+
     return;
   }
 
   if (sentResultObj) {
-    return updateWithdrawalAndWithdrawalTx(
-      manager,
-      signedRecord,
-      sentResultObj.txid ? sentResultObj.txid : signedRecord.txid,
-      WithdrawalStatus.SENT
-    );
+    await updateWithdrawalAndWithdrawalTx(manager, signedRecord, sentResultObj.txid, WithdrawalStatus.SENT);
+    return;
   } else {
     logger.error(`Could not send raw transaction withdrawalTxId=${signedRecord.id}. Result is empty, please check...`);
   }
@@ -121,4 +144,18 @@ async function updateWithdrawalAndWithdrawalTx(
   ]);
 
   return;
+}
+
+/**
+ * The withdrawal record is constructed wrongly
+ * This correction will:
+ * - Remove the pending withdrawal_tx
+ * - Mark the withdrawal status to `unsigned`
+ * And the picker and signer will do the signing flow again
+ */
+async function reconstructWithdrawal(manager: EntityManager, withdrawalTx: WithdrawalTx): Promise<void> {
+  await Promise.all([
+    manager.update(WithdrawalTx, withdrawalTx.id, { status: WithdrawalStatus.FAILED }),
+    rawdb.updateWithdrawalsStatus(manager, withdrawalTx.id, WithdrawalStatus.UNSIGNED, WithdrawalEvent.TXID_CHANGED),
+  ]);
 }

@@ -15,13 +15,23 @@ export async function updateWithdrawalsStatus(
   transactionResult?: ISubmittedTransaction,
   data?: string
 ): Promise<Withdrawal[]> {
+  // Add note if it's not provided
+  if (!data) {
+    // The old tx is failed and need to be reconstructed
+    if (status === WithdrawalStatus.UNSIGNED) {
+      data = `withdrawal_tx_id=${withdrawalTxId}`;
+    }
+  }
+
   // Find wallet of record
   const records = await manager.find(Withdrawal, { withdrawalTxId });
   await Utils.PromiseAll(
     records.map(async record => {
       record.status = status;
       if (transactionResult) {
-        record.txid = transactionResult.txid;
+        if (transactionResult.hasOwnProperty('txid')) {
+          record.txid = transactionResult.txid;
+        }
       }
 
       const [newRecord] = await Utils.PromiseAll([
@@ -32,5 +42,6 @@ export async function updateWithdrawalsStatus(
       return insertWithdrawalLog(manager, newRecord.txid, newRecord.id, event, data);
     })
   );
+
   return records;
 }

@@ -103,7 +103,13 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
   }
 
   // Create withdrawal tx record
-  await rawdb.doPickingWithdrawals(manager, unsignedTx, hotWallet, currency.symbol, withdrawalIds);
+  try {
+    await rawdb.doPickingWithdrawals(manager, unsignedTx, hotWallet, currency.symbol, withdrawalIds);
+  } catch (e) {
+    logger.fatal(`Could not finish picking withdrawal ids=[${withdrawalIds}] err=${e.toString()}`);
+    throw e;
+  }
+
   return;
 }
 async function _pickerDoProcessUTXO(
