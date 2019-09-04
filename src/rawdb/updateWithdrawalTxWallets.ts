@@ -19,6 +19,9 @@ export async function updateWithdrawalTxWallets(
   let walletEvent: WalletEvent;
   const feeCurrency = CurrencyRegistry.getOneCurrency(withdrawalTx.currency).platform;
 
+  if (!withdrawals.length) {
+    return null;
+  }
   const withdrawalFeeLog = {
     walletId: withdrawals[0].walletId,
     currency: feeCurrency,
