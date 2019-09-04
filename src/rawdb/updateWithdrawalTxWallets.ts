@@ -33,16 +33,16 @@ export async function updateWithdrawalTxWallets(
         const walletBalance = await manager.findOne(WalletBalance, {
           walletId: record.walletId,
         });
-  
+
         if (!walletBalance) {
           throw new Error('walletBalance is not existed');
         }
-  
+
         if (event === WithdrawalEvent.FAILED) {
           walletEvent = WalletEvent.WITHDRAW_FAILED;
           balanceChange = '0';
         }
-  
+
         if (event === WithdrawalEvent.COMPLETED) {
           walletEvent = WalletEvent.WITHDRAW_COMPLETED;
           balanceChange = '-' + record.amount;
