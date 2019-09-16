@@ -1,6 +1,6 @@
 import { EntityManager } from 'typeorm';
-import { WalletEvent, CollectStatus } from '../Enums';
-import { WalletBalance } from '../entities';
+import { CollectStatus } from '../Enums';
+import { WalletBalance, WalletLog } from '../entities';
 
 import * as rawdb from './index';
 import { Utils, CurrencyRegistry, BigNumber } from 'sota-common';
@@ -29,13 +29,13 @@ export async function updateWalletBalanceOnlyFee(
     balanceChange = '-' + fee.toString();
   }
 
-  const withdrawalFeeLog = {
-    walletId: transfer.walletId,
-    currency: transfer.currency,
-    balanceChange,
-    event: transfer.type,
-    refId: transfer.id,
-  };
+  const withdrawalFeeLog = new WalletLog();
+  withdrawalFeeLog.walletId = transfer.walletId;
+  withdrawalFeeLog.currency = transfer.currency;
+  withdrawalFeeLog.refCurrency = transfer.currency;
+  withdrawalFeeLog.balanceChange = balanceChange;
+  withdrawalFeeLog.event = transfer.type;
+  withdrawalFeeLog.refId = transfer.id;
 
   const currency = CurrencyRegistry.getOneCurrency(transfer.currency);
   const feeCurrency = currency.platform;

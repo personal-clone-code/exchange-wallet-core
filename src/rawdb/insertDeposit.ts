@@ -1,7 +1,7 @@
 import { EntityManager } from 'typeorm';
 import { TransferEntry, getLogger, Utils, CurrencyRegistry, BigNumber, BlockchainPlatform } from 'sota-common';
 import * as rawdb from './';
-import { Deposit, Address, Wallet, WalletBalance, HotWallet } from '../entities';
+import { Deposit, Address, Wallet, WalletBalance, WalletLog, HotWallet } from '../entities';
 import { DepositEvent, WalletEvent, CollectStatus } from '../Enums';
 const logger = getLogger('rawdb::insertDeposit');
 
@@ -80,17 +80,19 @@ export async function insertDeposit(manager: EntityManager, output: TransferEntr
     throw new Error(`Wallet balance doesn't exist: walletId=${walletId} currency=${deposit.currency}`);
   }
 
+  const walletLog = new WalletLog();
+  walletLog.walletId = walletId;
+  walletLog.currency = deposit.currency;
+  walletLog.refCurrency = deposit.currency;
+  walletLog.event = WalletEvent.DEPOSIT;
+  walletLog.balanceChange = amount;
+  walletLog.refId = refId;
+
   await Utils.PromiseAll([
     // Update wallet balance
     rawdb.increaseWalletBalance(manager, walletId, deposit.currency, output.amount),
     // Record wallet log
-    rawdb.insertWalletLog(manager, {
-      walletId,
-      currency: deposit.currency,
-      event: WalletEvent.DEPOSIT,
-      balanceChange: amount,
-      refId,
-    }),
+    rawdb.insertWalletLog(manager, walletLog),
     // Persist deposit data in sub table
     // rawdb.insertDepositSubRecord(manager, depositId, output),
     // Create deposit log and webhook progress

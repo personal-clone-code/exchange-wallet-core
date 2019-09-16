@@ -12,6 +12,9 @@ export class WalletLog {
   @Column({ name: 'currency', nullable: false })
   public currency: string;
 
+  @Column({ name: 'ref_currency', nullable: false })
+  public refCurrency: string;
+
   @Column({ name: 'event', nullable: false })
   public event: string;
 
