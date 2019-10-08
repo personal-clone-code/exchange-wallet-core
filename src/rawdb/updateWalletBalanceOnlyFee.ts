@@ -11,7 +11,7 @@ export async function updateWalletBalanceOnlyFee(
   transfer: InternalTransfer,
   status: CollectStatus,
   fee: BigNumber,
-  typeFee?: WalletEvent
+  typeFee: WalletEvent
 ): Promise<WalletBalance> {
   let balanceChange: string;
   const walletBalance = await manager.findOne(WalletBalance, {
@@ -35,7 +35,7 @@ export async function updateWalletBalanceOnlyFee(
   withdrawalFeeLog.currency = transfer.currency;
   withdrawalFeeLog.refCurrency = transfer.currency;
   withdrawalFeeLog.balanceChange = balanceChange;
-  withdrawalFeeLog.event = typeFee ? typeFee : transfer.type;
+  withdrawalFeeLog.event = typeFee;
   withdrawalFeeLog.refId = transfer.id;
 
   const currency = CurrencyRegistry.getOneCurrency(transfer.currency);
