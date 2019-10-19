@@ -15,8 +15,6 @@ export enum WalletEvent {
   WITHDRAW_COMPLETED = 'withdraw_completed',
   WITHDRAW_FAILED = 'withdraw_failed',
   WITHDRAW_FEE = 'withdraw_fee',
-  ERC20_WITHDRAW_FEE = 'erc20_withdraw_fee',
-  USDT_WITHDRAW_FEE = 'usdt_withdraw_fee',
   WITHDRAW_ACCEPTED = 'withdraw_accepted',
   WITHDRAW_DECLINED = 'withdraw_declined',
   COLLECT_FEE = 'collect_fee',
