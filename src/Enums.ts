@@ -20,11 +20,13 @@ export enum WalletEvent {
   WITHDRAW_ACCEPTED = 'withdraw_accepted',
   WITHDRAW_DECLINED = 'withdraw_declined',
   COLLECT_FEE = 'collect_fee',
+  COLLECT_AMOUNT = 'collect_amount',
   COLLECTED_FAIL = 'collected_fail',
   COLLECTED = 'collected',
   SEEDED_FAIL = 'seeded_fail',
   SEEDED = 'seeded',
   SEED_FEE = 'seed_fee',
+  SEED_AMOUNT = 'seed_amount',
 }
 
 export enum WebhookType {

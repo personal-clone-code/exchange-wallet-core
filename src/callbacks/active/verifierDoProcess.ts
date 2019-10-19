@@ -9,8 +9,15 @@ import {
 } from 'sota-common';
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection, In } from 'typeorm';
-import { WithdrawalStatus, WithdrawalEvent, InternalTransferType, CollectStatus, DepositEvent } from '../../Enums';
-import { WithdrawalTx, InternalTransfer, DepositLog, Deposit } from '../../entities';
+import {
+  WithdrawalStatus,
+  WithdrawalEvent,
+  InternalTransferType,
+  CollectStatus,
+  DepositEvent,
+  WalletEvent,
+} from '../../Enums';
+import { WithdrawalTx, InternalTransfer, DepositLog, Deposit, Wallet } from '../../entities';
 
 const logger = getLogger('verifierDoProcess');
 
@@ -141,14 +148,25 @@ async function verifyCollectDoProcess(
 
   if (!hotWallet) {
     // transfer to cold wallet
-    tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, new BigNumber(internalRecord.amount)));
+    tasks.push(
+      rawdb.updateWalletBalanceOnlyFee(
+        manager,
+        internalRecord,
+        event,
+        new BigNumber(internalRecord.amount).minus(fee),
+        WalletEvent.COLLECT_AMOUNT
+      )
+    );
+    tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, fee, WalletEvent.COLLECT_FEE));
   } else {
     // only minus fee for native coin
     if (currencyInfo.isNative) {
-      tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, fee));
+      tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, fee, WalletEvent.COLLECT_FEE));
     } else {
       logger.info(`${currencyInfo.symbol} is not native, do not minus fee`);
-      tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, new BigNumber(0)));
+      tasks.push(
+        rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, new BigNumber(0), WalletEvent.COLLECT_FEE)
+      );
     }
   }
 
@@ -189,7 +207,8 @@ async function verifySeedDoProcess(
 
   const tasks: Array<Promise<any>> = [
     rawdb.updateInternalTransfer(manager, internalRecord, verifiedStatus, fee),
-    rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, amount.plus(fee)),
+    rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, amount, WalletEvent.SEED_AMOUNT),
+    rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, fee, WalletEvent.SEED_FEE),
   ];
 
   if (event === CollectStatus.COLLECTED) {
