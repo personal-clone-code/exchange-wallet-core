@@ -223,6 +223,7 @@ export async function lowerThresholdHandle(manager: EntityManager, sentRecord: W
 export async function checkHotWalletIsSufficient(hotWallet: HotWallet, amount: BigNumber) {
   const gateway = GatewayRegistry.getGatewayInstance(hotWallet.currency);
   const hotWalletBalance = await gateway.getAddressBalance(hotWallet.address);
+  logger.debug(`checkHotWalletIsSufficient: wallet=${hotWallet.address} amount=${amount} balance=${hotWalletBalance}`);
   if (hotWalletBalance.gte(amount)) {
     return true;
   }
