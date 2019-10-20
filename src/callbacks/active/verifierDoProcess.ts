@@ -93,6 +93,8 @@ async function verifierWithdrawalDoProcess(manager: EntityManager, sentRecord: W
   ]);
 
   await rawdb.lowerThresholdHandle(manager, sentRecord);
+
+  await rawdb.insertLocalTxDirtyFromWithdrawalTx(manager, sentRecord, verifiedStatus, fee);
 }
 
 async function verifierInternalDoProcess(manager: EntityManager, internalRecord: InternalTransfer): Promise<void> {
@@ -172,6 +174,8 @@ async function verifyCollectDoProcess(
 
   await Utils.PromiseAll(tasks);
 
+  await rawdb.insertLocalTxDirtyFromInternalTransfer(manager, internalRecord, verifiedStatus, fee);
+
   if (!hotWallet) {
     logger.info(`wallet id=${internalRecord.walletId} is cold wallet, ignore threshold`);
     return;
@@ -221,4 +225,6 @@ async function verifySeedDoProcess(
   }
 
   await Utils.PromiseAll(tasks);
+
+  await rawdb.insertLocalTxDirtyFromInternalTransfer(manager, internalRecord, verifiedStatus, fee, seeding.depositId);
 }

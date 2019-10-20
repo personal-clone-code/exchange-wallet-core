@@ -27,3 +27,4 @@ export * from './KmsDataKey';
 export * from './EnvConfig';
 export * from './UserCurrency';
 export * from './EosToken';
+export * from './LocalTx';

@@ -30,3 +30,4 @@ export * from './doPickingWithdrawals';
 export * from './getNextPickedWithdrawals';
 export * from './getNextCurrencybyStatus';
 export * from './thresholdHandle';
+export * from './insertLocalTxDirty';

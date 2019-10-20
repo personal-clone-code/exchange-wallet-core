@@ -65,3 +65,11 @@ export enum CollectStatus {
   NOTCOLLECT = 'notcollect',
   SEED_REQUESTED = 'seed_requested',
 }
+
+export enum LocalTxType {
+  DEPOSIT = 'deposit',
+  WITHDRAWAL_NORMAL = 'withdrawal_normal',
+  WITHDRAWAL_COLD = 'withdrawal_cold',
+  SEED = 'seed',
+  COLLECT = 'collect',
+}
