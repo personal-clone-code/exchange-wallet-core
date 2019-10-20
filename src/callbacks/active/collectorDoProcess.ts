@@ -13,6 +13,7 @@ import {
   ISignedRawTransaction,
   ICurrency,
 } from 'sota-common';
+import _ from 'lodash';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
 import { CollectStatus, InternalTransferType, WithdrawalStatus, DepositEvent } from '../../Enums';
@@ -194,7 +195,7 @@ async function _collectorSignDoProcess(
   rawTx: IRawTransaction
 ): Promise<ISignedRawTransaction> {
   const gateway = GatewayRegistry.getGatewayInstance(currency);
-  const secrets = await Promise.all(
+  let secrets = await Promise.all(
     deposits.map(async deposit => {
       const address = await manager.findOne(Address, {
         address: deposit.toAddress,
@@ -209,6 +210,8 @@ async function _collectorSignDoProcess(
   if (currency.isUTXOBased) {
     return gateway.signRawTransaction(rawTx.unsignedRaw, secrets);
   }
+
+  secrets = _.uniq(secrets);
 
   if (secrets.length > 1) {
     throw new Error('Account-base tx is only use one secret');

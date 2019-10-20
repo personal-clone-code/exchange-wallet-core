@@ -59,7 +59,7 @@ export async function insertDeposit(manager: EntityManager, output: TransferEntr
     deposit.collectStatus = CollectStatus.NOTCOLLECT;
     deposit.collectedTxid = 'NO_COLLECT_HOT_WALLET_ADDRESS';
   } else if (new BigNumber(deposit.amount).lt(minimumCollectAmount)) {
-    deposit.collectStatus = CollectStatus.NOTCOLLECT;
+    // deposit.collectStatus = CollectStatus.NOTCOLLECT;
     deposit.collectedTxid = 'NO_COLLECT_DUST_AMOUNT';
   }
 
