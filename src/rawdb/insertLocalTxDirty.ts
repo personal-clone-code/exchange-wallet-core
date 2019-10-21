@@ -90,7 +90,7 @@ export async function insertLocalTxDirtyFromInternalTransfer(
 
   const userRefCurrency = await manager.findOne(UserCurrency, {
     userId: wallet.userId,
-    systemSymbol: internalTransfer.currency,
+    systemSymbol: refCurrency,
   });
 
   const localTx = new LocalTx();
