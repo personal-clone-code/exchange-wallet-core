@@ -71,9 +71,9 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
       } else {
         minAmount = (await gateway.getAverageSeedingFee()).multipliedBy(new BigNumber(3));
       }
-      if (records.length > 1) {
-        throw new Error('multiple tx seeding is not supported now');
-      }
+      // if (records.length > 1) {
+      //   throw new Error('multiple tx seeding is not supported now');
+      // }
       const record = records[0];
       const balance = await gateway.getAddressBalance(record.toAddress);
       if (balance.gte(minAmount)) {

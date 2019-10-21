@@ -25,8 +25,14 @@ export class LocalTx {
   @Column('varchar', { length: 200, name: 'currency', nullable: false })
   public currency: string;
 
+  @Column('varchar', { length: 40, name: 'currency_symbol', nullable: false })
+  public currencySymbol: string;
+
   @Column('varchar', { length: 200, name: 'ref_currency', nullable: false })
   public refCurrency: string;
+
+  @Column('varchar', { length: 200, name: 'ref_currency_symbol', nullable: false })
+  public refCurrencySymbol: string;
 
   @Column('varchar', { length: 40, name: 'type', nullable: false })
   public type: LocalTxType;

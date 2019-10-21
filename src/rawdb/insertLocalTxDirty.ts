@@ -1,5 +1,5 @@
 import { EntityManager } from 'typeorm';
-import { LocalTx, WithdrawalTx, InternalTransfer, Wallet, Deposit } from '../entities';
+import { LocalTx, WithdrawalTx, InternalTransfer, Wallet, Deposit, UserCurrency } from '../entities';
 import { Utils, BigNumber, CurrencyRegistry } from 'sota-common';
 import { LocalTxType, WithdrawalStatus, InternalTransferType } from '../Enums';
 
@@ -19,15 +19,22 @@ export async function insertLocalTxDirtyFromWithdrawalTx(
   const currency = CurrencyRegistry.getOneCurrency(withdrawalTx.currency);
   const nativeCurrency = CurrencyRegistry.getOneCurrency(currency.platform);
 
+  const userCurrency = await manager.findOne(UserCurrency, {
+    userId: withdrawalTx.userId,
+    systemSymbol: withdrawalTx.currency,
+  });
+
   const localTx = new LocalTx();
   localTx.userId = withdrawalTx.userId;
   localTx.walletId = withdrawalTx.walletId;
   localTx.fromAddress = withdrawalTx.hotWalletAddress;
   localTx.toAddress = '';
   localTx.currency = withdrawalTx.currency;
+  localTx.currencySymbol = userCurrency ? userCurrency.customSymbol : withdrawalTx.currency;
   localTx.amount = '0';
   localTx.type = LocalTxType.WITHDRAWAL_NORMAL;
   localTx.refCurrency = withdrawalTx.currency;
+  localTx.refCurrencySymbol = userCurrency ? userCurrency.customSymbol : withdrawalTx.currency;
   localTx.refTable = 'withdrawal';
   localTx.refId = 0;
   localTx.note = '';
@@ -76,15 +83,27 @@ export async function insertLocalTxDirtyFromInternalTransfer(
     localTxType = LocalTxType.SEED;
   }
 
+  const userCurrency = await manager.findOne(UserCurrency, {
+    userId: wallet.userId,
+    systemSymbol: internalTransfer.currency,
+  });
+
+  const userRefCurrency = await manager.findOne(UserCurrency, {
+    userId: wallet.userId,
+    systemSymbol: internalTransfer.currency,
+  });
+
   const localTx = new LocalTx();
   localTx.userId = wallet.userId;
   localTx.walletId = internalTransfer.walletId;
   localTx.fromAddress = internalTransfer.fromAddress;
   localTx.toAddress = internalTransfer.toAddress;
   localTx.currency = internalTransfer.currency;
+  localTx.currencySymbol = userCurrency ? userCurrency.customSymbol : internalTransfer.currency;
   localTx.amount = internalTransfer.amount;
   localTx.type = localTxType;
   localTx.refCurrency = refCurrency;
+  localTx.refCurrencySymbol = userRefCurrency ? userRefCurrency.customSymbol : refCurrency;
   localTx.refTable = 'deposit';
   localTx.refId = deposit.id;
   localTx.note = '';
