@@ -38,7 +38,10 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
     .andWhere('deposit_log.event = :event', { event: DepositEvent.SEEDING })
     .select('deposit.to_address')
     .getRawMany();
-  seedingDepositAddresses = seedingDepositAddresses.map(s => s.deposit_to_address);
+  logger.info(`raw seeding deposit addresses: ${JSON.stringify(seedingDepositAddresses)}`);
+  seedingDepositAddresses = _.compact(seedingDepositAddresses.map(s => s.to_address));
+  logger.info(`(${seedingDepositAddresses.length}) seeding deposit addresses: [${seedingDepositAddresses}]`);
+  logger.info(`allSymbols: [${allSymbols}]`);
 
   let seedDeposit;
   if (seedingDepositAddresses.length === 0) {
