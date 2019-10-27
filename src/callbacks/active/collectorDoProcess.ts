@@ -185,6 +185,7 @@ async function _constructAccountBasedCollectTx(deposits: Deposit[], toAddress: s
 
   return gateway.constructRawTransaction(deposits[0].toAddress, toAddress, amount, {
     isConsolidate: currency.isNative,
+    useLowerNetworkFee: true,
   });
 }
 
