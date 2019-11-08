@@ -1,7 +1,9 @@
 import { EntityManager } from 'typeorm';
 import { LocalTx, WithdrawalTx, InternalTransfer, Wallet, Deposit, UserCurrency } from '../entities';
-import { Utils, BigNumber, CurrencyRegistry } from 'sota-common';
+import { Utils, BigNumber, CurrencyRegistry, getLogger } from 'sota-common';
 import { LocalTxType, WithdrawalStatus, InternalTransferType } from '../Enums';
+
+const logger = getLogger('insertLocalTxDirty');
 
 export async function insertLocalTxDirty(manager: EntityManager, data: any): Promise<void> {
   data.createdAt = Utils.nowInMillis();
@@ -16,6 +18,15 @@ export async function insertLocalTxDirtyFromWithdrawalTx(
   verifiedStatus: WithdrawalStatus,
   fee: BigNumber
 ): Promise<void> {
+  // check txid existed in local tx
+  const existedLocalTx = await manager.getRepository(LocalTx).findOne({
+    txid: withdrawalTx.txid,
+  });
+  if (existedLocalTx) {
+    logger.warn(`Txid=${withdrawalTx.txid} has already existed in local tx.`);
+    return;
+  }
+
   const currency = CurrencyRegistry.getOneCurrency(withdrawalTx.currency);
   const nativeCurrency = CurrencyRegistry.getOneCurrency(currency.platform);
 
@@ -58,6 +69,15 @@ export async function insertLocalTxDirtyFromInternalTransfer(
   fee: BigNumber,
   depositId?: number
 ): Promise<void> {
+  // check txid existed in local tx
+  const existedLocalTx = await manager.getRepository(LocalTx).findOne({
+    txid: internalTransfer.txid,
+  });
+  if (existedLocalTx) {
+    logger.warn(`Txid=${internalTransfer.txid} has already existed in local tx.`);
+    return;
+  }
+
   const currency = CurrencyRegistry.getOneCurrency(internalTransfer.currency);
   const nativeCurrency = CurrencyRegistry.getOneCurrency(currency.platform);
 
