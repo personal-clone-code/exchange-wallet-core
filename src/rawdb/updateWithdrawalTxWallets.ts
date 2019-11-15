@@ -61,7 +61,6 @@ export async function updateWithdrawalTxWallets(
         walletLog.event = walletEvent;
         walletLog.refId = record.id;
 
-        const currency = CurrencyRegistry.getOneCurrency(record.currency);
         return Utils.PromiseAll([
           manager
             .createQueryBuilder()
