@@ -1,7 +1,7 @@
 import { BigNumber, CurrencyRegistry } from 'sota-common';
 import { EntityManager } from 'typeorm';
 import { WithdrawalEvent, WalletEvent } from '../Enums';
-import { WalletBalance, WalletLog, Withdrawal, WithdrawalTx } from '../entities';
+import { WalletBalance, Withdrawal, WithdrawalTx, WalletLog } from '../entities';
 
 import * as rawdb from './index';
 import { Utils } from 'sota-common';
@@ -30,8 +30,8 @@ export async function updateWithdrawalTxWallets(
   withdrawalFeeLog.balanceChange = `-${fee}`;
   withdrawalFeeLog.event = WalletEvent.WITHDRAW_FEE;
   withdrawalFeeLog.refId = withdrawalTx.id;
-
-  await Utils.PromiseAll([
+  const tasks: Array<Promise<any>> = [];
+  tasks.push(
     Utils.PromiseAll(
       withdrawals.map(async record => {
         let balanceChange: string;
@@ -62,7 +62,7 @@ export async function updateWithdrawalTxWallets(
         walletLog.refId = record.id;
 
         const currency = CurrencyRegistry.getOneCurrency(record.currency);
-        await Utils.PromiseAll([
+        return Utils.PromiseAll([
           manager
             .createQueryBuilder()
             .update(WalletBalance)
@@ -83,24 +83,28 @@ export async function updateWithdrawalTxWallets(
               currency: record.currency,
             })
             .execute(),
-          manager
-            .createQueryBuilder()
-            .update(WalletBalance)
-            .set({
-              balance: () => `balance - ${fee.toFixed(currency.nativeScale)}`,
-              updatedAt: Utils.nowInMillis(),
-            })
-            .where({
-              walletId: withdrawals[0].walletId,
-              currency: feeCurrency,
-            })
-            .execute(),
           rawdb.insertWalletLog(manager, walletLog),
         ]);
       })
-    ),
-    rawdb.insertWalletLog(manager, withdrawalFeeLog),
-  ]);
-
+    )
+  );
+  if (event === WithdrawalEvent.COMPLETED) {
+    tasks.push(rawdb.insertWalletLog(manager, withdrawalFeeLog));
+    tasks.push(
+      manager
+        .createQueryBuilder()
+        .update(WalletBalance)
+        .set({
+          balance: () => `balance - ${fee.toFixed(CurrencyRegistry.getOneCurrency(feeCurrency).nativeScale)}`,
+          updatedAt: Utils.nowInMillis(),
+        })
+        .where({
+          walletId: withdrawals[0].walletId,
+          currency: feeCurrency,
+        })
+        .execute()
+    );
+  }
+  await Utils.PromiseAll(tasks);
   return null;
 }
