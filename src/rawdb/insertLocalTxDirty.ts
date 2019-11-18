@@ -1,7 +1,9 @@
 import { EntityManager } from 'typeorm';
-import { LocalTx, WithdrawalTx, InternalTransfer, Wallet, Deposit, UserCurrency } from '../entities';
-import { Utils, BigNumber, CurrencyRegistry } from 'sota-common';
+import { LocalTx, WithdrawalTx, InternalTransfer, Wallet, Deposit, UserCurrency, DepositLog } from '../entities';
+import { Utils, BigNumber, CurrencyRegistry, getLogger, Transaction } from 'sota-common';
 import { LocalTxType, WithdrawalStatus, InternalTransferType } from '../Enums';
+
+const logger = getLogger('insertLocalTxDirty');
 
 export async function insertLocalTxDirty(manager: EntityManager, data: any): Promise<void> {
   data.createdAt = Utils.nowInMillis();
@@ -16,6 +18,15 @@ export async function insertLocalTxDirtyFromWithdrawalTx(
   verifiedStatus: WithdrawalStatus,
   fee: BigNumber
 ): Promise<void> {
+  // check txid existed in local tx
+  const existedLocalTx = await manager.getRepository(LocalTx).findOne({
+    txid: withdrawalTx.txid,
+  });
+  if (existedLocalTx) {
+    logger.warn(`Txid=${withdrawalTx.txid} has already existed in local tx.`);
+    return;
+  }
+
   const currency = CurrencyRegistry.getOneCurrency(withdrawalTx.currency);
   const nativeCurrency = CurrencyRegistry.getOneCurrency(currency.platform);
 
@@ -58,6 +69,15 @@ export async function insertLocalTxDirtyFromInternalTransfer(
   fee: BigNumber,
   depositId?: number
 ): Promise<void> {
+  // check txid existed in local tx
+  const existedLocalTx = await manager.getRepository(LocalTx).findOne({
+    txid: internalTransfer.txid,
+  });
+  if (existedLocalTx) {
+    logger.warn(`Txid=${internalTransfer.txid} has already existed in local tx.`);
+    return;
+  }
+
   const currency = CurrencyRegistry.getOneCurrency(internalTransfer.currency);
   const nativeCurrency = CurrencyRegistry.getOneCurrency(currency.platform);
 
@@ -118,4 +138,33 @@ export async function insertLocalTxDirtyFromInternalTransfer(
 
   await manager.getRepository(LocalTx).insert(localTx);
   return;
+}
+
+export async function restoreLocalTxDirtyFromDeposit(manager: EntityManager, tx: Transaction): Promise<void> {
+  // check transaction has existsed in local tx table
+  const localTx = await manager.getRepository(LocalTx).findOne({
+    txid: tx.txid,
+  });
+  if (localTx) {
+    logger.debug(`Tx ${tx.txid} has already existsed in local tx, will not write to db.`);
+    return;
+  }
+
+  // get transaction fee & status
+  const fee = tx.getNetworkFee();
+  const verifiedStatus = !tx.isFailed ? WithdrawalStatus.COMPLETED : WithdrawalStatus.FAILED;
+
+  // check internal transfer
+  const internalTransfer = await manager.getRepository(InternalTransfer).findOne({
+    txid: tx.txid,
+  });
+  if (!internalTransfer) {
+    logger.debug(`Tx ${tx.txid} not exist in internal tx. So, ignore it.`);
+    return;
+  }
+  const seeding = await manager.getRepository(DepositLog).findOne({
+    data: internalTransfer.txid,
+  });
+  const depositId = seeding ? seeding.depositId : null;
+  return insertLocalTxDirtyFromInternalTransfer(manager, internalTransfer, verifiedStatus, fee, depositId);
 }

@@ -38,6 +38,9 @@ export async function processOneDepositTransaction(
   // internal tx process
   if (await isInternalTransfer(manager, tx)) {
     logger.info(`Tx ${tx.txid} is a internal tx, will not write to deposit`);
+    // restore transaction fee
+    // 08/11/2019 will disable this feature in the next time
+    await rawdb.restoreLocalTxDirtyFromDeposit(manager, tx);
     return;
   }
 
