@@ -18,12 +18,6 @@ export class WalletBalance {
   @Column({ name: 'balance', nullable: false })
   public balance: string;
 
-  @Column({ name: 'withdrawal_pending', nullable: false })
-  public withdrawalPending: string;
-
-  @Column({ name: 'withdrawal_total', nullable: false })
-  public withdrawalTotal: string;
-
   @BeforeInsert()
   public updateCreateDates() {
     this.createdAt = Utils.nowInMillis();

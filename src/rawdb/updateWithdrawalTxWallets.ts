@@ -70,12 +70,6 @@ export async function updateWithdrawalTxWallets(
               balance: () => {
                 return event === WithdrawalEvent.FAILED ? `balance + ${record.amount}` : `balance`;
               },
-              withdrawalPending: () => {
-                return `withdrawal_pending - ${record.amount}`;
-              },
-              withdrawalTotal: () => {
-                return event === WithdrawalEvent.COMPLETED ? `withdrawal_total + ${record.amount}` : `withdrawal_total`;
-              },
               updatedAt: Utils.nowInMillis(),
             })
             .where({

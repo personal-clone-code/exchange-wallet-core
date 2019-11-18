@@ -128,9 +128,6 @@ export async function upperThresholdHandle(
       balance: () => {
         return `balance - ${amount}`;
       },
-      withdrawalPending: () => {
-        return `withdrawal_pending + ${amount}`;
-      },
       updatedAt: Utils.nowInMillis(),
     })
     .where({
