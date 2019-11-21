@@ -38,7 +38,7 @@ export class CollectingSigner extends BaseSigner {
             id: deposit.id,
           },
           {
-            collectStatus: CollectStatus.COLLECTING,
+            collectStatus: CollectStatus.COLLECT_SIGNED,
             collectedTxid: this.signedTx.txid,
           }
         );

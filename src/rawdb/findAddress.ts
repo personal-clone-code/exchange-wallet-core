@@ -12,7 +12,7 @@ export async function findAddresses(manager: EntityManager, addresses: string[])
 export async function checkAddressBusy(manager: EntityManager, address: string): Promise<boolean> {
   const collectingsFromAddress = await manager.getRepository(Deposit).find({
     toAddress: address,
-    collectStatus: CollectStatus.COLLECTING,
+    collectStatus: In([CollectStatus.COLLECT_SIGNED, CollectStatus.COLLECT_SENT]),
   });
   return collectingsFromAddress.length > 0;
 }

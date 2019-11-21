@@ -61,6 +61,7 @@ export enum CollectStatus {
   UNCOLLECTED = 'uncollected',
   COLLECTING_FORWARDING = 'forwarding',
   COLLECTING = 'collecting',
+  COLLECT_SIGNED = 'collect_signed',
   COLLECT_SENT = 'collect_sent',
   COLLECTED = 'collected',
   NOTCOLLECT = 'notcollect',
