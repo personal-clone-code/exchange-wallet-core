@@ -78,3 +78,8 @@ export enum LocalTxStatus {
   COMPLETED = 'completed',
   FAILED = 'failed',
 }
+
+export enum RefTable {
+  DEPOSIT = 'deposit',
+  WITHDRAWAL = 'withdrawal',
+}
