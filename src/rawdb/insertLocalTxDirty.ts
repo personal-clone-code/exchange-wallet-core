@@ -37,7 +37,7 @@ export async function insertLocalTxDirtyFromWithdrawalTx(
   localTx.refCurrencySymbol = userCurrency ? userCurrency.customSymbol : withdrawalTx.currency;
   localTx.refTable = 'withdrawal';
   localTx.refId = 0;
-  localTx.note = '';
+  localTx.memo = '';
   localTx.status = verifiedStatus;
   localTx.txid = withdrawalTx.txid;
   localTx.unsignedRaw = withdrawalTx.unsignedRaw;
@@ -106,7 +106,7 @@ export async function insertLocalTxDirtyFromInternalTransfer(
   localTx.refCurrencySymbol = userRefCurrency ? userRefCurrency.customSymbol : refCurrency;
   localTx.refTable = 'deposit';
   localTx.refId = deposit.id;
-  localTx.note = '';
+  localTx.memo = '';
   localTx.status = verifiedStatus;
   localTx.unsignedRaw = '';
   localTx.unsignedTxid = internalTransfer.txid;
