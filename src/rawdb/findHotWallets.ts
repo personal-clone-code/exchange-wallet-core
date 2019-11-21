@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import { EntityManager, In } from 'typeorm';
 import { HotWallet, InternalTransfer, Withdrawal, RallyWallet, ColdWallet, Currency } from '../entities';
-import { InternalTransferType, WithdrawalStatus } from '../Enums';
+import { WithdrawalStatus, LocalTxType } from '../Enums';
 import { getLogger, BigNumber, ICurrency, GatewayRegistry } from 'sota-common';
 
 const logger = getLogger('rawdb::findHotWallets');
@@ -171,7 +171,7 @@ export async function getBusySeedingHotWallets(manager: EntityManager, walletId:
   const pendingStatuses = [WithdrawalStatus.SENT, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING];
   const seedTransactions = await manager.find(InternalTransfer, {
     walletId,
-    type: InternalTransferType.SEED,
+    type: LocalTxType.SEED,
     status: In(pendingStatuses),
   });
 
@@ -231,7 +231,7 @@ export async function checkHotWalletIsBusy(
       status: In(pendingStatuses),
     }),
     manager.find(InternalTransfer, {
-      type: InternalTransferType.SEED,
+      type: LocalTxType.SEED,
       status: In(pendingStatuses),
     }),
   ]);

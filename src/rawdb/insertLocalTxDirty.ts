@@ -1,7 +1,7 @@
 import { EntityManager } from 'typeorm';
 import { LocalTx, WithdrawalTx, InternalTransfer, Wallet, Deposit, UserCurrency } from '../entities';
 import { Utils, BigNumber, CurrencyRegistry } from 'sota-common';
-import { LocalTxType, WithdrawalStatus, InternalTransferType } from '../Enums';
+import { LocalTxType, WithdrawalStatus } from '../Enums';
 
 export async function insertLocalTxDirty(manager: EntityManager, data: any): Promise<void> {
   data.createdAt = Utils.nowInMillis();
@@ -77,9 +77,9 @@ export async function insertLocalTxDirtyFromInternalTransfer(
   const refCurrency = deposit.currency;
 
   let localTxType;
-  if (internalTransfer.type === InternalTransferType.COLLECT) {
+  if (internalTransfer.type === LocalTxType.COLLECT) {
     localTxType = LocalTxType.COLLECT;
-  } else if (internalTransfer.type === InternalTransferType.SEED) {
+  } else if (internalTransfer.type === LocalTxType.SEED) {
     localTxType = LocalTxType.SEED;
   }
 

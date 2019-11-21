@@ -16,7 +16,7 @@ import {
 import _ from 'lodash';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
-import { CollectStatus, InternalTransferType, WithdrawalStatus, DepositEvent } from '../../Enums';
+import { CollectStatus, WithdrawalStatus, DepositEvent, LocalTxType } from '../../Enums';
 import { Deposit, Address, InternalTransfer, DepositLog } from '../../entities';
 
 const logger = getLogger('collectorDoProcess');
@@ -248,7 +248,7 @@ async function _collectorSubmitDoProcess(
   internalTransferRecord.currency = currency.symbol;
   internalTransferRecord.txid = signedTx.txid;
   internalTransferRecord.walletId = walletId;
-  internalTransferRecord.type = InternalTransferType.COLLECT;
+  internalTransferRecord.type = LocalTxType.COLLECT;
   internalTransferRecord.status = WithdrawalStatus.SENT;
   internalTransferRecord.fromAddress = 'will remove this field';
   internalTransferRecord.toAddress = toAddress;

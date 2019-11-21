@@ -11,7 +11,7 @@ import {
 import { EntityManager, getConnection, In, Not } from 'typeorm';
 import _ from 'lodash';
 import * as rawdb from '../../rawdb';
-import { CollectStatus, InternalTransferType, WithdrawalStatus, DepositEvent } from '../../Enums';
+import { CollectStatus, WithdrawalStatus, DepositEvent, LocalTxType } from '../../Enums';
 import { Deposit, InternalTransfer, DepositLog } from '../../entities';
 
 const logger = getLogger('feeSeederDoProcess');
@@ -107,7 +107,7 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
   internalTransferRecord.walletId = hotWallet.walletId;
   internalTransferRecord.fromAddress = 'will remove this field'; // remove
   internalTransferRecord.toAddress = seedDeposit.toAddress; // remove
-  internalTransferRecord.type = InternalTransferType.SEED;
+  internalTransferRecord.type = LocalTxType.SEED;
   internalTransferRecord.txid = signedTx.txid;
   internalTransferRecord.status = WithdrawalStatus.SENT;
   internalTransferRecord.amount = seedAmount.toString();

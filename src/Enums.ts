@@ -32,11 +32,6 @@ export enum WalletEvent {
   SEED_AMOUNT = 'seed_amount',
 }
 
-export enum InternalTransferType {
-  COLLECT = 'collect',
-  SEED = 'seed',
-}
-
 export enum WithdrawalEvent {
   CREATED = 'created',
   PICKED = 'picked',

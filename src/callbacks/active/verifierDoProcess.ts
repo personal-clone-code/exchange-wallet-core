@@ -12,10 +12,10 @@ import { EntityManager, getConnection, In } from 'typeorm';
 import {
   WithdrawalStatus,
   WithdrawalEvent,
-  InternalTransferType,
   CollectStatus,
   DepositEvent,
   WalletEvent,
+  LocalTxType,
 } from '../../Enums';
 import { WithdrawalTx, InternalTransfer, DepositLog, Deposit, Wallet } from '../../entities';
 
@@ -119,11 +119,11 @@ async function verifierInternalDoProcess(manager: EntityManager, internalRecord:
   const resTx = await gateway.getOneTransaction(internalRecord.txid);
   const fee = resTx.getNetworkFee();
 
-  if (internalRecord.type === InternalTransferType.COLLECT) {
+  if (internalRecord.type === LocalTxType.COLLECT) {
     return verifyCollectDoProcess(manager, internalRecord, verifiedStatus, event, fee);
   }
 
-  if (internalRecord.type === InternalTransferType.SEED) {
+  if (internalRecord.type === LocalTxType.SEED) {
     return verifySeedDoProcess(manager, internalRecord, verifiedStatus, event, fee);
   }
 }
