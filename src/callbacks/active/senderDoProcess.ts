@@ -9,8 +9,8 @@ import {
 } from 'sota-common';
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection } from 'typeorm';
-import { WithdrawalEvent, WithdrawalStatus } from '../../Enums';
-import { WithdrawalTx, Withdrawal } from '../../entities';
+import { WithdrawalEvent, LocalTxStatus, WithdrawalStatus, DepositEvent, CollectStatus } from '../../Enums';
+import { Withdrawal, LocalTx } from '../../entities';
 import util from 'util';
 
 const logger = getLogger('senderDoProcess');
@@ -23,9 +23,9 @@ export async function senderDoProcess(sender: BasePlatformWorker): Promise<void>
 
 /**
  * Tasks of sender:
- * - Find 1 withdrawal_tx record that `status` = `signed`
+ * - Find 1 local_tx record that `status` = `signed`
  * - Try to submit its rawtx data to the network
- * - Update real txid back into corresponding withdrawal_tx and withdrawal records
+ * - Update real txid back into corresponding local_tx and withdrawal records
  *
  * Now the tx should be submitted to the network, and wait for the verifying phase
  *
@@ -36,10 +36,10 @@ async function _senderDoProcess(manager: EntityManager, sender: BasePlatformWork
   const platformCurrency = sender.getCurrency();
   const allCurrencies = CurrencyRegistry.getCurrenciesOfPlatform(platformCurrency.platform);
   const allSymbols = allCurrencies.map(c => c.symbol);
-  const signedRecord = await rawdb.findOneWithdrawalTx(manager, allSymbols, [WithdrawalStatus.SIGNED]);
+  const signedRecord = await rawdb.findOneLocalTx(manager, allSymbols, [LocalTxStatus.SIGNED]);
 
   if (!signedRecord) {
-    logger.info(`There are not signed withdrawals to be sent: platform=${platformCurrency.platform}`);
+    logger.info(`There are not signed localTx to be sent: platform=${platformCurrency.platform}`);
     return;
   }
 
@@ -56,18 +56,18 @@ async function _senderDoProcess(manager: EntityManager, sender: BasePlatformWork
     try {
       const status = await gateway.getTransactionStatus(txid);
       if (status === TransactionStatus.COMPLETED || status === TransactionStatus.CONFIRMING) {
-        await updateWithdrawalAndWithdrawalTx(manager, signedRecord, txid, WithdrawalStatus.SENT);
+        await updateLocalTxAndRelatedTables(manager, signedRecord, txid, LocalTxStatus.SENT);
         return;
       }
 
       // If transaction is determined as failed, the withdrawal is failed as well
       if (status === TransactionStatus.FAILED) {
-        await updateWithdrawalAndWithdrawalTx(manager, signedRecord, txid, WithdrawalStatus.FAILED);
+        await updateLocalTxAndRelatedTables(manager, signedRecord, txid, LocalTxStatus.FAILED);
         return;
       }
     } catch (e) {
       const status = TransactionStatus.UNKNOWN;
-      // await updateWithdrawalAndWithdrawalTx(manager, signedRecord, txid, WithdrawalStatus.FAILED);
+      // await updateLocalTxAndRelatedTables(manager, signedRecord, txid, LocalTxStatus.FAILED);
     }
     // If transaction status is completed or confirming, both mean the withdrawal was submitted to network successfully
   }
@@ -95,67 +95,98 @@ async function _senderDoProcess(manager: EntityManager, sender: BasePlatformWork
     }
 
     logger.error(
-      `Cannot broadcast withdrawlTxId=${signedRecord.id} due to error\
+      `Cannot broadcast localTxId=${signedRecord.id} due to error\
         errInfo=${util.inspect(errInfo)} \
         extraInfo=${util.inspect(extraInfo)}`
     );
 
-    // The withdrawal record is created wrongly. It must be reconstructed
+    // The localTx record is created wrongly. It must be reconstructed
     if ((errInfo.toString() as string).includes('nonce too low')) {
-      await reconstructWithdrawal(manager, signedRecord);
+      await reconstructLocalTx(manager, signedRecord);
     }
 
     return;
   }
 
   if (sentResultObj) {
-    await updateWithdrawalAndWithdrawalTx(manager, signedRecord, sentResultObj.txid, WithdrawalStatus.SENT);
+    await updateLocalTxAndRelatedTables(manager, signedRecord, sentResultObj.txid, LocalTxStatus.SENT);
     return;
   } else {
-    logger.error(`Could not send raw transaction withdrawalTxId=${signedRecord.id}. Result is empty, please check...`);
+    logger.error(`Could not send raw transaction localTxId=${signedRecord.id}. Result is empty, please check...`);
   }
 
   return;
 }
 
-async function updateWithdrawalAndWithdrawalTx(
+async function updateLocalTxAndRelatedTables(
   manager: EntityManager,
-  signedRecord: WithdrawalTx,
+  localTx: LocalTx,
   txid: string,
-  status: WithdrawalStatus.SENT | WithdrawalStatus.FAILED
+  status: LocalTxStatus.SENT | LocalTxStatus.FAILED
 ): Promise<void> {
-  let event: WithdrawalEvent;
-  let newStatus: WithdrawalStatus;
-  if (status === WithdrawalStatus.SENT) {
-    // keep withdrawal status and fire sent withdrawal event
-    newStatus = WithdrawalStatus.SENT;
-    event = WithdrawalEvent.SENT;
-  } else if (status === WithdrawalStatus.FAILED) {
-    // changed withdrawal status to unsign and fire txid_changed withdrawal event
-    newStatus = WithdrawalStatus.UNSIGNED;
-    event = WithdrawalEvent.TXID_CHANGED;
+  if (status === LocalTxStatus.FAILED) {
+    reconstructLocalTx(manager, localTx, { txid });
+    return;
   }
 
   logger.info(`senderDoProcess: broadcast tx to network successfully: ${txid}`);
 
-  await Utils.PromiseAll([
-    rawdb.updateWithdrawalTxStatus(manager, signedRecord.id, newStatus, { txid }),
-    rawdb.updateWithdrawalsStatus(manager, signedRecord.id, newStatus, event, { txid }),
-  ]);
+  await rawdb.updateLocalTxStatus(manager, localTx.id, LocalTxStatus.SENT, { txid });
 
-  return;
+  if (localTx.isWithdrawal()) {
+    await rawdb.updateWithdrawalsStatus(manager, localTx.id, WithdrawalStatus.SENT, WithdrawalEvent.TXID_CHANGED, {
+      txid,
+    });
+  } else if (localTx.isCollectTx()) {
+    await rawdb.updateDepositCollectStatusByCollectTxId(
+      manager,
+      localTx,
+      CollectStatus.COLLECT_SENT,
+      DepositEvent.COLLECT_SENT
+    );
+  } else if (localTx.isSeedTx()) {
+    await rawdb.updateDepositCollectStatusBySeedTxId(manager, localTx, CollectStatus.SEED_SENT, DepositEvent.SEED_SENT);
+  } else {
+    throw new Error(`Not support localTxType: ${localTx.type}`);
+  }
 }
 
 /**
- * The withdrawal record is constructed wrongly
+ * The localTx record is constructed wrongly
  * This correction will:
- * - Remove the pending withdrawal_tx
- * - Mark the withdrawal status to `unsigned`
+ * - Mark the localTx status to `failed`
+ * - Reset related tables status in order to create a new local tx again
  * And the picker and signer will do the signing flow again
  */
-async function reconstructWithdrawal(manager: EntityManager, withdrawalTx: WithdrawalTx): Promise<void> {
-  await Promise.all([
-    manager.update(WithdrawalTx, withdrawalTx.id, { status: WithdrawalStatus.FAILED }),
-    rawdb.updateWithdrawalsStatus(manager, withdrawalTx.id, WithdrawalStatus.UNSIGNED, WithdrawalEvent.TXID_CHANGED),
-  ]);
+async function reconstructLocalTx(
+  manager: EntityManager,
+  localTx: LocalTx,
+  txResult?: ISubmittedTransaction
+): Promise<void> {
+  await rawdb.updateLocalTxStatus(manager, localTx.id, LocalTxStatus.FAILED);
+  if (localTx.isWithdrawal()) {
+    await rawdb.updateWithdrawalsStatus(
+      manager,
+      localTx.id,
+      WithdrawalStatus.UNSIGNED,
+      WithdrawalEvent.TXID_CHANGED,
+      txResult
+    );
+  } else if (localTx.isCollectTx()) {
+    await rawdb.updateDepositCollectStatusByCollectTxId(
+      manager,
+      localTx,
+      CollectStatus.UNCOLLECTED,
+      DepositEvent.COLLECT_TXID_CHANGED
+    );
+  } else if (localTx.isSeedTx()) {
+    await rawdb.updateDepositCollectStatusBySeedTxId(
+      manager,
+      localTx,
+      CollectStatus.SEED_REQUESTED,
+      DepositEvent.SEED_TXID_CHANGED
+    );
+  } else {
+    throw new Error(`Not support localTxType: ${localTx.type}`);
+  }
 }

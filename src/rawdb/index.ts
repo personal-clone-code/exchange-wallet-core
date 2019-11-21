@@ -35,3 +35,4 @@ export * from './insertLocalTx';
 export * from './getUserCurrency';
 export * from './findLocalTx';
 export * from './findAddress';
+export * from './updateLocalTxStatus';

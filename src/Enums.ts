@@ -6,10 +6,14 @@ export enum WebhookType {
 export enum DepositEvent {
   CREATED = 'created',
   CONFIRMED = 'confirmed',
+  COLLECT_SENT = 'collect_sent',
   COLLECTED = 'collected',
   COLLECTED_FAILED = 'collected_failed',
+  COLLECT_TXID_CHANGED = 'collect_txid_changed',
+  SEED_SENT = 'seed_sent',
   SEEDING = 'seeding',
   SEEDED = 'seeded',
+  SEED_TXID_CHANGED = 'seed_txid_changed',
   NOTCOLLECT = 'notcollect',
 }
 
@@ -56,9 +60,11 @@ export enum CollectStatus {
   UNCOLLECTED = 'uncollected',
   COLLECTING_FORWARDING = 'forwarding',
   COLLECTING = 'collecting',
+  COLLECT_SENT = 'collect_sent',
   COLLECTED = 'collected',
   NOTCOLLECT = 'notcollect',
   SEED_REQUESTED = 'seed_requested',
+  SEED_SENT = 'seed_sent',
 }
 
 export enum LocalTxType {
