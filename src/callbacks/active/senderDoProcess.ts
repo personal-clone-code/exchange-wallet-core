@@ -134,7 +134,7 @@ async function updateLocalTxAndRelatedTables(
   await rawdb.updateLocalTxStatus(manager, localTx.id, LocalTxStatus.SENT, { txid });
 
   if (localTx.isWithdrawal()) {
-    await rawdb.updateWithdrawalsStatus(manager, localTx.id, WithdrawalStatus.SENT, WithdrawalEvent.TXID_CHANGED, {
+    await rawdb.updateWithdrawalsStatus(manager, localTx.id, WithdrawalStatus.SENT, WithdrawalEvent.SENT, {
       txid,
     });
   } else if (localTx.isCollectTx()) {

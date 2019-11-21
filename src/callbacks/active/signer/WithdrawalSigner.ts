@@ -14,7 +14,7 @@ export class WithdrawalSigner extends BaseHotWalletSigner {
     );
     await rawdb.insertWithdrawalLogs(
       this.manager,
-      [this.localTx.id],
+      [this.localTx.refId],
       WithdrawalEvent.SIGNED,
       this.localTx.id,
       this.localTx.txid
