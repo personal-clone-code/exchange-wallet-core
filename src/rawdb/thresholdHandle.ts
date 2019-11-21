@@ -14,7 +14,7 @@ import {
 import * as rawdb from '.';
 import { EntityManager } from 'typeorm';
 import { WithdrawalStatus } from '../Enums';
-import { WithdrawalTx, WalletBalance, Withdrawal, HotWallet, Wallet } from '../entities';
+import { WithdrawalTx, WalletBalance, Withdrawal, HotWallet, Wallet, LocalTx } from '../entities';
 const nodemailer = require('nodemailer');
 const logger = getLogger('ThresholdHandle');
 
@@ -142,11 +142,11 @@ export async function upperThresholdHandle(
     );
 }
 
-export async function lowerThresholdHandle(manager: EntityManager, sentRecord: WithdrawalTx) {
+export async function lowerThresholdHandle(manager: EntityManager, sentRecord: LocalTx) {
   // do not throw Error in this function, this logic is optional
-  const hotWallet = await rawdb.findHotWalletByAddress(manager, sentRecord.hotWalletAddress);
+  const hotWallet = await rawdb.findHotWalletByAddress(manager, sentRecord.fromAddress);
   if (!hotWallet) {
-    logger.error(`hotWallet address=${sentRecord.hotWalletAddress} not found`);
+    logger.error(`hotWallet address=${sentRecord.fromAddress} not found`);
     return;
   }
   const currencyConfig = await rawdb.findOneCurrency(manager, sentRecord.currency, sentRecord.walletId);

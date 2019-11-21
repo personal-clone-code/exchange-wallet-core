@@ -1,23 +1,23 @@
 import { BigNumber, CurrencyRegistry } from 'sota-common';
 import { EntityManager } from 'typeorm';
 import { WithdrawalEvent, WalletEvent } from '../Enums';
-import { WalletBalance, WalletLog, Withdrawal, WithdrawalTx } from '../entities';
+import { WalletBalance, WalletLog, Withdrawal, LocalTx } from '../entities';
 
 import * as rawdb from './index';
 import { Utils } from 'sota-common';
 
 export async function updateWithdrawalTxWallets(
   manager: EntityManager,
-  withdrawalTx: WithdrawalTx,
+  localTx: LocalTx,
   event: WithdrawalEvent.COMPLETED | WithdrawalEvent.FAILED,
   fee: BigNumber
 ): Promise<WalletBalance> {
   const withdrawals = await manager.find(Withdrawal, {
-    withdrawalTxId: withdrawalTx.id,
+    withdrawalTxId: localTx.id,
   });
 
   let walletEvent: WalletEvent;
-  const feeCurrency = CurrencyRegistry.getOneCurrency(withdrawalTx.currency).platform;
+  const feeCurrency = CurrencyRegistry.getOneCurrency(localTx.currency).platform;
 
   if (!withdrawals.length) {
     return null;
@@ -26,10 +26,10 @@ export async function updateWithdrawalTxWallets(
   const withdrawalFeeLog = new WalletLog();
   withdrawalFeeLog.walletId = withdrawals[0].walletId;
   withdrawalFeeLog.currency = feeCurrency;
-  withdrawalFeeLog.refCurrency = withdrawalTx.currency;
+  withdrawalFeeLog.refCurrency = localTx.currency;
   withdrawalFeeLog.balanceChange = `-${fee}`;
   withdrawalFeeLog.event = WalletEvent.WITHDRAW_FEE;
-  withdrawalFeeLog.refId = withdrawalTx.id;
+  withdrawalFeeLog.refId = localTx.id;
 
   await Utils.PromiseAll([
     Utils.PromiseAll(
@@ -55,8 +55,8 @@ export async function updateWithdrawalTxWallets(
 
         const walletLog = new WalletLog();
         walletLog.walletId = walletBalance.walletId;
-        walletLog.currency = withdrawalTx.currency;
-        walletLog.refCurrency = withdrawalTx.currency;
+        walletLog.currency = localTx.currency;
+        walletLog.refCurrency = localTx.currency;
         walletLog.balanceChange = balanceChange;
         walletLog.event = walletEvent;
         walletLog.refId = record.id;

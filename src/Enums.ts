@@ -13,6 +13,7 @@ export enum DepositEvent {
   SEED_SENT = 'seed_sent',
   SEEDING = 'seeding',
   SEEDED = 'seeded',
+  SEEDED_FAILED = 'seeded_failed',
   SEED_TXID_CHANGED = 'seed_txid_changed',
   NOTCOLLECT = 'notcollect',
 }
@@ -65,6 +66,7 @@ export enum CollectStatus {
   NOTCOLLECT = 'notcollect',
   SEED_REQUESTED = 'seed_requested',
   SEED_SENT = 'seed_sent',
+  SEEDED = 'seeded',
 }
 
 export enum LocalTxType {
