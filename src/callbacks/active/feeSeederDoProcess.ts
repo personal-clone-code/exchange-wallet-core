@@ -7,12 +7,13 @@ import {
   GatewayRegistry,
   BitcoinBasedGateway,
   AccountBasedGateway,
+  HotWalletType,
 } from 'sota-common';
 import { EntityManager, getConnection, In, Not } from 'typeorm';
 import _ from 'lodash';
 import * as rawdb from '../../rawdb';
-import { CollectStatus, WithdrawalStatus, DepositEvent, LocalTxType } from '../../Enums';
-import { Deposit, InternalTransfer, DepositLog } from '../../entities';
+import { CollectStatus, DepositEvent, LocalTxType, LocalTxStatus, RefTable } from '../../Enums';
+import { Deposit, DepositLog, LocalTx } from '../../entities';
 
 const logger = getLogger('feeSeederDoProcess');
 
@@ -30,12 +31,12 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
   let seedingDepositAddresses = await manager
     .getRepository(Deposit)
     .createQueryBuilder('deposit')
-    .innerJoin(DepositLog, 'deposit_log', 'deposit_log.deposit_id = deposit.id')
+    .innerJoin(LocalTx, 'local_tx', 'local_tx.id = deposit.seed_local_tx_id')
     .where('deposit.currency IN (:...symbols)', { symbols: allSymbols })
-    .andWhere('deposit.collect_status = :status', {
-      status: CollectStatus.SEED_REQUESTED,
+    .andWhere('deposit.collect_status = :status', { status: CollectStatus.SEED_REQUESTED })
+    .andWhere('local_tx.status NOT IN (:...statuses)', {
+      statuses: [LocalTxStatus.COMPLETED, LocalTxStatus.FAILED],
     })
-    .andWhere('deposit_log.event = :event', { event: DepositEvent.SEEDING })
     .select('deposit.to_address')
     .getRawMany();
   logger.info(`raw seeding deposit addresses: ${JSON.stringify(seedingDepositAddresses)}`);
@@ -61,12 +62,18 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
     logger.info('No deposit need seeding');
     return;
   }
+  logger.info(`Found deposit need seeding id=${seedDeposit.id}`);
 
   const currency = platformCurrency;
-  logger.info(`Found deposit need seeding id=${seedDeposit.id}`);
   const gateway = GatewayRegistry.getGatewayInstance(currency);
   const seedAmount = await gateway.getAverageSeedingFee();
-  const hotWallet = await rawdb.findSufficientHotWallet(manager, seedDeposit.walletId, currency, seedAmount);
+  const hotWallet = await rawdb.findSufficientHotWallet(
+    manager,
+    seedDeposit.walletId,
+    currency,
+    seedAmount,
+    HotWalletType.Seed
+  );
 
   if (!hotWallet) {
     throw new Error(`Hot wallet for symbol=${currency.platform} not found`);
@@ -93,35 +100,34 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
     throw new Error('rawTx is undefined because of unknown problem');
   }
 
-  const signedTx = await gateway.signRawTransaction(rawTx.unsignedRaw, await hotWallet.extractRawPrivateKey());
-  try {
-    await gateway.sendRawTransaction(signedTx.signedRaw);
-  } catch (e) {
-    logger.error(`Can not send transaction txid=${signedTx.txid}`);
-    throw e;
-  }
+  const localTx = await rawdb.insertLocalTx(manager, {
+    fromAddress: hotWallet.address,
+    toAddress: seedDeposit.toAddress,
+    userId: hotWallet.userId,
+    walletId: hotWallet.walletId,
+    currency: currency.symbol,
+    refId: 0,
+    refTable: RefTable.DEPOSIT,
+    type: LocalTxType.SEED,
+    status: LocalTxStatus.SIGNING,
+    unsignedRaw: rawTx.unsignedRaw,
+    unsignedTxid: rawTx.txid,
+    amount: seedAmount.toString(),
+  });
 
-  // create internal
-  const internalTransferRecord = new InternalTransfer();
-  internalTransferRecord.currency = currency.platform;
-  internalTransferRecord.walletId = hotWallet.walletId;
-  internalTransferRecord.fromAddress = 'will remove this field'; // remove
-  internalTransferRecord.toAddress = seedDeposit.toAddress; // remove
-  internalTransferRecord.type = LocalTxType.SEED;
-  internalTransferRecord.txid = signedTx.txid;
-  internalTransferRecord.status = WithdrawalStatus.SENT;
-  internalTransferRecord.amount = seedAmount.toString();
-  internalTransferRecord.feeCurrency = currency.platform;
+  await manager.update(Deposit, seedDeposit.id, {
+    updatedAt: Utils.nowInMillis(),
+    seedLocalTxId: localTx.id,
+    collectStatus: CollectStatus.SEEDING,
+  });
 
-  await Utils.PromiseAll([
-    rawdb.insertInternalTransfer(manager, internalTransferRecord),
-    manager.insert(DepositLog, {
-      depositId: seedDeposit.id,
-      event: DepositEvent.SEEDING,
-      refId: seedDeposit.id,
-      data: signedTx.txid,
-    }),
-  ]);
+  await manager.insert(DepositLog, {
+    depositId: seedDeposit.id,
+    event: DepositEvent.SEEDING,
+    refId: seedDeposit.id,
+    data: rawTx.txid,
+    createdAt: Utils.nowInMillis(),
+  });
 
   logger.info(`Seed Successfully address=${seedDeposit.toAddress}`);
 }
