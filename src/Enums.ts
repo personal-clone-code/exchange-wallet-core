@@ -1,3 +1,8 @@
+export enum WebhookType {
+  DEPOSIT = 'deposit',
+  WITHDRAWAL = 'withdrawal',
+}
+
 export enum DepositEvent {
   CREATED = 'created',
   CONFIRMED = 'confirmed',
@@ -25,11 +30,6 @@ export enum WalletEvent {
   SEEDED = 'seeded',
   SEED_FEE = 'seed_fee',
   SEED_AMOUNT = 'seed_amount',
-}
-
-export enum WebhookType {
-  DEPOSIT = 'deposit',
-  WITHDRAWAL = 'withdrawal',
 }
 
 export enum InternalTransferType {
