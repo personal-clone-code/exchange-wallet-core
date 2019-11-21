@@ -68,3 +68,13 @@ export enum LocalTxType {
   SEED = 'seed',
   COLLECT = 'collect',
 }
+
+export enum LocalTxStatus {
+  INVALID = 'invalid',
+  UNSIGNED = 'unsigned',
+  SIGNING = 'signing',
+  SIGNED = 'signed',
+  SENT = 'sent',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
