@@ -42,6 +42,15 @@ export class Deposit {
   @Column({ name: 'collected_timestamp', nullable: false })
   public collectedTimestamp: number;
 
+  @Column({ name: 'collect_local_tx_id' })
+  public collectLocalTxId: number;
+
+  @Column({ name: 'seeded_txid' })
+  public seededTxid: string;
+
+  @Column({ name: 'seed_local_tx_id' })
+  public seedLocalTxId: number;
+
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;
 
