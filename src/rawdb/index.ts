@@ -33,3 +33,5 @@ export * from './thresholdHandle';
 export * from './insertLocalTxDirty';
 export * from './insertLocalTx';
 export * from './getUserCurrency';
+export * from './findLocalTx';
+export * from './findAddress';

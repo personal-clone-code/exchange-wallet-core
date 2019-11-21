@@ -209,3 +209,11 @@ export async function findOneGroupOfDeposits(
 
   return { walletId: selectedWalletId, currency, records };
 }
+
+export async function findDepositsInCollectingTx(manager: EntityManager, localTxId: number): Promise<Deposit[]> {
+  return await manager.getRepository(Deposit).find({
+    where: {
+      collectLocalTxId: localTxId,
+    },
+  });
+}

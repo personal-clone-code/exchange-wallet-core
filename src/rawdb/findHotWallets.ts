@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import { EntityManager, In } from 'typeorm';
-import { HotWallet, InternalTransfer, Withdrawal, RallyWallet, ColdWallet, Currency } from '../entities';
+import { HotWallet, InternalTransfer, Withdrawal, RallyWallet, ColdWallet, Currency, LocalTx } from '../entities';
 import { WithdrawalStatus, LocalTxType } from '../Enums';
 import { getLogger, BigNumber, ICurrency, GatewayRegistry } from 'sota-common';
 
@@ -225,18 +225,14 @@ export async function checkHotWalletIsBusy(
   hotWallet: HotWallet,
   pendingStatuses: string[]
 ): Promise<boolean> {
-  const [allPendingWithdrawals, seedTransactions] = await Promise.all([
-    manager.find(Withdrawal, {
-      fromAddress: hotWallet.address,
-      status: In(pendingStatuses),
-    }),
-    manager.find(InternalTransfer, {
-      type: LocalTxType.SEED,
+  const [pendingTransactions] = await Promise.all([
+    manager.find(LocalTx, {
+      type: In([LocalTxType.SEED, LocalTxType.WITHDRAWAL_NORMAL, LocalTxType.WITHDRAWAL_COLD]),
       status: In(pendingStatuses),
     }),
   ]);
 
-  if (!allPendingWithdrawals.length && !seedTransactions.length) {
+  if (!pendingTransactions.length) {
     return false;
   }
 
