@@ -26,7 +26,7 @@ export async function doPickingWithdrawals(
   // Create local tx record
   const localTx = await rawdb.insertLocalTx(manager, {
     fromAddress: hotWallet.address,
-    toAddress: JSON.stringify(withdrawalAddresses),
+    toAddress: 'FIND_IN_WITHDRAWAL',
     userId: withdrawals[0].userId,
     walletId: withdrawals[0].walletId,
     currency,
