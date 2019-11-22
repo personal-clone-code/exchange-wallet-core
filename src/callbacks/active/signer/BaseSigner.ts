@@ -10,7 +10,7 @@ import {
 import { LocalTx } from '../../../entities';
 import { EntityManager } from 'typeorm';
 import { LocalTxStatus } from '../../../Enums';
-import * as rawdb from '../../rawdb';
+import * as rawdb from '../../../rawdb';
 
 const logger = getLogger('BaseSigner');
 
