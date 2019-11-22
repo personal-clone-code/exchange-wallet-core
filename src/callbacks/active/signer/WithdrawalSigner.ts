@@ -12,9 +12,11 @@ export class WithdrawalSigner extends BaseHotWalletSigner {
         txid: this.signedTx.txid,
       }
     );
+
+    const withdrawals = await this.manager.getRepository(Withdrawal).find({ withdrawalTxId: this.localTx.id });
     await rawdb.insertWithdrawalLogs(
       this.manager,
-      [this.localTx.refId],
+      withdrawals.map(w => w.id),
       WithdrawalEvent.SIGNED,
       this.localTx.id,
       this.localTx.txid
