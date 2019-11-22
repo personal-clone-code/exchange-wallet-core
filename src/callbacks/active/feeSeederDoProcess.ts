@@ -28,35 +28,10 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
   const platformCurrencies = CurrencyRegistry.getCurrenciesOfPlatform(platformCurrency.platform);
   const allSymbols = platformCurrencies.map(c => c.symbol);
 
-  let seedingDepositAddresses = await manager
-    .getRepository(Deposit)
-    .createQueryBuilder('deposit')
-    .innerJoin(LocalTx, 'local_tx', 'local_tx.id = deposit.seed_local_tx_id')
-    .where('deposit.currency IN (:...symbols)', { symbols: allSymbols })
-    .andWhere('deposit.collect_status = :status', { status: CollectStatus.SEED_REQUESTED })
-    .andWhere('local_tx.status NOT IN (:...statuses)', {
-      statuses: [LocalTxStatus.COMPLETED, LocalTxStatus.FAILED],
-    })
-    .select('deposit.to_address')
-    .getRawMany();
-  logger.info(`raw seeding deposit addresses: ${JSON.stringify(seedingDepositAddresses)}`);
-  seedingDepositAddresses = _.compact(seedingDepositAddresses.map(s => s.to_address));
-  logger.info(`(${seedingDepositAddresses.length}) seeding deposit addresses: [${seedingDepositAddresses}]`);
-  logger.info(`allSymbols: [${allSymbols}]`);
-
-  let seedDeposit;
-  if (seedingDepositAddresses.length === 0) {
-    seedDeposit = await manager.findOne(Deposit, {
-      currency: In(allSymbols),
-      collectStatus: CollectStatus.SEED_REQUESTED,
-    });
-  } else {
-    seedDeposit = await manager.findOne(Deposit, {
-      currency: In(allSymbols),
-      toAddress: Not(In(seedingDepositAddresses)),
-      collectStatus: CollectStatus.SEED_REQUESTED,
-    });
-  }
+  const seedDeposit = await manager.findOne(Deposit, {
+    currency: In(allSymbols),
+    collectStatus: CollectStatus.SEED_REQUESTED,
+  });
 
   if (!seedDeposit) {
     logger.info('No deposit need seeding');
@@ -76,7 +51,8 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
   );
 
   if (!hotWallet) {
-    throw new Error(`Hot wallet for symbol=${currency.platform} not found`);
+    logger.info(`Hot wallet for seeding depositId=${seedDeposit.id} symbol=${currency.platform} not found`);
+    return;
   }
   let rawTx: IRawTransaction;
   try {
