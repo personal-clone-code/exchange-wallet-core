@@ -12,7 +12,11 @@ const logger = getLogger('rawdb::insertDeposit');
  * @param {TransferEntry} output - transfer output that is extracted from a transaction
  * @param {boolean} isTxConfirmed - confirmation status of transaction on the blockchain network
  */
-export async function insertDeposit(manager: EntityManager, output: TransferEntry, senderAddresses: string[]): Promise<void> {
+export async function insertDeposit(
+  manager: EntityManager,
+  output: TransferEntry,
+  senderAddresses: string[]
+): Promise<void> {
   // TODO: We need have a cache mechanism to prevent query flooding
   const address = await manager.getRepository(Address).findOneOrFail({ address: output.address });
   const wallet = await manager.getRepository(Wallet).findOneOrFail(address.walletId);
