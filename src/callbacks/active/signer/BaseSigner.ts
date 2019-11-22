@@ -68,7 +68,7 @@ export abstract class BaseSigner {
     this.localTx.signedRaw = this.signedTx.signedRaw;
     await this.manager.getRepository(LocalTx).save(this.localTx);
 
-    this.updateRelatedTables();
+    await this.updateRelatedTables();
   }
 
   protected abstract async updateRelatedTables(): Promise<void>;
