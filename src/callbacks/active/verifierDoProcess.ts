@@ -114,7 +114,7 @@ async function verifyCollectDoProcess(
   ];
 
   const { toAddress } = localTx;
-  if (!localTx.toAddress) {
+  if (!toAddress) {
     throw new Error(`localTx id=${localTx.id} does not have toAddress`);
   }
   const hotWallet = await rawdb.findHotWalletByAddress(manager, toAddress);
