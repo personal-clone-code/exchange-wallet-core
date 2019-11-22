@@ -4,7 +4,6 @@ import { WalletBalance, WalletLog, LocalTx } from '../entities';
 
 import * as rawdb from './index';
 import { Utils, CurrencyRegistry, BigNumber } from 'sota-common';
-import { InternalTransfer } from '../entities/InternalTransfer';
 
 export async function updateWalletBalanceOnlyFee(
   manager: EntityManager,
