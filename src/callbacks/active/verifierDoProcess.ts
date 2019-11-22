@@ -6,6 +6,7 @@ import {
   CurrencyRegistry,
   GatewayRegistry,
   BigNumber,
+  BlockHeader,
 } from 'sota-common';
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection, In } from 'typeorm';
@@ -66,11 +67,11 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
 
   const isTxSucceed = transactionStatus === TransactionStatus.COMPLETED;
   if (sentRecord.isWithdrawal()) {
-    await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee);
+    await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
   } else if (sentRecord.isCollectTx()) {
-    await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, fee);
+    await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
   } else if (sentRecord.isSeedTx()) {
-    await verifySeedDoProcess(manager, sentRecord, isTxSucceed, fee);
+    await verifySeedDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
   } else {
     logger.error(`verifierDoProcess not supported localTxType: ${sentRecord.type}`);
   }
@@ -80,7 +81,8 @@ async function verifierWithdrawalDoProcess(
   manager: EntityManager,
   sentRecord: LocalTx,
   isTxSucceed: boolean,
-  fee: BigNumber
+  fee: BigNumber,
+  blockHeader: BlockHeader
 ): Promise<void> {
   const event = isTxSucceed ? WithdrawalEvent.COMPLETED : WithdrawalEvent.FAILED;
   const withdrawStatus = isTxSucceed ? WithdrawalStatus.COMPLETED : WithdrawalStatus.FAILED;
@@ -88,7 +90,7 @@ async function verifierWithdrawalDoProcess(
 
   await Utils.PromiseAll([
     rawdb.updateWithdrawalsStatus(manager, sentRecord.id, withdrawStatus, event),
-    rawdb.updateLocalTxStatus(manager, sentRecord.id, localTxStatus, null, fee),
+    rawdb.updateLocalTxStatus(manager, sentRecord.id, localTxStatus, null, fee, blockHeader),
     rawdb.updateWithdrawalTxWallets(manager, sentRecord, event, fee),
   ]);
 
@@ -99,14 +101,15 @@ async function verifyCollectDoProcess(
   manager: EntityManager,
   localTx: LocalTx,
   isTxSucceed: boolean,
-  fee: BigNumber
+  fee: BigNumber,
+  blockHeader: BlockHeader
 ): Promise<void> {
   const event = isTxSucceed ? DepositEvent.COLLECTED : DepositEvent.COLLECTED_FAILED;
   const collectStatus = isTxSucceed ? CollectStatus.COLLECTED : CollectStatus.UNCOLLECTED;
   const localTxStatus = isTxSucceed ? LocalTxStatus.COMPLETED : LocalTxStatus.FAILED;
 
   const tasks: Array<Promise<any>> = [
-    rawdb.updateLocalTxStatus(manager, localTx.id, localTxStatus, null, fee),
+    rawdb.updateLocalTxStatus(manager, localTx.id, localTxStatus, null, fee, blockHeader),
     rawdb.updateDepositCollectStatusByCollectTxId(manager, localTx, collectStatus, event),
   ];
 
@@ -155,14 +158,15 @@ async function verifySeedDoProcess(
   manager: EntityManager,
   localTx: LocalTx,
   isTxSucceed: boolean,
-  fee: BigNumber
+  fee: BigNumber,
+  blockHeader: BlockHeader
 ): Promise<void> {
   const event = isTxSucceed ? DepositEvent.SEEDED : DepositEvent.SEEDED_FAILED;
   const collectStatus = isTxSucceed ? CollectStatus.COLLECTED : CollectStatus.UNCOLLECTED; // for fee
   const localTxStatus = isTxSucceed ? LocalTxStatus.COMPLETED : LocalTxStatus.FAILED;
 
   const tasks: Array<Promise<any>> = [
-    rawdb.updateLocalTxStatus(manager, localTx.id, localTxStatus, null, fee),
+    rawdb.updateLocalTxStatus(manager, localTx.id, localTxStatus, null, fee, blockHeader),
     rawdb.updateWalletBalanceOnlyFee(
       manager,
       localTx,
