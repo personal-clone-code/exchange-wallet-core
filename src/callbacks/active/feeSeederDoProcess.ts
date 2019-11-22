@@ -105,5 +105,5 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
     createdAt: Utils.nowInMillis(),
   });
 
-  logger.info(`Seed Successfully address=${seedDeposit.toAddress}`);
+  logger.info(`Seed queued address=${seedDeposit.toAddress}`);
 }
