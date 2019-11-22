@@ -6,6 +6,7 @@ import * as rawdb from '../../rawdb';
 import { SignerFactory } from './signer/SignerFactory';
 
 const logger = getLogger('signerDoProcess');
+let failedCounter = 0;
 
 export async function signerDoProcess(signer: BasePlatformWorker): Promise<void> {
   await getConnection().transaction(async manager => {
@@ -37,5 +38,5 @@ async function _signerDoProcess(manager: EntityManager, signer: BasePlatformWork
     return;
   }
 
-  await SignerFactory.getSigner(localTx).proceed(manager);
+  failedCounter = await SignerFactory.getSigner(localTx).proceed(manager, failedCounter);
 }
