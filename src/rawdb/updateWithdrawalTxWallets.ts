@@ -68,7 +68,7 @@ export async function updateWithdrawalTxWallets(
             .update(WalletBalance)
             .set({
               balance: () => {
-                return event === WithdrawalEvent.FAILED ? `balance + ${record.amount}` : `balance`;
+                return event === WithdrawalEvent.COMPLETED ? `balance - ${record.amount}` : `balance`;
               },
               updatedAt: Utils.nowInMillis(),
             })
