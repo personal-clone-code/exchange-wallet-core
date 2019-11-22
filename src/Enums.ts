@@ -67,6 +67,7 @@ export enum CollectStatus {
   NOTCOLLECT = 'notcollect',
   SEED_REQUESTED = 'seed_requested',
   SEEDING = 'seeding',
+  SEED_SIGNED = 'seed_signed',
   SEED_SENT = 'seed_sent',
   SEEDED = 'seeded',
 }
