@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import { BigNumber, CurrencyRegistry } from 'sota-common';
 import { EntityManager } from 'typeorm';
 import { WithdrawalEvent, WalletEvent } from '../Enums';
@@ -23,78 +24,76 @@ export async function updateWithdrawalTxWallets(
     return null;
   }
 
-  const withdrawalFeeLog = new WalletLog();
-  withdrawalFeeLog.walletId = withdrawals[0].walletId;
-  withdrawalFeeLog.currency = feeCurrency;
-  withdrawalFeeLog.refCurrency = localTx.currency;
-  withdrawalFeeLog.balanceChange = `-${fee}`;
-  withdrawalFeeLog.event = WalletEvent.WITHDRAW_FEE;
-  withdrawalFeeLog.refId = localTx.id;
+  const tasks: Array<Promise<any>> = _.map(withdrawals, async record => {
+    let balanceChange: string;
+    const walletBalance = await manager.findOne(WalletBalance, {
+      walletId: record.walletId,
+    });
 
-  await Utils.PromiseAll([
-    Utils.PromiseAll(
-      withdrawals.map(async record => {
-        let balanceChange: string;
-        const walletBalance = await manager.findOne(WalletBalance, {
+    if (!walletBalance) {
+      throw new Error('walletBalance is not existed');
+    }
+
+    if (event === WithdrawalEvent.FAILED) {
+      walletEvent = WalletEvent.WITHDRAW_FAILED;
+      balanceChange = '0';
+    }
+
+    if (event === WithdrawalEvent.COMPLETED) {
+      walletEvent = WalletEvent.WITHDRAW_COMPLETED;
+      balanceChange = '-' + record.amount;
+    }
+    const walletLog = new WalletLog();
+    walletLog.walletId = walletBalance.walletId;
+    walletLog.currency = localTx.currency;
+    walletLog.refCurrency = localTx.currency;
+    walletLog.balanceChange = balanceChange;
+    walletLog.event = walletEvent;
+    walletLog.refId = record.id;
+
+    await Utils.PromiseAll([
+      manager
+        .createQueryBuilder()
+        .update(WalletBalance)
+        .set({
+          balance: () => {
+            return event === WithdrawalEvent.COMPLETED ? `balance - ${record.amount}` : `balance`;
+          },
+          updatedAt: Utils.nowInMillis(),
+        })
+        .where({
           walletId: record.walletId,
-        });
+          currency: record.currency,
+        })
+        .execute(),
+      rawdb.insertWalletLog(manager, walletLog),
+    ]);
+  });
 
-        if (!walletBalance) {
-          throw new Error('walletBalance is not existed');
-        }
-
-        if (event === WithdrawalEvent.FAILED) {
-          walletEvent = WalletEvent.WITHDRAW_FAILED;
-          balanceChange = '0';
-        }
-
-        if (event === WithdrawalEvent.COMPLETED) {
-          walletEvent = WalletEvent.WITHDRAW_COMPLETED;
-          balanceChange = '-' + record.amount;
-        }
-
-        const walletLog = new WalletLog();
-        walletLog.walletId = walletBalance.walletId;
-        walletLog.currency = localTx.currency;
-        walletLog.refCurrency = localTx.currency;
-        walletLog.balanceChange = balanceChange;
-        walletLog.event = walletEvent;
-        walletLog.refId = record.id;
-
-        const currency = CurrencyRegistry.getOneCurrency(record.currency);
-        await Utils.PromiseAll([
-          manager
-            .createQueryBuilder()
-            .update(WalletBalance)
-            .set({
-              balance: () => {
-                return event === WithdrawalEvent.COMPLETED ? `balance - ${record.amount}` : `balance`;
-              },
-              updatedAt: Utils.nowInMillis(),
-            })
-            .where({
-              walletId: record.walletId,
-              currency: record.currency,
-            })
-            .execute(),
-          manager
-            .createQueryBuilder()
-            .update(WalletBalance)
-            .set({
-              balance: () => `balance - ${fee.toFixed(currency.nativeScale)}`,
-              updatedAt: Utils.nowInMillis(),
-            })
-            .where({
-              walletId: withdrawals[0].walletId,
-              currency: feeCurrency,
-            })
-            .execute(),
-          rawdb.insertWalletLog(manager, walletLog),
-        ]);
-      })
-    ),
-    rawdb.insertWalletLog(manager, withdrawalFeeLog),
-  ]);
-
+  if (event === WithdrawalEvent.COMPLETED) {
+    const withdrawalFeeLog = new WalletLog();
+    withdrawalFeeLog.walletId = withdrawals[0].walletId;
+    withdrawalFeeLog.currency = feeCurrency;
+    withdrawalFeeLog.refCurrency = localTx.currency;
+    withdrawalFeeLog.balanceChange = `-${fee}`;
+    withdrawalFeeLog.event = WalletEvent.WITHDRAW_FEE;
+    withdrawalFeeLog.refId = localTx.id;
+    tasks.push(
+      manager
+        .createQueryBuilder()
+        .update(WalletBalance)
+        .set({
+          balance: () => `balance - ${fee.toFixed(CurrencyRegistry.getOneCurrency(feeCurrency).nativeScale)}`,
+          updatedAt: Utils.nowInMillis(),
+        })
+        .where({
+          walletId: withdrawals[0].walletId,
+          currency: feeCurrency,
+        })
+        .execute()
+    );
+    tasks.push(rawdb.insertWalletLog(manager, withdrawalFeeLog));
+  }
+  await Promise.all(tasks);
   return null;
 }
