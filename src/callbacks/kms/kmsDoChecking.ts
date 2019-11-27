@@ -8,19 +8,19 @@ const logger = getLogger('KmsChecking');
 export async function checkPrivateKeyIsUnencrypted() {
   await getConnection().transaction(async manager => {
     await _checkPrivateKeyIsUnencrypted(manager);
+    // run once time
+    // if you want to use with pm2, please disabled below line.
+    process.exit(0);
   });
-  // run once time
-  // if you want to use with pm2, please disabled below line.
-  process.exit(0);
 }
 
 export async function fixPrivateKeyIsUnencrypted() {
   await getConnection().transaction(async manager => {
     await _fixPrivateKeyIsUnencrypted(manager);
-    // run once time
-    // if you want to use with pm2, please disabled below line.
-    process.exit(0);
   });
+  // run once time
+  // if you want to use with pm2, please disabled below line.
+  process.exit(0);
 }
 
 export async function _checkPrivateKeyIsUnencrypted(manager: EntityManager): Promise<void> {
