@@ -11,3 +11,4 @@ export * from './active/feeSeederDoProcess';
 export * from './crawl/onBlockCrawled';
 export * from './crawl/onTxCrawled';
 export * from './crawl/onCrawlingTxs';
+export * from './kms/kmsDoChecking';
