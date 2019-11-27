@@ -4,7 +4,6 @@ import { BaseIntervalWorker, getLogger, Utils, CurrencyRegistry, EnvConfigRegist
 import { WebhookType } from './Enums';
 import { Webhook, WebhookProgress, Deposit, Withdrawal, UserCurrency } from './entities';
 import * as rawdb from './rawdb';
-import { encodeBase64 } from 'bcryptjs';
 
 const logger = getLogger('WebhookProcessor');
 
