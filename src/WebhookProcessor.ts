@@ -1,9 +1,10 @@
 import fetch from 'node-fetch';
 import { EntityManager, getConnection } from 'typeorm';
-import { BaseIntervalWorker, getLogger, Utils, CurrencyRegistry } from 'sota-common';
+import { BaseIntervalWorker, getLogger, Utils, CurrencyRegistry, EnvConfigRegistry } from 'sota-common';
 import { WebhookType } from './Enums';
 import { Webhook, WebhookProgress, Deposit, Withdrawal, UserCurrency } from './entities';
 import * as rawdb from './rawdb';
+import { encodeBase64 } from 'bcryptjs';
 
 const logger = getLogger('WebhookProcessor');
 
@@ -59,7 +60,16 @@ export class WebhookProcessor extends BaseIntervalWorker {
     // Call webhook
     const method = 'POST';
     const body = JSON.stringify({ type, event, data });
-    const headers = { 'Content-Type': 'application/json' };
+    const username = EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_REQUEST_USER');
+    const password = EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_REQUEST_PASSWORD');
+    if (!username || !password) {
+      throw new Error(`Webhook authorization is missing. Please check your config.`);
+    }
+    const basicAuth = new Buffer(`${username}:${password}`).toString('base64');
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Basic ${basicAuth}`,
+    };
     const timeout = 5000;
     let status: number;
     let msg: string;
