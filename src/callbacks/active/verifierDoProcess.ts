@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import {
   TransactionStatus,
   getLogger,
@@ -7,6 +8,7 @@ import {
   GatewayRegistry,
   BigNumber,
   BlockHeader,
+  Transaction,
 } from 'sota-common';
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection, In } from 'typeorm';
@@ -62,7 +64,17 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
   }
   logger.info(`Transaction ${sentRecord.txid} is ${transactionStatus}`);
 
-  const resTx = await gateway.getOneTransaction(sentRecord.txid);
+  let resTx: Transaction;
+  if (currency.symbol.startsWith(`erc20.`)) {
+    const resTxs = await (gateway as any).getTransactionsByTxid(sentRecord.txid);
+    resTx = _.find(resTxs, tx => tx.toAddress === sentRecord.toAddress);
+    if (!resTx) {
+      logger.error(`Not found any res tx to address: ${sentRecord.toAddress}`);
+      return;
+    }
+  } else {
+    resTx = await gateway.getOneTransaction(sentRecord.txid);
+  }
   const fee = resTx.getNetworkFee();
 
   const isTxSucceed = transactionStatus === TransactionStatus.COMPLETED;
