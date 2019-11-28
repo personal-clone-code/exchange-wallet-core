@@ -69,7 +69,7 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
     const resTxs = await (gateway as any).getTransactionsByTxid(sentRecord.txid);
     resTx = _.find(resTxs, tx => tx.toAddress === sentRecord.toAddress);
     if (!resTx) {
-      logger.error(`Not found any res tx to address: ${sentRecord.toAddress}`);
+      logger.error(`Not found any res tx to address: ${sentRecord.toAddress} by txid=${sentRecord.txid}`);
       return;
     }
   } else {
