@@ -41,7 +41,7 @@ export async function processOneDepositTransaction(
     return;
   }
 
-  await Utils.PromiseAll(outputs.map(async output => insertDeposit(manager, output, tx.extractSenderAddresses())));
+  await Utils.PromiseAll(outputs.map(async output => insertDeposit(manager, output)));
 }
 
 /**
