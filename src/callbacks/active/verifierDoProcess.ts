@@ -132,10 +132,10 @@ async function verifyCollectDoProcess(
 
   if (isTxSucceed) {
     let amount = new BigNumber(0);
-    if (localTx.currency.startsWith('erc20.')) {
+    if (localTx.currency.startsWith(`erc20.`)) {
       const gateway = GatewayRegistry.getGatewayInstance(localTx.currency);
       const resTxs = await (gateway as any).getTransactionsByTxid(localTx.txid);
-      resTxs.forEach(tx => {
+      resTxs.forEach((tx: any) => {
         if (tx.toAddress !== toAddress) {
           return;
         }

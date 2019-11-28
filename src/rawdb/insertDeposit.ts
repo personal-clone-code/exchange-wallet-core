@@ -70,19 +70,8 @@ export async function insertDeposit(
 
   // Persist deposit data in main table
   const depositId = (await manager.getRepository(Deposit).save(deposit)).id;
-
-  if (address.isExternal) {
-    logger.info(`External Address ${address.address}, Only Webhook`);
-    await rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId);
-    return;
-  }
-
-  await Utils.PromiseAll([
-    // Persist deposit data in sub table
-    // rawdb.insertDepositSubRecord(manager, depositId, output),
-    // Create deposit log and webhook progress
-    rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId),
-  ]);
+  await rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId);
+  return;
 }
 
 export default insertDeposit;
