@@ -129,6 +129,24 @@ async function verifyCollectDoProcess(
   if (!toAddress) {
     throw new Error(`localTx id=${localTx.id} does not have toAddress`);
   }
+
+  if (isTxSucceed) {
+    let amount = new BigNumber(0);
+    if (localTx.currency.startsWith(`erc20.`)) {
+      const gateway = GatewayRegistry.getGatewayInstance(localTx.currency);
+      const resTxs = await (gateway as any).getTransactionsByTxid(localTx.txid);
+      resTxs.forEach((tx: any) => {
+        if (tx.toAddress !== toAddress) {
+          return;
+        }
+        amount = amount.plus(tx.amount);
+      });
+    } else {
+      amount = new BigNumber(localTx.amount);
+    }
+    tasks.push(rawdb.updateWalletBalanceAfterCollecting(manager, localTx, amount));
+  }
+
   const hotWallet = await rawdb.findHotWalletByAddress(manager, toAddress);
 
   if (!hotWallet) {

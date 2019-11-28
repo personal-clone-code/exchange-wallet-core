@@ -70,49 +70,8 @@ export async function insertDeposit(
 
   // Persist deposit data in main table
   const depositId = (await manager.getRepository(Deposit).save(deposit)).id;
-
-  const walletId = wallet.id;
-  const refId = depositId;
-
-  if (address.isExternal) {
-    logger.info(`External Address ${address.address}, Only Webhook`);
-    await rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId);
-    return;
-  }
-
-  const walletBalance = await manager.getRepository(WalletBalance).findOne({ walletId, currency: deposit.currency });
-  if (!walletBalance) {
-    throw new Error(`Wallet balance doesn't exist: walletId=${walletId} currency=${deposit.currency}`);
-  }
-
-  const walletLog = new WalletLog();
-  walletLog.walletId = walletId;
-  walletLog.currency = deposit.currency;
-  walletLog.refCurrency = deposit.currency;
-  walletLog.event = WalletEvent.DEPOSIT;
-  walletLog.balanceChange = amount;
-  walletLog.refId = refId;
-
-  await Utils.PromiseAll([
-    // Update wallet balance
-    rawdb.increaseWalletBalance(manager, walletId, deposit.currency, output.amount),
-    // Record wallet log
-    rawdb.insertWalletLog(manager, walletLog),
-    // Persist deposit data in sub table
-    // rawdb.insertDepositSubRecord(manager, depositId, output),
-    // Create deposit log and webhook progress
-    rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId),
-  ]);
-
-  if (currency === BlockchainPlatform.Cardano) {
-    const hotWallet = await rawdb.findAnyHotWallet(manager, wallet.id, output.currency.platform, false);
-    await rawdb.upperThresholdHandle(manager, output.currency, hotWallet);
-  } else {
-    const hotWallet = await rawdb.findHotWalletByAddress(manager, output.address);
-    if (hotWallet) {
-      await rawdb.upperThresholdHandle(manager, output.currency, hotWallet);
-    }
-  }
+  await rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId);
+  return;
 }
 
 export default insertDeposit;
