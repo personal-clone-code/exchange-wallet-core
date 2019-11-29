@@ -64,27 +64,14 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
   }
   logger.info(`Transaction ${sentRecord.txid} is ${transactionStatus}`);
 
-  let resTx: Transaction;
-  // TODO: FIXME
-  // This is a workaround. Should be refactored later
-  if (currency.symbol.startsWith(`erc20.`)) {
-    const resTxs = await (gateway as any).getTransactionsByTxid(sentRecord.txid);
-    resTx = resTxs[0];
-    // resTx = _.find(resTxs, tx => tx.toAddress === sentRecord.toAddress);
-    // if (!resTx) {
-    //   logger.error(`Not found any res tx to address: ${sentRecord.toAddress} by txid=${sentRecord.txid}`);
-    //   return;
-    // }
-  } else {
-    resTx = await gateway.getOneTransaction(sentRecord.txid);
-  }
+  const resTx = await gateway.getOneTransaction(sentRecord.txid);
   const fee = resTx.getNetworkFee();
 
   const isTxSucceed = transactionStatus === TransactionStatus.COMPLETED;
   if (sentRecord.isWithdrawal()) {
     await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
   } else if (sentRecord.isCollectTx()) {
-    await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
+    await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx);
   } else if (sentRecord.isSeedTx()) {
     await verifySeedDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
   } else {
@@ -116,9 +103,11 @@ async function verifyCollectDoProcess(
   manager: EntityManager,
   localTx: LocalTx,
   isTxSucceed: boolean,
-  fee: BigNumber,
-  blockHeader: BlockHeader
+  tx: Transaction
 ): Promise<void> {
+  const fee = tx.getNetworkFee();
+  const blockHeader = tx.block;
+
   const event = isTxSucceed ? DepositEvent.COLLECTED : DepositEvent.COLLECTED_FAILED;
   const collectStatus = isTxSucceed ? CollectStatus.COLLECTED : CollectStatus.UNCOLLECTED;
   const localTxStatus = isTxSucceed ? LocalTxStatus.COMPLETED : LocalTxStatus.FAILED;
@@ -136,13 +125,11 @@ async function verifyCollectDoProcess(
   if (isTxSucceed) {
     let amount = new BigNumber(0);
     if (localTx.currency.startsWith(`erc20.`)) {
-      const gateway = GatewayRegistry.getGatewayInstance(localTx.currency);
-      const resTxs = await (gateway as any).getTransactionsByTxid(localTx.txid);
-      resTxs.forEach((tx: any) => {
-        if (tx.toAddress !== toAddress) {
+      tx.extractOutputEntries().forEach(e => {
+        if (e.address !== toAddress) {
           return;
         }
-        amount = amount.plus(tx.amount);
+        amount = amount.plus(e.amount);
       });
     } else {
       amount = new BigNumber(localTx.amount);
