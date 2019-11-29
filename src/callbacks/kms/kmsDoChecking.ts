@@ -72,7 +72,9 @@ export async function _fixPrivateKeyIsUnencrypted(manager: EntityManager): Promi
       if (privateKey.private_key) {
         privateKey = privateKey.private_key;
       }
-      address.secret = await encryptPrivateKey(privateKey, key);
+      if (privateKey && privateKey.length !== 0) {
+        address.secret = await encryptPrivateKey(privateKey, key);
+      }
       return address;
     });
     const addressResults = await Promise.all(addressTasks);
