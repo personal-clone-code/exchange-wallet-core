@@ -1,9 +1,12 @@
+import * as _ from 'lodash';
 import { getConnection, EntityManager } from 'typeorm';
 import { KmsDataKey, Address, KmsCmk, HotWallet } from '../../entities';
 import { getLogger } from 'sota-common';
 import { Kms } from '../../encrypt/Kms';
 import * as rawdb from '../../rawdb';
 const logger = getLogger('KmsChecking');
+
+const limitRecord = 500;
 
 export async function checkPrivateKeyIsUnencrypted() {
   await getConnection().transaction(async manager => {
@@ -24,34 +27,71 @@ export async function fixPrivateKeyIsUnencrypted() {
 }
 
 export async function _checkPrivateKeyIsUnencrypted(manager: EntityManager): Promise<void> {
-  const { listAddresses, listHotWalletAddresses, key } = await getListUnencryptedAddress(manager);
-
+  const key = await getKmsDataKey(manager);
   if (!key) {
     logger.info(`There's no CMK in database...`);
     return;
   }
 
-  if (listAddresses.length) {
-    logger.info(
-      `List addresses that have unencrypted private key are: ${listAddresses.map(address => address.address)}`
-    );
-  } else {
-    logger.info(`All addresses have encrypted their private key`);
+  const totalAddress = await manager.getRepository(Address).count();
+  const totalTask = Math.ceil(totalAddress / limitRecord);
+  const round = Array.from(Array(totalTask).keys());
+  logger.info(`# Un-encrypted address:`);
+  logger.info(`# ====================================`);
+  logger.info(`# List addresses that have unencrypted private key are reported below:`);
+  for (const r of round) {
+    const addresses = await _getUnEncryptedAddresses(manager, r * limitRecord);
+    addresses.forEach(address => logger.info(address.address));
   }
-
-  if (listHotWalletAddresses.length) {
-    logger.info(
-      `List hot wallet addresses have unencrypted private key: ${listHotWalletAddresses.map(
-        address => address.address
-      )}`
-    );
-  } else {
-    logger.info(`All hot wallet addresses have encrypted their private key`);
-  }
-
+  logger.info(`# Un-encrypted hot wallet address:`);
+  logger.info(`# ====================================`);
+  logger.info(`# List hot wallet addresses that have unencrypted private key are reported below:`);
+  const hotWalletAddresses = await _getAllUnEncryptedHotWallets(manager);
+  hotWalletAddresses.forEach(address => logger.info(address.address));
+  logger.info(`# ====================================`);
+  logger.info(`# Finished!`);
   // run once time
   // if you want to use with pm2, please disabled below line.
   process.exit(0);
+}
+
+export async function _fixPrivateKeyIsUnencrypted(manager: EntityManager): Promise<void> {
+  const key = await getKmsDataKey(manager);
+  if (!key) {
+    logger.info(`There's no CMK in database...`);
+    return;
+  }
+
+  const totalAddress = await manager.getRepository(Address).count();
+  const totalTask = Math.ceil(totalAddress / limitRecord);
+  const round = Array.from(Array(totalTask).keys());
+  for (const r of round) {
+    const addresses = await _getUnEncryptedAddresses(manager, r * limitRecord);
+    const addressTasks = _.map(addresses, async address => {
+      let privateKey = JSON.parse(address.secret);
+      if (privateKey.private_key) {
+        privateKey = privateKey.private_key;
+      }
+      address.secret = await encryptPrivateKey(privateKey, key);
+      return address;
+    });
+    const addressResults = await Promise.all(addressTasks);
+    await rawdb.updateAddresses(manager, addressResults);
+  }
+
+  const hotWalletAddresses = await _getAllUnEncryptedHotWallets(manager);
+  const hotWalletTasks = _.map(hotWalletAddresses, async address => {
+    let privateKey = JSON.parse(address.secret);
+    if (privateKey.private_key) {
+      privateKey = privateKey.private_key;
+    }
+    address.secret = await encryptPrivateKey(privateKey, key);
+    return address;
+  });
+  const hotWalletResults = await Promise.all(hotWalletTasks);
+  await rawdb.updateAllHotWalletAddresses(manager, hotWalletResults);
+  logger.info(`All hot wallet addresses and addresses have encrypted their private key`);
+  return;
 }
 
 export async function getKmsDataKey(manager: EntityManager): Promise<KmsDataKey> {
@@ -81,35 +121,19 @@ export async function getKmsDataKey(manager: EntityManager): Promise<KmsDataKey>
   return key;
 }
 
-export async function getListUnencryptedAddress(
-  manager: EntityManager
-): Promise<{
-  listAddresses: Address[];
-  listHotWalletAddresses: HotWallet[];
-  key: KmsDataKey;
-}> {
-  const key = await getKmsDataKey(manager);
+export async function _getAllUnEncryptedHotWallets(manager: EntityManager): Promise<HotWallet[]> {
+  const addresses = await rawdb.getAllHotWalletAddress(manager);
+  const unencryptedAddresses = _.filter(addresses, address => !checkAddress(address.secret));
+  return unencryptedAddresses;
+}
 
-  if (!key) {
-    return {
-      listAddresses: [],
-      listHotWalletAddresses: [],
-      key: null,
-    };
-  }
-  // TODO: if service running with pm2, we shouldn't use them
-  // need to difference mechanism
-  const [addresses, hotWalletAddresses] = await Promise.all([
-    rawdb.getAllAddress(manager),
-    rawdb.getAllHotWalletAddress(manager),
-  ]);
-  const listAddresses = addresses.filter(address => !checkAddress(address.secret));
-  const listHotWalletAddresses = hotWalletAddresses.filter(address => !checkAddress(address.secret));
-  return {
-    listAddresses,
-    listHotWalletAddresses,
-    key,
-  };
+export async function _getUnEncryptedAddresses(manager: EntityManager, offset: number): Promise<Address[]> {
+  const addresses = await manager.getRepository(Address).find({
+    take: limitRecord,
+    skip: offset,
+  });
+  const unencryptedAddresses = _.filter(addresses, address => !checkAddress(address.secret));
+  return unencryptedAddresses;
 }
 
 export async function checkExistKms(manager: EntityManager): Promise<KmsCmk[]> {
@@ -134,45 +158,6 @@ export function checkAddress(privateKey: string): boolean {
   } catch (e) {
     return false;
   }
-}
-
-export async function _fixPrivateKeyIsUnencrypted(manager: EntityManager): Promise<void> {
-  const { listAddresses, listHotWalletAddresses, key } = await getListUnencryptedAddress(manager);
-
-  if (!key) {
-    logger.info(`There's no CMK in database...`);
-    return;
-  }
-
-  if (listAddresses.length) {
-    const addresses = await Promise.all(
-      listAddresses.map(async address => {
-        let privateKey = JSON.parse(address.secret);
-        if (privateKey.private_key) {
-          privateKey = privateKey.private_key;
-        }
-        address.secret = await encryptPrivateKey(privateKey, key);
-        return address;
-      })
-    );
-    await rawdb.updateAddresses(manager, addresses);
-  }
-
-  if (listHotWalletAddresses.length) {
-    const hotWalletAddresses = await Promise.all(
-      listHotWalletAddresses.map(async address => {
-        let privateKey = JSON.parse(address.secret);
-        if (privateKey.private_key) {
-          privateKey = privateKey.private_key;
-        }
-        address.secret = await encryptPrivateKey(privateKey, key);
-        return address;
-      })
-    );
-    await rawdb.updateAllHotWalletAddresses(manager, hotWalletAddresses);
-  }
-
-  logger.info(`All hot wallet addresses and addresses have encrypted their private key`);
 }
 
 export async function encryptPrivateKey(privateKey: string, dataKey: KmsDataKey): Promise<string> {
