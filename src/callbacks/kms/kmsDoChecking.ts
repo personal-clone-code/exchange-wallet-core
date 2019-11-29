@@ -68,6 +68,27 @@ export async function _fixPrivateKeyIsUnencrypted(manager: EntityManager): Promi
   for (const r of round) {
     const addresses = await _getUnEncryptedAddresses(manager, r * limitRecord);
     const addressTasks = _.map(addresses, async address => {
+      try {
+        let privateKey = JSON.parse(address.secret);
+        if (privateKey.private_key) {
+          privateKey = privateKey.private_key;
+        }
+        if (privateKey && privateKey.length !== 0) {
+          address.secret = await encryptPrivateKey(privateKey, key);
+        }
+        return address;
+      } catch (e) {
+        return null;
+      }
+    });
+    let addressResults = await Promise.all(addressTasks);
+    addressResults = _.compact(addressResults);
+    await rawdb.updateAddresses(manager, addressResults);
+  }
+
+  const hotWalletAddresses = await _getAllUnEncryptedHotWallets(manager);
+  const hotWalletTasks = _.map(hotWalletAddresses, async address => {
+    try {
       let privateKey = JSON.parse(address.secret);
       if (privateKey.private_key) {
         privateKey = privateKey.private_key;
@@ -76,23 +97,12 @@ export async function _fixPrivateKeyIsUnencrypted(manager: EntityManager): Promi
         address.secret = await encryptPrivateKey(privateKey, key);
       }
       return address;
-    });
-    const addressResults = await Promise.all(addressTasks);
-    await rawdb.updateAddresses(manager, addressResults);
-  }
-
-  const hotWalletAddresses = await _getAllUnEncryptedHotWallets(manager);
-  const hotWalletTasks = _.map(hotWalletAddresses, async address => {
-    let privateKey = JSON.parse(address.secret);
-    if (privateKey.private_key) {
-      privateKey = privateKey.private_key;
+    } catch (e) {
+      return null;
     }
-    if (privateKey && privateKey.length !== 0) {
-      address.secret = await encryptPrivateKey(privateKey, key);
-    }
-    return address;
   });
-  const hotWalletResults = await Promise.all(hotWalletTasks);
+  let hotWalletResults = await Promise.all(hotWalletTasks);
+  hotWalletResults = _.compact(hotWalletAddresses);
   await rawdb.updateAllHotWalletAddresses(manager, hotWalletResults);
   logger.info(`All hot wallet addresses and addresses have encrypted their private key`);
   return;
