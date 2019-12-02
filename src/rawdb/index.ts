@@ -33,3 +33,4 @@ export * from './findLocalTx';
 export * from './findAddress';
 export * from './updateLocalTxStatus';
 export * from './getAddress';
+export * from './updateWalletBalanceAfterCollecting';

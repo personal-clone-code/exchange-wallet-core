@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import {
   TransactionStatus,
   getLogger,
@@ -7,6 +8,7 @@ import {
   GatewayRegistry,
   BigNumber,
   BlockHeader,
+  Transaction,
 } from 'sota-common';
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection, In } from 'typeorm';
@@ -62,7 +64,20 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
   }
   logger.info(`Transaction ${sentRecord.txid} is ${transactionStatus}`);
 
-  const resTx = await gateway.getOneTransaction(sentRecord.txid);
+  let resTx: Transaction;
+  // TODO: FIXME
+  // This is a workaround. Should be refactored later
+  if (currency.symbol.startsWith(`erc20.`)) {
+    const resTxs = await (gateway as any).getTransactionsByTxid(sentRecord.txid);
+    resTx = resTxs[0];
+    // resTx = _.find(resTxs, tx => tx.toAddress === sentRecord.toAddress);
+    // if (!resTx) {
+    //   logger.error(`Not found any res tx to address: ${sentRecord.toAddress} by txid=${sentRecord.txid}`);
+    //   return;
+    // }
+  } else {
+    resTx = await gateway.getOneTransaction(sentRecord.txid);
+  }
   const fee = resTx.getNetworkFee();
 
   const isTxSucceed = transactionStatus === TransactionStatus.COMPLETED;
@@ -117,6 +132,24 @@ async function verifyCollectDoProcess(
   if (!toAddress) {
     throw new Error(`localTx id=${localTx.id} does not have toAddress`);
   }
+
+  if (isTxSucceed) {
+    let amount = new BigNumber(0);
+    if (localTx.currency.startsWith(`erc20.`)) {
+      const gateway = GatewayRegistry.getGatewayInstance(localTx.currency);
+      const resTxs = await (gateway as any).getTransactionsByTxid(localTx.txid);
+      resTxs.forEach((tx: any) => {
+        if (tx.toAddress !== toAddress) {
+          return;
+        }
+        amount = amount.plus(tx.amount);
+      });
+    } else {
+      amount = new BigNumber(localTx.amount);
+    }
+    tasks.push(rawdb.updateWalletBalanceAfterCollecting(manager, localTx, amount));
+  }
+
   const hotWallet = await rawdb.findHotWalletByAddress(manager, toAddress);
 
   if (!hotWallet) {
