@@ -50,9 +50,7 @@ export async function _checkPrivateKeyIsUnencrypted(manager: EntityManager): Pro
   hotWalletAddresses.forEach(address => logger.info(address.address));
   logger.info(`# ====================================`);
   logger.info(`# Finished!`);
-  // run once time
-  // if you want to use with pm2, please disabled below line.
-  process.exit(0);
+  return;
 }
 
 export async function _fixPrivateKeyIsUnencrypted(manager: EntityManager): Promise<void> {
