@@ -5,7 +5,7 @@ import { Deposit } from '../entities';
 import { CollectStatus } from '../Enums';
 import { getOverTime } from '.';
 
-const limit = 50;
+const limit = 500;
 const logger = getLogger('DBTools::# Crawler::');
 
 export async function doCheckCrawler(): Promise<void> {

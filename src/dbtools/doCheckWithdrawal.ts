@@ -5,7 +5,7 @@ import { Withdrawal } from '../entities';
 import { WithdrawalStatus } from '../Enums';
 import { getOverTime } from '.';
 
-const limit = 50;
+const limit = 500;
 const logger = getLogger('DBTools::# Withdrawal::');
 
 export async function doCheckWithdrawal(): Promise<void> {
