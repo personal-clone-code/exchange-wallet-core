@@ -194,6 +194,19 @@ export async function findOneGroupOfDeposits(
     }
   }
 
+  // 09/12/2019 check if has any seed request to address
+  // reason: double seeding
+  // if true, ignore collect, if false, continue
+  const seedRequested = await rawdb.hasAnySeedRequestedToAddress(manager, uncollectedDeposits[0].toAddress);
+  if (!!seedRequested) {
+    logger.warn(
+      `There're some seeding request to address ${
+        uncollectedDeposits[0].toAddress
+      }. So, ignore collecting from this address.`
+    );
+    return { walletId: 0, currency: null, records: [] };
+  }
+
   const selectedWalletId = uncollectedDeposits[0].walletId;
   const selectedCurrency = uncollectedDeposits[0].currency;
   const currency = CurrencyRegistry.getOneCurrency(selectedCurrency);
