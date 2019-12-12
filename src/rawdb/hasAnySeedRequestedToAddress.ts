@@ -2,7 +2,7 @@ import { EntityManager, In } from 'typeorm';
 import { LocalTx, Deposit } from '../entities';
 import { LocalTxType, LocalTxStatus, CollectStatus } from '../Enums';
 
-export async function hasAnySeedRequestedToAddressInLocalTx(manager: EntityManager, address: string): Promise<boolean> {
+export async function hasAnySeedRequestedToAddress(manager: EntityManager, address: string): Promise<boolean> {
   const pendingSeedRecord = await manager.getRepository(LocalTx).findOne({
     where: {
       toAddress: address,
@@ -13,17 +13,13 @@ export async function hasAnySeedRequestedToAddressInLocalTx(manager: EntityManag
   if (pendingSeedRecord) {
     return true;
   }
-  return false;
-}
-
-export async function hasAnySeedRequestedToAddressInDeposit(manager: EntityManager, address: string): Promise<boolean> {
-  const pendingSeedRecord = await manager.getRepository(Deposit).findOne({
+  const seedRequestedRecord = await manager.getRepository(Deposit).findOne({
     where: {
       toAddress: address,
       collectStatus: In([CollectStatus.SEED_REQUESTED]),
     },
   });
-  if (pendingSeedRecord) {
+  if (seedRequestedRecord) {
     return true;
   }
   return false;

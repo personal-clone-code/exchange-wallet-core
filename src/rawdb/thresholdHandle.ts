@@ -102,7 +102,7 @@ export async function upperThresholdHandle(
   );
   balance = balance.minus(pending);
 
-  if (balance.lt(upper)) {
+  if (upper.eq(0) || balance.lt(upper)) {
     logger.info(
       `Hot wallet symbol=${iCurrency.symbol} address=${hotWallet.address} is not in upper threshold, ignore collecting`
     );
@@ -168,7 +168,7 @@ export async function lowerThresholdHandle(manager: EntityManager, sentRecord: L
   );
   balance = balance.minus(pending);
 
-  if (balance.gt(lower)) {
+  if (lower.eq(0) || balance.gt(lower)) {
     logger.info(
       `Hot wallet symbol=${sentRecord.currency} address=${
         hotWallet.address
