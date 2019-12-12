@@ -37,6 +37,11 @@ export enum WalletEvent {
   SEED_AMOUNT = 'seed_amount',
 }
 
+export enum WithdrawOutType {
+  WITHDRAW_OUT_COLD = 'withdraw_out_cold',
+  WITHDRAW_OUT_NORMAL = 'withdraw_out_normal',
+}
+
 export enum WithdrawalEvent {
   CREATED = 'created',
   PICKED = 'picked',

@@ -36,6 +36,9 @@ export class Withdrawal {
   @Column('text', { name: 'memo', nullable: true })
   public note: string | null; // note if withdrawal is created by machine
 
+  @Column({ name: 'type', type: 'varchar' })
+  public type: string;
+
   // @Column('varchar', { length: 255, name: 'hash_check', nullable: false })
   // public hashCheck: string;
 

@@ -13,7 +13,7 @@ import {
 } from 'sota-common';
 import * as rawdb from '.';
 import { EntityManager } from 'typeorm';
-import { WithdrawalStatus } from '../Enums';
+import { WithdrawalStatus, WithdrawOutType } from '../Enums';
 import { WithdrawalTx, WalletBalance, Withdrawal, HotWallet, Wallet, LocalTx } from '../entities';
 const nodemailer = require('nodemailer');
 const logger = getLogger('ThresholdHandle');
@@ -116,6 +116,7 @@ export async function upperThresholdHandle(
   withdrawal.note = 'from machine';
   withdrawal.amount = amount;
   withdrawal.userId = 0;
+  withdrawal.type = WithdrawOutType.WITHDRAW_OUT_COLD;
   withdrawal.walletId = hotWallet.walletId;
   withdrawal.toAddress = coldWallet.address;
   withdrawal.status = WithdrawalStatus.UNSIGNED;
