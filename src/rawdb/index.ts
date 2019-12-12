@@ -34,3 +34,4 @@ export * from './findAddress';
 export * from './updateLocalTxStatus';
 export * from './getAddress';
 export * from './updateWalletBalanceAfterCollecting';
+export * from './hasAnySeedRequestedToAddress';

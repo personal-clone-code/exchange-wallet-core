@@ -93,6 +93,13 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     await rawdb.updateRecordsTimestamp(manager, Deposit, records.map(r => r.id));
     if (!currency.isNative) {
       const record = records[0];
+      const seedRequested = await rawdb.hasAnySeedRequestedToAddress(manager, record.toAddress);
+      if (!!seedRequested) {
+        logger.warn(
+          `Address ${record.toAddress} has seed requested or seeding. So, don\'t need more seed requests at this time.`
+        );
+        return;
+      }
       record.collectStatus = CollectStatus.SEED_REQUESTED;
       await manager.save(record);
     }
