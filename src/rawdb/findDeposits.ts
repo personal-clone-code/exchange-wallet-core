@@ -197,7 +197,7 @@ export async function findOneGroupOfDeposits(
   // 09/12/2019 check if has any seed request to address
   // reason: double seeding
   // if true, ignore collect, if false, continue
-  const seedRequested = await rawdb.hasAnySeedRequestedToAddress(manager, uncollectedDeposits[0].toAddress);
+  const seedRequested = await rawdb.hasAnySeedRequestedToAddressInLocalTx(manager, uncollectedDeposits[0].toAddress);
   if (!!seedRequested) {
     logger.warn(
       `There're some seeding request to address ${
