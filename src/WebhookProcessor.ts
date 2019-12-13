@@ -64,7 +64,7 @@ export class WebhookProcessor extends BaseIntervalWorker {
     if (!username || !password) {
       throw new Error(`Webhook authorization is missing. Please check your config.`);
     }
-    const basicAuth = new Buffer(`${username}:${password}`).toString('base64');
+    const basicAuth = Buffer.from(`${username}:${password}`).toString('base64');
     const headers = {
       'Content-Type': 'application/json',
       Authorization: `Basic ${basicAuth}`,

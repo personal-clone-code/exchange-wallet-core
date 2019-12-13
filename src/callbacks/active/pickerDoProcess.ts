@@ -258,7 +258,7 @@ async function _constructRawTransaction(
       const toAddress = vouts[0].toAddress;
       let tag;
       try {
-        tag = finalPickedWithdrawals[0].note ? JSON.parse(finalPickedWithdrawals[0].note).tag : '';
+        tag = finalPickedWithdrawals[0].memo || '';
       } catch (e) {
         // do nothing, maybe it's case collect to cold wallet, note is 'from machine'
       }

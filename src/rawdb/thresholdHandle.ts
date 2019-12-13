@@ -113,7 +113,7 @@ export async function upperThresholdHandle(
   const amount = balance.minus(middle).toFixed(currency.nativeScale);
   withdrawal.currency = iCurrency.symbol;
   withdrawal.fromAddress = hotWallet.address;
-  withdrawal.note = 'from machine';
+  withdrawal.memo = 'FROM_MACHINE';
   withdrawal.amount = amount;
   withdrawal.userId = 0;
   withdrawal.type = WithdrawOutType.WITHDRAW_OUT_COLD;

@@ -37,7 +37,9 @@ export async function findSufficientHotWallet(
   );
 
   if (!foundHotWallet) {
-    logger.error(`No sufficient hot wallet walletId=${walletId} currency=${currency} amount=${amount.toString()}`);
+    logger.error(
+      `No sufficient hot wallet walletId=${walletId} currency=${currency.symbol} amount=${amount.toString()}`
+    );
   }
 
   return foundHotWallet;

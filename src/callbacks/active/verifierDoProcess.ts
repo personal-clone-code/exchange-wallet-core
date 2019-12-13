@@ -149,9 +149,11 @@ async function verifyCollectDoProcess(
     }
     tasks.push(rawdb.updateWalletBalanceAfterCollecting(manager, localTx, amount));
   }
+  await Utils.PromiseAll(tasks);
 
+  // reset tasks
+  tasks.length = 0;
   const hotWallet = await rawdb.findHotWalletByAddress(manager, toAddress);
-
   if (!hotWallet) {
     // transfer to cold wallet
     tasks.push(
@@ -176,7 +178,6 @@ async function verifyCollectDoProcess(
       );
     }
   }
-
   await Utils.PromiseAll(tasks);
 
   if (!hotWallet) {
