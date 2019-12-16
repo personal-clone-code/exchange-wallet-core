@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import { getConnection, EntityManager } from 'typeorm';
-import { KmsDataKey, Address, KmsCmk, HotWallet } from '../../entities';
-import { getLogger } from 'sota-common';
+import { KmsDataKey, Address, KmsCmk, HotWallet, EnvConfig } from '../../entities';
+import { getLogger, CurrencyRegistry, EnvConfigRegistry } from 'sota-common';
 import { Kms } from '../../encrypt/Kms';
 import * as rawdb from '../../rawdb';
 const logger = getLogger('KmsChecking');
@@ -33,24 +33,79 @@ export async function _checkPrivateKeyIsUnencrypted(manager: EntityManager): Pro
     return;
   }
 
+  let unEncryptedAddresses: string[] = [];
   const totalAddress = await manager.getRepository(Address).count();
   const totalTask = Math.ceil(totalAddress / limitRecord);
   const round = Array.from(Array(totalTask).keys());
+  for (const r of round) {
+    const addresses = await _getUnEncryptedAddresses(manager, r * limitRecord);
+    unEncryptedAddresses = _.concat(unEncryptedAddresses, addresses.map(address => address.address));
+  }
   logger.info(`# Un-encrypted address:`);
   logger.info(`# ====================================`);
   logger.info(`# List addresses that have unencrypted private key are reported below:`);
-  for (const r of round) {
-    const addresses = await _getUnEncryptedAddresses(manager, r * limitRecord);
-    addresses.forEach(address => logger.info(address.address));
-  }
+  // report all record
+  unEncryptedAddresses.map(address => logger.info(address));
+
+  const hotWalletAddresses = await _getAllUnEncryptedHotWallets(manager);
   logger.info(`# Un-encrypted hot wallet address:`);
   logger.info(`# ====================================`);
   logger.info(`# List hot wallet addresses that have unencrypted private key are reported below:`);
-  const hotWalletAddresses = await _getAllUnEncryptedHotWallets(manager);
   hotWalletAddresses.forEach(address => logger.info(address.address));
+
+  logger.info(`# Un-encrypted sub tables address:`);
+  logger.info(`# ====================================`);
+  const allCurrencies = CurrencyRegistry.getAllCurrencies();
+  const allNativeCurrencies = _.filter(allCurrencies, currency => !!currency.isNative);
+  for (const currency of allNativeCurrencies) {
+    const subAddresses = await _getUnEncryptedAddressesFromSubTable(manager, currency.symbol);
+    if (subAddresses && subAddresses.length !== 0) {
+      logger.info(
+        `# List addresses in ${currency.symbol}_address that have unencrypted private key are reported below:`
+      );
+      subAddresses.forEach(address => logger.info(address.address));
+    }
+  }
+
   logger.info(`# ====================================`);
   logger.info(`# Finished!`);
   return;
+}
+
+async function _getUnEncryptedAddressesFromSubTable(
+  manager: EntityManager,
+  symbol: string
+): Promise<
+  Array<{
+    address: string;
+    privateKey: string;
+  }>
+> {
+  try {
+    const existedTable = await manager.query(
+      `select * from information_schema.tables where table_schema = ? and table_name = ?`,
+      [process.env.TYPEORM_DATABASE, `${symbol.toLowerCase()}_address`]
+    );
+    if (!existedTable || existedTable.length === 0) {
+      logger.debug(`${symbol}_address seems not exitsed.`);
+      return [];
+    }
+  } catch (e) {
+    logger.debug(`${symbol}_address seems not exitsed.`);
+    return [];
+  }
+  const unEncryptedAddresses: any[] = await manager
+    .createQueryBuilder()
+    .select('*')
+    .from(`${symbol}_address`, `address`)
+    .where(`kms_data_key_id = 0`)
+    .execute();
+  return _.map(unEncryptedAddresses, address => {
+    return {
+      address: address.address,
+      privateKey: address.private_key,
+    };
+  });
 }
 
 export async function _fixPrivateKeyIsUnencrypted(manager: EntityManager): Promise<void> {
@@ -102,7 +157,41 @@ export async function _fixPrivateKeyIsUnencrypted(manager: EntityManager): Promi
   let hotWalletResults = await Promise.all(hotWalletTasks);
   hotWalletResults = _.compact(hotWalletAddresses);
   await rawdb.updateAllHotWalletAddresses(manager, hotWalletResults);
-  logger.info(`All hot wallet addresses and addresses have encrypted their private key`);
+
+  const allCurrencies = CurrencyRegistry.getAllCurrencies();
+  const allNativeCurrencies = _.filter(allCurrencies, currency => !!currency.isNative);
+  for (const currency of allNativeCurrencies) {
+    const subAddresses = await _getUnEncryptedAddressesFromSubTable(manager, currency.symbol);
+    if (subAddresses && subAddresses.length !== 0) {
+      const tasks = _.map(subAddresses, async address => {
+        const secret = await Kms.getInstance().encrypt(address.privateKey, key.id);
+        await _updatePrivateKeyInSubtable(
+          manager,
+          `${currency.symbol.toLowerCase()}_address`,
+          address.address,
+          secret,
+          key.id
+        );
+      });
+      await Promise.all(tasks);
+    }
+  }
+  logger.info(`All addresses have encrypted their private key`);
+  return;
+}
+
+async function _updatePrivateKeyInSubtable(
+  manager: EntityManager,
+  table: string,
+  address: string,
+  privateKey: string,
+  kmsDataKeyId: number
+): Promise<void> {
+  await manager.query(`update ${table} set private_key = ?, kms_data_key_id = ? where address = ?`, [
+    privateKey,
+    kmsDataKeyId,
+    address,
+  ]);
   return;
 }
 
