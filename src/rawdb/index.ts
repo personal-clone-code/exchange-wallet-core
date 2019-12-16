@@ -36,3 +36,4 @@ export * from './getAddress';
 export * from './updateWalletBalanceAfterCollecting';
 export * from './updateWalletBalanceAfterDeposit';
 export * from './hasAnySeedRequestedToAddress';
+export * from './doExecuteMailService';

@@ -99,3 +99,14 @@ export enum RefTable {
   DEPOSIT = 'deposit',
   WITHDRAWAL = 'withdrawal',
 }
+
+// for mail service
+// export enum MailType {
+//   NORMAL = 'normal',
+// }
+
+export enum MailStatus {
+  CREATED = 'created',
+  SENT = 'sent',
+  FAILED = 'failed',
+}

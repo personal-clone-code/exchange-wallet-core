@@ -7,11 +7,13 @@ import {
   Utils,
   settleEnvironment,
   getRedisSubscriber,
+  registerMailEventCallback,
 } from 'sota-common';
 import { CurrencyConfig, EnvConfig, Erc20Token, EosToken, Trc20Token } from './entities';
 import _ from 'lodash';
 import { prepareWalletBalanceAll } from './callbacks';
 import { OmniToken } from './entities/OmniToken';
+import { IMailJobProps, insertMailJob } from './rawdb';
 
 const logger = getLogger('prepareEnvironment');
 
@@ -84,6 +86,30 @@ export async function prepareEnvironment(): Promise<void> {
 
   const redisSubscriber = getRedisSubscriber();
   redisSubscriber.on('message', onRedisMessage);
+
+  registerMailEventCallback(async messages => {
+    const appName: string = process.env.APP_NAME || 'Exchange Wallet';
+    const receiver = EnvConfigRegistry.getCustomEnvConfig('MAIL_RECIPIENT_ERROR_ALERT');
+    if (!receiver) {
+      logger.warn(`Could not send to receiver=${receiver}. Please check the recepient address.`);
+      return;
+    }
+    const sender = EnvConfigRegistry.getCustomEnvConfig('MAIL_FROM_ADDRESS');
+    const senderName = EnvConfigRegistry.getCustomEnvConfig('MAIL_FROM_NAME');
+    await connection.transaction(async manager => {
+      const props: IMailJobProps = {
+        senderAddress: sender,
+        senderName,
+        recipientAddress: receiver,
+        title: `[${appName}] Error Notifier`,
+        templateName: 'logger_error_notifier_layout.hbs',
+        content: {
+          error_message: messages.join('<br />'),
+        },
+      };
+      await insertMailJob(manager, props);
+    });
+  });
 
   await settleEnvironment();
 

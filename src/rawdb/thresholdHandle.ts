@@ -180,42 +180,27 @@ export async function lowerThresholdHandle(manager: EntityManager, sentRecord: L
 
   // TBD: this code from Logger.ts, should move to Util or somewhere better
   logger.info(`Hot wallet balance is in lower threshold address=${hotWallet.address}`);
-  const mailerAccount = EnvConfigRegistry.getCustomEnvConfig('MAILER_ACCOUNT');
-  const mailerPassword = EnvConfigRegistry.getCustomEnvConfig('MAILER_PASSWORD');
-  const mailerReceiver = EnvConfigRegistry.getCustomEnvConfig('MAILER_RECEIVER');
-
-  if (!mailerAccount || !mailerPassword || !mailerReceiver) {
-    logger.error(
-      `Revise this: MAILER_ACCOUNT=${mailerAccount}, MAILER_PASSWORD=${mailerPassword}, MAILER_RECEIVER=${mailerReceiver}`
-    );
+  const appName: string = process.env.APP_NAME || 'Exchange Wallet';
+  const sender = EnvConfigRegistry.getCustomEnvConfig('MAIL_FROM_ADDRESS');
+  const senderName = EnvConfigRegistry.getCustomEnvConfig('MAIL_FROM_NAME');
+  const receiver = EnvConfigRegistry.getCustomEnvConfig('MAIL_RECIPIENT_COLD_WALLET');
+  if (!receiver || !Utils.isValidEmail(receiver)) {
+    logger.error(`Mailer could not send email to receiver=${receiver}. Please check it.`);
     return;
   }
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: mailerAccount,
-      pass: mailerPassword,
+  await rawdb.insertMailJob(manager, {
+    senderAddress: sender,
+    senderName,
+    recipientAddress: receiver,
+    title: `[${appName}] Hot wallet ${hotWallet.address} is near lower threshold`,
+    templateName: 'hot_wallet_balance_lower_threshold_layout.hbs',
+    content: {
+      lower_threshold: lower,
+      current_balance: balance,
+      address: hotWallet.address,
+      currency: sentRecord.currency,
     },
   });
-
-  const mailOptions = {
-    from: mailerAccount,
-    to: mailerReceiver,
-    subject: `Hot wallet ${hotWallet.address} is near lower threshold`,
-    html: `lower_threshold=${lower}, current_balance=${balance}, address=${hotWallet.address}, currency=${
-      sentRecord.currency
-    }`,
-  };
-
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    logger.info(`Message sent: ${info.messageId}`);
-    logger.info(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
-  } catch (err) {
-    logger.error('Cannot send email, ignore notifying');
-    logger.error(err);
-  }
 }
 
 export async function checkHotWalletIsSufficient(hotWallet: HotWallet, amount: BigNumber) {

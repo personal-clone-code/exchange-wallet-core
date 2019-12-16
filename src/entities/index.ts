@@ -28,3 +28,5 @@ export * from './UserCurrency';
 export * from './EosToken';
 export * from './LocalTx';
 export * from './KmsCmk';
+export * from './MailJob';
+export * from './MailLog';
