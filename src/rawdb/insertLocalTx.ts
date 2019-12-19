@@ -26,7 +26,7 @@ export async function insertLocalTx(manager: EntityManager, localTxProps: ILocal
   const currency = CurrencyRegistry.getOneCurrency(localTxProps.currency);
   const nativeCurrency = CurrencyRegistry.getOneCurrency(currency.platform);
   const [userCurrency, userRefCurrency] = await Promise.all([
-    getUserCurrency(userId, currency.platform, manager),
+    getUserCurrency(userId, currency.symbol, manager),
     getUserCurrency(userId, currency.symbol, manager),
   ]);
   const localTx = new LocalTx();
