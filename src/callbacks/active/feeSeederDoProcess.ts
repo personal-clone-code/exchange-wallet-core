@@ -82,6 +82,7 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
     userId: hotWallet.userId,
     walletId: hotWallet.walletId,
     currency: currency.symbol,
+    refCurrency: seedDeposit.currency,
     refId: 0,
     refTable: RefTable.DEPOSIT,
     type: LocalTxType.SEED,

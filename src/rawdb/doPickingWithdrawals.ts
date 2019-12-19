@@ -21,7 +21,7 @@ export async function doPickingWithdrawals(
   amount: BigNumber
 ): Promise<LocalTx> {
   const withdrawalIds = withdrawals.map(w => w.id);
-  const withdrawalAddresses = withdrawals.map(w => w.toAddress);
+  // const withdrawalAddresses = withdrawals.map(w => w.toAddress);
 
   // Create local tx record
   const localTx = await rawdb.insertLocalTx(manager, {
@@ -30,6 +30,7 @@ export async function doPickingWithdrawals(
     userId: withdrawals[0].userId,
     walletId: withdrawals[0].walletId,
     currency,
+    refCurrency: withdrawals[0].currency,
     refId: 0,
     refTable: RefTable.WITHDRAWAL,
     type: LocalTxType.WITHDRAWAL_NORMAL,

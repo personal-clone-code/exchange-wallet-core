@@ -116,6 +116,7 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     userId: rallyWallet.userId,
     walletId: rallyWallet.walletId,
     currency: currency.symbol,
+    refCurrency: records[0].currency,
     refId: 0,
     refTable: RefTable.DEPOSIT,
     type: LocalTxType.COLLECT,
