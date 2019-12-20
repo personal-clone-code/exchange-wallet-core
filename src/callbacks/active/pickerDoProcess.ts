@@ -276,7 +276,9 @@ async function _constructRawTransaction(
   } catch (err) {
     // Most likely the fail reason is insufficient balance from hot wallet
     // Or there was problem with connection to the full node
-    logger.error(`Could not create raw tx address=${fromAddress}, vouts=${inspect(vouts)}, error=${inspect(err)}`);
+    logger.error(
+      `Could not create raw tx address=${fromAddress.address}, vouts=${inspect(vouts)}, error=${inspect(err)}`
+    );
 
     // update withdrawal record
     await rawdb.updateRecordsTimestamp(manager, Withdrawal, withdrawalIds);

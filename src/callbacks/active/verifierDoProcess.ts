@@ -179,13 +179,12 @@ async function verifyCollectDoProcess(
     }
   }
   await Utils.PromiseAll(tasks);
+  // if (!hotWallet) {
+  //   logger.info(`wallet id=${localTx.walletId} is cold wallet, ignore threshold`);
+  //   return;
+  // }
 
-  if (!hotWallet) {
-    logger.info(`wallet id=${localTx.walletId} is cold wallet, ignore threshold`);
-    return;
-  }
-
-  await rawdb.upperThresholdHandle(manager, CurrencyRegistry.getOneCurrency(localTx.currency), hotWallet);
+  // await rawdb.upperThresholdHandle(manager, CurrencyRegistry.getOneCurrency(localTx.currency), hotWallet);
 }
 
 async function verifySeedDoProcess(
