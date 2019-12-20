@@ -53,7 +53,7 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
   // Pick a bunch of withdrawals and create a raw transaction for them
   const iCurrency = picker.getCurrency();
   const candidateWithdrawals = await rawdb.getNextPickedWithdrawals(manager, iCurrency.platform);
-  if (!candidateWithdrawals.length) {
+  if (!candidateWithdrawals || candidateWithdrawals.length === 0) {
     logger.info(`No more withdrawal need to be picked up. Will check upperthreshold hot wallet the next tick...`);
     await rawdb.checkUpperThreshold(manager, iCurrency.platform);
     return;
@@ -110,8 +110,8 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
       unsignedTx,
       hotWallet,
       currency.symbol,
-      finalPickedWithdrawals,
-      withdrawlParams.amount
+      finalPickedWithdrawals
+      // withdrawlParams.amount
     );
   } catch (e) {
     logger.fatal(`Could not finish picking withdrawal ids=[${withdrawalIds}] err=${e.toString()}`);
@@ -136,6 +136,7 @@ async function _pickerDoProcessUTXO(
     }
     amount = amount.plus(_amount);
   });
+
   let hotWallet: HotWallet;
   if (finalPickedWithdrawals.length) {
     hotWallet = await rawdb.findSufficientHotWallet(
@@ -177,7 +178,6 @@ async function _pickerDoProcessUTXO(
     }
   }
   // Find an available internal hot wallet
-
   return {
     hotWallet,
     finalPickedWithdrawals,
@@ -225,6 +225,7 @@ async function _pickerDoProcessAccountBase(
       break;
     }
   }
+
   return {
     hotWallet,
     finalPickedWithdrawals,

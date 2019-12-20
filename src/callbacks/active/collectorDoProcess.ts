@@ -16,8 +16,8 @@ import {
 import _ from 'lodash';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
-import { CollectStatus, WithdrawalStatus, DepositEvent, LocalTxType, RefTable, LocalTxStatus } from '../../Enums';
-import { Deposit, Address, DepositLog } from '../../entities';
+import { CollectStatus, LocalTxType, RefTable, LocalTxStatus } from '../../Enums';
+import { Deposit } from '../../entities';
 
 const logger = getLogger('collectorDoProcess');
 

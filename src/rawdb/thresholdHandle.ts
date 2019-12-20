@@ -120,6 +120,7 @@ export async function upperThresholdHandle(
   withdrawal.walletId = hotWallet.walletId;
   withdrawal.toAddress = coldWallet.address;
   withdrawal.status = WithdrawalStatus.UNSIGNED;
+
   // Create withdrawal tx record
   await manager.save(withdrawal);
   await manager

@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import { EntityManager } from 'typeorm';
 import { IRawTransaction, Utils, BigNumber } from 'sota-common';
 import { HotWallet, LocalTx, Withdrawal, Deposit } from '../entities';
@@ -17,11 +18,15 @@ export async function doPickingWithdrawals(
   unsignedTx: IRawTransaction,
   hotWallet: HotWallet,
   currency: string,
-  withdrawals: Withdrawal[],
-  amount: BigNumber
+  withdrawals: Withdrawal[]
+  // amount: BigNumber
 ): Promise<LocalTx> {
   const withdrawalIds = withdrawals.map(w => w.id);
   // const withdrawalAddresses = withdrawals.map(w => w.toAddress);
+  let withdrawalAmount = new BigNumber(0);
+  withdrawals.map(withdrawal => {
+    withdrawalAmount = withdrawalAmount.plus(withdrawal.amount);
+  });
 
   // Create local tx record
   const localTx = await rawdb.insertLocalTx(manager, {
@@ -37,7 +42,7 @@ export async function doPickingWithdrawals(
     status: LocalTxStatus.SIGNING,
     unsignedRaw: unsignedTx.unsignedRaw,
     unsignedTxid: unsignedTx.txid,
-    amount: amount.toString(),
+    amount: withdrawalAmount.toString(),
   });
 
   // update withdrawal record
