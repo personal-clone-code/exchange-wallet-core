@@ -4,7 +4,7 @@ import { WalletLog, WalletBalance, Address, Wallet, Deposit } from '../entities'
 import { WalletEvent } from '../Enums';
 import * as rawdb from '.';
 
-const logger = getLogger('rawdb::insertDeposit');
+const logger = getLogger('rawdb::updateWalletBalanceAfterDeposit');
 
 export async function updateWalletBalanceAfterDeposit(
   manager: EntityManager,

@@ -44,7 +44,7 @@ export async function upperThresholdHandle(
   hotWallet: HotWallet
 ): Promise<void> {
   const pendingStatuses = [WithdrawalStatus.SENT, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING];
-  if (await rawdb.checkHotWalletIsBusy(manager, hotWallet, pendingStatuses)) {
+  if (await rawdb.checkHotWalletIsBusy(manager, hotWallet, pendingStatuses, iCurrency)) {
     logger.info(`Hot wallet address=${hotWallet.address} is busy, ignore collecting`);
     return;
   }
@@ -123,25 +123,7 @@ export async function upperThresholdHandle(
 
   // Create withdrawal tx record
   await manager.save(withdrawal);
-  await manager
-    .createQueryBuilder()
-    .update(WalletBalance)
-    .set({
-      balance: () => {
-        return `balance - ${amount}`;
-      },
-      updatedAt: Utils.nowInMillis(),
-    })
-    .where({
-      walletId: hotWallet.walletId,
-      currency: iCurrency.symbol,
-    })
-    .execute(),
-    logger.info(
-      `Withdrawal created from hot wallet address=${hotWallet.address} to cold wallet address=${
-        coldWallet.address
-      } amount=${amount} symbol=${iCurrency.symbol}`
-    );
+  return;
 }
 
 export async function lowerThresholdHandle(manager: EntityManager, sentRecord: LocalTx) {
