@@ -188,10 +188,12 @@ export async function getOneHotWallet(manager: EntityManager, currency: string, 
 export async function checkHotWalletIsBusy(
   manager: EntityManager,
   hotWallet: HotWallet,
-  pendingStatuses: string[]
+  pendingStatuses: string[],
+  currency: ICurrency
 ): Promise<boolean> {
   const [pendingTransactions] = await Promise.all([
     manager.find(LocalTx, {
+      currency: currency.symbol,
       type: In([LocalTxType.SEED, LocalTxType.WITHDRAWAL_NORMAL, LocalTxType.WITHDRAWAL_COLD]),
       status: In(pendingStatuses),
     }),

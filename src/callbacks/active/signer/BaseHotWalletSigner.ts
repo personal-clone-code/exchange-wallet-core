@@ -15,7 +15,12 @@ export abstract class BaseHotWalletSigner extends BaseSigner {
   }
 
   protected async isBusy(): Promise<boolean> {
-    return rawdb.checkHotWalletIsBusy(this.manager, this.hotWallet, [LocalTxStatus.SIGNED, LocalTxStatus.SENT]);
+    return rawdb.checkHotWalletIsBusy(
+      this.manager,
+      this.hotWallet,
+      [LocalTxStatus.SIGNED, LocalTxStatus.SENT],
+      this.currency
+    );
   }
 
   protected async signTx(): Promise<void> {
