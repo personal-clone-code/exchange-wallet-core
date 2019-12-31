@@ -9,7 +9,7 @@ import {
   getRedisSubscriber,
   registerMailEventCallback,
 } from 'sota-common';
-import { CurrencyConfig, EnvConfig, Erc20Token, EosToken, Trc20Token } from './entities';
+import { CurrencyConfig, EnvConfig, Erc20Token, EosToken, Trc20Token, NemEnvConfig } from './entities';
 import _ from 'lodash';
 import { prepareWalletBalanceAll } from './callbacks';
 import { OmniToken } from './entities/OmniToken';
@@ -48,6 +48,12 @@ export async function prepareEnvironment(): Promise<void> {
   ]);
 
   envConfigs.forEach(config => {
+    EnvConfigRegistry.setCustomEnvConfig(config.key, config.value);
+  });
+
+  // register NEM env config
+  const nemEnvConfigs = await connection.getRepository(NemEnvConfig).find({});
+  nemEnvConfigs.forEach(config => {
     EnvConfigRegistry.setCustomEnvConfig(config.key, config.value);
   });
 
