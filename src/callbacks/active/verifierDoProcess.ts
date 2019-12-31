@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import {
   TransactionStatus,
   getLogger,
@@ -6,18 +7,21 @@ import {
   CurrencyRegistry,
   GatewayRegistry,
   BigNumber,
+  BlockHeader,
+  Transaction,
 } from 'sota-common';
 import * as rawdb from '../../rawdb';
 import { EntityManager, getConnection, In } from 'typeorm';
 import {
   WithdrawalStatus,
   WithdrawalEvent,
-  InternalTransferType,
   CollectStatus,
   DepositEvent,
   WalletEvent,
+  LocalTxType,
+  LocalTxStatus,
 } from '../../Enums';
-import { WithdrawalTx, InternalTransfer, DepositLog, Deposit, Wallet } from '../../entities';
+import { LocalTx, DepositLog, Deposit, Wallet } from '../../entities';
 
 const logger = getLogger('verifierDoProcess');
 
@@ -29,9 +33,9 @@ export async function verifierDoProcess(verfifier: BasePlatformWorker): Promise<
 
 /**
  * Tasks of verifier:
- * - Find one withdrawal_tx or internal_transfer record that has `status` = `sent`
+ * - Find one localTx record that has `status` = `sent`
  * - Check whether the txid is confirmed on the blockchain network
- * - Update the status of corresponding withdrawal and withdrawal_tx or internal_transfer records
+ * - Update the status of corresponding related tables and localTx records
  *
  * @param manager
  * @param verifier
@@ -40,191 +44,171 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
   const platformCurrency = verifier.getCurrency();
   const allCurrencies = CurrencyRegistry.getCurrenciesOfPlatform(platformCurrency.platform);
   const allSymbols = allCurrencies.map(c => c.symbol);
-  const sentRecord = await rawdb.findOneWithdrawalTx(manager, allSymbols, [WithdrawalStatus.SENT]);
+  const sentRecord = await rawdb.findOneLocalTx(manager, allSymbols, [LocalTxStatus.SENT]);
 
-  if (sentRecord) {
-    logger.info(`Found withdrawal tx need vefifying: txid=${sentRecord.txid}`);
-    return verifierWithdrawalDoProcess(manager, sentRecord);
-  }
-
-  logger.info(`There are not sent withdrawals to be verified: platform=${platformCurrency.platform}`);
-  logger.info(`Find internal transfer: platform=${platformCurrency.platform}`);
-  const internalRecord = await rawdb.findOneInternalTransferByCollectStatus(manager, allSymbols, [
-    WithdrawalStatus.SENT,
-  ]);
-
-  if (!internalRecord) {
-    logger.info(`There are not sent internal txs to be verified: platform=${platformCurrency.platform}`);
+  if (!sentRecord) {
+    logger.info(`There are not sent localTxs to be verified: platform=${platformCurrency.platform}`);
     return;
   }
 
-  logger.info(`Found internal tx need vefifying: txid=${internalRecord.txid}`);
-  return verifierInternalDoProcess(manager, internalRecord);
-}
+  logger.info(`Found localTx need verifying: txid=${sentRecord.txid}`);
 
-async function verifierWithdrawalDoProcess(manager: EntityManager, sentRecord: WithdrawalTx): Promise<void> {
   const currency = CurrencyRegistry.getOneCurrency(sentRecord.currency);
   const gateway = GatewayRegistry.getGatewayInstance(currency);
 
-  let event = WithdrawalEvent.COMPLETED;
-  let verifiedStatus = WithdrawalStatus.COMPLETED;
-
-  // Verify withdrawal information from blockchain network
   const transactionStatus = await gateway.getTransactionStatus(sentRecord.txid);
   if (transactionStatus === TransactionStatus.UNKNOWN || transactionStatus === TransactionStatus.CONFIRMING) {
     logger.info(`Wait until new tx state ${sentRecord.txid}`);
-    await rawdb.updateRecordsTimestamp(manager, WithdrawalTx, [sentRecord.id]);
+    await rawdb.updateRecordsTimestamp(manager, LocalTx, [sentRecord.id]);
     return;
-  }
-
-  if (transactionStatus === TransactionStatus.FAILED) {
-    event = WithdrawalEvent.FAILED;
-    verifiedStatus = WithdrawalStatus.FAILED;
   }
   logger.info(`Transaction ${sentRecord.txid} is ${transactionStatus}`);
 
-  const resTx = await gateway.getOneTransaction(sentRecord.txid);
+  let resTx: Transaction;
+  // TODO: FIXME
+  // This is a workaround. Should be refactored later
+  if (currency.symbol.startsWith(`erc20.`)) {
+    const resTxs = await (gateway as any).getTransactionsByTxid(sentRecord.txid);
+    resTx = resTxs[0];
+    // resTx = _.find(resTxs, tx => tx.toAddress === sentRecord.toAddress);
+    // if (!resTx) {
+    //   logger.error(`Not found any res tx to address: ${sentRecord.toAddress} by txid=${sentRecord.txid}`);
+    //   return;
+    // }
+  } else {
+    resTx = await gateway.getOneTransaction(sentRecord.txid);
+  }
   const fee = resTx.getNetworkFee();
 
+  const isTxSucceed = transactionStatus === TransactionStatus.COMPLETED;
+  if (sentRecord.isWithdrawal()) {
+    await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
+  } else if (sentRecord.isCollectTx()) {
+    await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
+  } else if (sentRecord.isSeedTx()) {
+    await verifySeedDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
+  } else {
+    logger.error(`verifierDoProcess not supported localTxType: ${sentRecord.type}`);
+  }
+}
+
+async function verifierWithdrawalDoProcess(
+  manager: EntityManager,
+  sentRecord: LocalTx,
+  isTxSucceed: boolean,
+  fee: BigNumber,
+  blockHeader: BlockHeader
+): Promise<void> {
+  const event = isTxSucceed ? WithdrawalEvent.COMPLETED : WithdrawalEvent.FAILED;
+  const withdrawStatus = isTxSucceed ? WithdrawalStatus.COMPLETED : WithdrawalStatus.FAILED;
+  const localTxStatus = isTxSucceed ? LocalTxStatus.COMPLETED : LocalTxStatus.FAILED;
+
   await Utils.PromiseAll([
-    rawdb.updateWithdrawalsStatus(manager, sentRecord.id, verifiedStatus, event),
-    rawdb.updateWithdrawalTxStatus(manager, sentRecord.id, verifiedStatus, null, fee),
+    rawdb.updateWithdrawalsStatus(manager, sentRecord.id, withdrawStatus, event),
+    rawdb.updateLocalTxStatus(manager, sentRecord.id, localTxStatus, null, fee, blockHeader),
     rawdb.updateWithdrawalTxWallets(manager, sentRecord, event, fee),
   ]);
 
   await rawdb.lowerThresholdHandle(manager, sentRecord);
-
-  await rawdb.insertLocalTxDirtyFromWithdrawalTx(manager, sentRecord, verifiedStatus, fee);
-}
-
-async function verifierInternalDoProcess(manager: EntityManager, internalRecord: InternalTransfer): Promise<void> {
-  const currency = CurrencyRegistry.getOneCurrency(internalRecord.currency);
-  const gateway = GatewayRegistry.getGatewayInstance(currency);
-
-  let verifiedStatus = WithdrawalStatus.COMPLETED;
-  let event = CollectStatus.COLLECTED;
-  const transactionStatus = await gateway.getTransactionStatus(internalRecord.txid);
-  if (transactionStatus === TransactionStatus.UNKNOWN || transactionStatus === TransactionStatus.CONFIRMING) {
-    logger.info(`Wait until new tx state ${internalRecord.txid}`);
-    await rawdb.updateRecordsTimestamp(manager, InternalTransfer, [internalRecord.id]);
-    return;
-  }
-
-  if (transactionStatus === TransactionStatus.FAILED) {
-    verifiedStatus = WithdrawalStatus.FAILED;
-    event = CollectStatus.UNCOLLECTED;
-  }
-  logger.info(`Transaction ${internalRecord.txid} is ${transactionStatus}`);
-
-  const resTx = await gateway.getOneTransaction(internalRecord.txid);
-  const fee = resTx.getNetworkFee();
-
-  if (internalRecord.type === InternalTransferType.COLLECT) {
-    return verifyCollectDoProcess(manager, internalRecord, verifiedStatus, event, fee);
-  }
-
-  if (internalRecord.type === InternalTransferType.SEED) {
-    return verifySeedDoProcess(manager, internalRecord, verifiedStatus, event, fee);
-  }
 }
 
 async function verifyCollectDoProcess(
   manager: EntityManager,
-  internalRecord: InternalTransfer,
-  verifiedStatus: WithdrawalStatus,
-  event: CollectStatus,
-  fee: BigNumber
+  localTx: LocalTx,
+  isTxSucceed: boolean,
+  fee: BigNumber,
+  blockHeader: BlockHeader
 ): Promise<void> {
-  const { toAddress } = internalRecord;
-  if (!toAddress) {
-    throw new Error(`internalTx id=${internalRecord.id} does not have toAddress`);
-  }
+  const event = isTxSucceed ? DepositEvent.COLLECTED : DepositEvent.COLLECTED_FAILED;
+  const collectStatus = isTxSucceed ? CollectStatus.COLLECTED : CollectStatus.UNCOLLECTED;
+  const localTxStatus = isTxSucceed ? LocalTxStatus.COMPLETED : LocalTxStatus.FAILED;
 
   const tasks: Array<Promise<any>> = [
-    rawdb.updateInternalTransfer(manager, internalRecord, verifiedStatus, fee),
-    rawdb.updateDepositCollectStatus(manager, internalRecord, event),
+    rawdb.updateLocalTxStatus(manager, localTx.id, localTxStatus, null, fee, blockHeader),
+    rawdb.updateDepositCollectStatusByCollectTxId(manager, localTx, collectStatus, event),
   ];
-  const currencyInfo = CurrencyRegistry.getOneCurrency(internalRecord.currency);
 
+  const { toAddress } = localTx;
+  if (!toAddress) {
+    throw new Error(`localTx id=${localTx.id} does not have toAddress`);
+  }
+
+  if (isTxSucceed) {
+    let amount = new BigNumber(0);
+    if (localTx.currency.startsWith(`erc20.`)) {
+      const gateway = GatewayRegistry.getGatewayInstance(localTx.currency);
+      const resTxs = await (gateway as any).getTransactionsByTxid(localTx.txid);
+      resTxs.forEach((tx: any) => {
+        if (tx.toAddress !== toAddress) {
+          return;
+        }
+        amount = amount.plus(tx.amount);
+      });
+    } else {
+      amount = new BigNumber(localTx.amount);
+    }
+    tasks.push(rawdb.updateWalletBalanceAfterCollecting(manager, localTx, amount));
+  }
+  await Utils.PromiseAll(tasks);
+
+  // reset tasks
+  tasks.length = 0;
   const hotWallet = await rawdb.findHotWalletByAddress(manager, toAddress);
-
   if (!hotWallet) {
     // transfer to cold wallet
     tasks.push(
       rawdb.updateWalletBalanceOnlyFee(
         manager,
-        internalRecord,
-        event,
-        new BigNumber(internalRecord.amount).minus(fee),
+        localTx,
+        collectStatus,
+        new BigNumber(localTx.amount).minus(fee),
         WalletEvent.COLLECT_AMOUNT
       )
     );
-    tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, fee, WalletEvent.COLLECT_FEE));
+    tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, localTx, collectStatus, fee, WalletEvent.COLLECT_FEE));
   } else {
     // only minus fee for native coin
+    const currencyInfo = CurrencyRegistry.getOneCurrency(localTx.currency);
     if (currencyInfo.isNative) {
-      tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, fee, WalletEvent.COLLECT_FEE));
+      tasks.push(rawdb.updateWalletBalanceOnlyFee(manager, localTx, collectStatus, fee, WalletEvent.COLLECT_FEE));
     } else {
       logger.info(`${currencyInfo.symbol} is not native, do not minus fee`);
       tasks.push(
-        rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, new BigNumber(0), WalletEvent.COLLECT_FEE)
+        rawdb.updateWalletBalanceOnlyFee(manager, localTx, collectStatus, new BigNumber(0), WalletEvent.COLLECT_FEE)
       );
     }
   }
-
   await Utils.PromiseAll(tasks);
+  // if (!hotWallet) {
+  //   logger.info(`wallet id=${localTx.walletId} is cold wallet, ignore threshold`);
+  //   return;
+  // }
 
-  await rawdb.insertLocalTxDirtyFromInternalTransfer(manager, internalRecord, verifiedStatus, fee);
-
-  if (!hotWallet) {
-    logger.info(`wallet id=${internalRecord.walletId} is cold wallet, ignore threshold`);
-    return;
-  }
-
-  await rawdb.upperThresholdHandle(manager, CurrencyRegistry.getOneCurrency(internalRecord.currency), hotWallet);
+  // await rawdb.upperThresholdHandle(manager, CurrencyRegistry.getOneCurrency(localTx.currency), hotWallet);
 }
 
 async function verifySeedDoProcess(
   manager: EntityManager,
-  internalRecord: InternalTransfer,
-  verifiedStatus: WithdrawalStatus,
-  event: CollectStatus,
-  fee: BigNumber
+  localTx: LocalTx,
+  isTxSucceed: boolean,
+  fee: BigNumber,
+  blockHeader: BlockHeader
 ): Promise<void> {
-  const seeding = await manager.findOne(DepositLog, {
-    data: internalRecord.txid,
-  });
-
-  if (!seeding) {
-    throw new Error(`txid=${internalRecord.txid} is not a seeding tx`);
-  }
-
-  const amount = new BigNumber(internalRecord.amount);
-  const platformCurrency = CurrencyRegistry.getOneCurrency(internalRecord.currency);
-  const platformCurrencies = CurrencyRegistry.getCurrenciesOfPlatform(platformCurrency.platform);
-  const allSymbols = platformCurrencies.map(c => c.symbol);
-  let deposits = await manager.find(Deposit, {
-    toAddress: internalRecord.toAddress,
-    collectStatus: CollectStatus.SEED_REQUESTED,
-    currency: In(allSymbols),
-  });
+  const event = isTxSucceed ? DepositEvent.SEEDED : DepositEvent.SEEDED_FAILED;
+  const collectStatus = isTxSucceed ? CollectStatus.COLLECTED : CollectStatus.UNCOLLECTED; // for fee
+  const localTxStatus = isTxSucceed ? LocalTxStatus.COMPLETED : LocalTxStatus.FAILED;
 
   const tasks: Array<Promise<any>> = [
-    rawdb.updateInternalTransfer(manager, internalRecord, verifiedStatus, fee),
-    rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, amount, WalletEvent.SEED_AMOUNT),
-    rawdb.updateWalletBalanceOnlyFee(manager, internalRecord, event, fee, WalletEvent.SEED_FEE),
+    rawdb.updateLocalTxStatus(manager, localTx.id, localTxStatus, null, fee, blockHeader),
+    rawdb.updateWalletBalanceOnlyFee(
+      manager,
+      localTx,
+      collectStatus,
+      new BigNumber(localTx.amount),
+      WalletEvent.SEED_AMOUNT
+    ),
+    rawdb.updateWalletBalanceOnlyFee(manager, localTx, collectStatus, fee, WalletEvent.SEED_FEE),
+    rawdb.updateDepositCollectStatusBySeedTxId(manager, localTx, CollectStatus.UNCOLLECTED, event),
   ];
-
-  if (event === CollectStatus.COLLECTED) {
-    deposits = deposits.map(deposit => {
-      deposit.collectStatus = CollectStatus.UNCOLLECTED;
-      return deposit;
-    });
-    tasks.push(manager.save(deposits));
-    tasks.push(rawdb.insertDepositLog(manager, seeding.depositId, DepositEvent.SEEDED, internalRecord.id));
-  }
-
   await Utils.PromiseAll(tasks);
-
-  await rawdb.insertLocalTxDirtyFromInternalTransfer(manager, internalRecord, verifiedStatus, fee, seeding.depositId);
 }

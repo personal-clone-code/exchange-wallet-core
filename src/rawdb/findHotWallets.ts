@@ -1,8 +1,8 @@
 import _ from 'lodash';
 import { EntityManager, In } from 'typeorm';
-import { HotWallet, InternalTransfer, Withdrawal, RallyWallet, ColdWallet, Currency } from '../entities';
-import { InternalTransferType, WithdrawalStatus } from '../Enums';
-import { getLogger, BigNumber, ICurrency, GatewayRegistry } from 'sota-common';
+import { HotWallet, Withdrawal, RallyWallet, ColdWallet, Currency, LocalTx } from '../entities';
+import { WithdrawalStatus, LocalTxType, LocalTxStatus } from '../Enums';
+import { getLogger, BigNumber, ICurrency, GatewayRegistry, HotWalletType } from 'sota-common';
 
 const logger = getLogger('rawdb::findHotWallets');
 
@@ -17,7 +17,8 @@ export async function findSufficientHotWallet(
   manager: EntityManager,
   walletId: number,
   currency: ICurrency,
-  amount: BigNumber
+  amount: BigNumber,
+  type: HotWalletType
 ): Promise<HotWallet> {
   const hotWallets = await findFreeHotWallets(manager, walletId, currency.platform);
   if (!hotWallets.length) {
@@ -29,14 +30,16 @@ export async function findSufficientHotWallet(
   await Promise.all(
     hotWallets.map(async hotWallet => {
       const hotWalletBalance = await gateway.getAddressBalance(hotWallet.address);
-      if (hotWalletBalance.gte(amount)) {
+      if (hotWallet.type === type && hotWalletBalance.gte(amount)) {
         foundHotWallet = hotWallet;
       }
     })
   );
 
   if (!foundHotWallet) {
-    logger.error(`No sufficient hot wallet walletId=${walletId} currency=${currency} amount=${amount.toString()}`);
+    logger.error(
+      `No sufficient hot wallet walletId=${walletId} currency=${currency.symbol} amount=${amount.toString()}`
+    );
   }
 
   return foundHotWallet;
@@ -145,33 +148,15 @@ export async function findAnyExternalHotWallet(manager: EntityManager, walletId:
 }
 
 /**
- * get pending addresses from internal transfer and withdrawal tables
+ * get pending sender from local_tx
  * @param manager
  * @param walletId
  */
 export async function getAllBusyHotWallets(manager: EntityManager, walletId: number): Promise<string[]> {
-  const busyAddresses: string[] = [];
-  const [busySeedingAddresses, busyWithdrawingAddresses] = await Promise.all([
-    await getBusySeedingHotWallets(manager, walletId),
-    await getBusyWithdrawingHotWallets(manager, walletId),
-  ]);
-
-  busyAddresses.push(...busySeedingAddresses);
-  busyAddresses.push(...busyWithdrawingAddresses);
-
-  return _.uniq(busyAddresses);
-}
-
-/**
- * get pending sender from internal transfer
- * @param manager
- * @param walletId
- */
-export async function getBusySeedingHotWallets(manager: EntityManager, walletId: number): Promise<string[]> {
-  const pendingStatuses = [WithdrawalStatus.SENT, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING];
-  const seedTransactions = await manager.find(InternalTransfer, {
+  const pendingStatuses = [LocalTxStatus.SENT, LocalTxStatus.SIGNED, LocalTxStatus.SIGNING];
+  const seedTransactions = await manager.find(LocalTx, {
     walletId,
-    type: InternalTransferType.SEED,
+    type: LocalTxType.SEED,
     status: In(pendingStatuses),
   });
 
@@ -180,26 +165,6 @@ export async function getBusySeedingHotWallets(manager: EntityManager, walletId:
   }
 
   return seedTransactions.map(t => t.fromAddress);
-}
-
-/**
- * Get the busy hot wallets' address due to withdrawals
- *
- * @param manager
- * @param walletId
- */
-export async function getBusyWithdrawingHotWallets(manager: EntityManager, walletId: number): Promise<string[]> {
-  const pendingStatuses = [WithdrawalStatus.SENT, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING];
-  const allPendingWithdrawals = await manager.find(Withdrawal, {
-    walletId,
-    status: In(pendingStatuses),
-  });
-
-  if (!allPendingWithdrawals.length) {
-    return [];
-  }
-
-  return allPendingWithdrawals.map(w => w.fromAddress);
 }
 
 /**
@@ -223,20 +188,18 @@ export async function getOneHotWallet(manager: EntityManager, currency: string, 
 export async function checkHotWalletIsBusy(
   manager: EntityManager,
   hotWallet: HotWallet,
-  pendingStatuses: string[]
+  pendingStatuses: string[],
+  currency: ICurrency
 ): Promise<boolean> {
-  const [allPendingWithdrawals, seedTransactions] = await Promise.all([
-    manager.find(Withdrawal, {
-      fromAddress: hotWallet.address,
-      status: In(pendingStatuses),
-    }),
-    manager.find(InternalTransfer, {
-      type: InternalTransferType.SEED,
+  const [pendingTransactions] = await Promise.all([
+    manager.find(LocalTx, {
+      currency: currency.symbol,
+      type: In([LocalTxType.SEED, LocalTxType.WITHDRAWAL_NORMAL, LocalTxType.WITHDRAWAL_COLD]),
       status: In(pendingStatuses),
     }),
   ]);
 
-  if (!allPendingWithdrawals.length && !seedTransactions.length) {
+  if (!pendingTransactions.length) {
     return false;
   }
 

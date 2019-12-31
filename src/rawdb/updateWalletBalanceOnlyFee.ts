@@ -1,14 +1,13 @@
 import { EntityManager } from 'typeorm';
 import { CollectStatus, WalletEvent } from '../Enums';
-import { WalletBalance, WalletLog } from '../entities';
+import { WalletBalance, WalletLog, LocalTx } from '../entities';
 
 import * as rawdb from './index';
 import { Utils, CurrencyRegistry, BigNumber } from 'sota-common';
-import { InternalTransfer } from '../entities/InternalTransfer';
 
 export async function updateWalletBalanceOnlyFee(
   manager: EntityManager,
-  transfer: InternalTransfer,
+  transfer: LocalTx,
   status: CollectStatus,
   fee: BigNumber,
   typeFee: WalletEvent

@@ -13,8 +13,8 @@ import {
 } from 'sota-common';
 import * as rawdb from '.';
 import { EntityManager } from 'typeorm';
-import { WithdrawalStatus } from '../Enums';
-import { WithdrawalTx, WalletBalance, Withdrawal, HotWallet, Wallet } from '../entities';
+import { WithdrawalStatus, WithdrawOutType } from '../Enums';
+import { WithdrawalTx, WalletBalance, Withdrawal, HotWallet, Wallet, LocalTx } from '../entities';
 const nodemailer = require('nodemailer');
 const logger = getLogger('ThresholdHandle');
 
@@ -44,7 +44,7 @@ export async function upperThresholdHandle(
   hotWallet: HotWallet
 ): Promise<void> {
   const pendingStatuses = [WithdrawalStatus.SENT, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING];
-  if (await rawdb.checkHotWalletIsBusy(manager, hotWallet, pendingStatuses)) {
+  if (await rawdb.checkHotWalletIsBusy(manager, hotWallet, pendingStatuses, iCurrency)) {
     logger.info(`Hot wallet address=${hotWallet.address} is busy, ignore collecting`);
     return;
   }
@@ -102,7 +102,7 @@ export async function upperThresholdHandle(
   );
   balance = balance.minus(pending);
 
-  if (balance.lt(upper)) {
+  if (upper.eq(0) || balance.lt(upper)) {
     logger.info(
       `Hot wallet symbol=${iCurrency.symbol} address=${hotWallet.address} is not in upper threshold, ignore collecting`
     );
@@ -113,43 +113,24 @@ export async function upperThresholdHandle(
   const amount = balance.minus(middle).toFixed(currency.nativeScale);
   withdrawal.currency = iCurrency.symbol;
   withdrawal.fromAddress = hotWallet.address;
-  withdrawal.note = 'from machine';
+  withdrawal.memo = 'FROM_MACHINE';
   withdrawal.amount = amount;
-  withdrawal.userId = 0;
+  withdrawal.userId = hotWallet.userId;
+  withdrawal.type = WithdrawOutType.WITHDRAW_OUT_COLD;
   withdrawal.walletId = hotWallet.walletId;
   withdrawal.toAddress = coldWallet.address;
   withdrawal.status = WithdrawalStatus.UNSIGNED;
+
   // Create withdrawal tx record
   await manager.save(withdrawal);
-  await manager
-    .createQueryBuilder()
-    .update(WalletBalance)
-    .set({
-      balance: () => {
-        return `balance - ${amount}`;
-      },
-      withdrawalPending: () => {
-        return `withdrawal_pending + ${amount}`;
-      },
-      updatedAt: Utils.nowInMillis(),
-    })
-    .where({
-      walletId: hotWallet.walletId,
-      currency: iCurrency.symbol,
-    })
-    .execute(),
-    logger.info(
-      `Withdrawal created from hot wallet address=${hotWallet.address} to cold wallet address=${
-        coldWallet.address
-      } amount=${amount} symbol=${iCurrency.symbol}`
-    );
+  return;
 }
 
-export async function lowerThresholdHandle(manager: EntityManager, sentRecord: WithdrawalTx) {
+export async function lowerThresholdHandle(manager: EntityManager, sentRecord: LocalTx) {
   // do not throw Error in this function, this logic is optional
-  const hotWallet = await rawdb.findHotWalletByAddress(manager, sentRecord.hotWalletAddress);
+  const hotWallet = await rawdb.findHotWalletByAddress(manager, sentRecord.fromAddress);
   if (!hotWallet) {
-    logger.error(`hotWallet address=${sentRecord.hotWalletAddress} not found`);
+    logger.error(`hotWallet address=${sentRecord.fromAddress} not found`);
     return;
   }
   const currencyConfig = await rawdb.findOneCurrency(manager, sentRecord.currency, sentRecord.walletId);
@@ -171,7 +152,7 @@ export async function lowerThresholdHandle(manager: EntityManager, sentRecord: W
   );
   balance = balance.minus(pending);
 
-  if (balance.gt(lower)) {
+  if (lower.eq(0) || balance.gt(lower)) {
     logger.info(
       `Hot wallet symbol=${sentRecord.currency} address=${
         hotWallet.address
@@ -182,42 +163,27 @@ export async function lowerThresholdHandle(manager: EntityManager, sentRecord: W
 
   // TBD: this code from Logger.ts, should move to Util or somewhere better
   logger.info(`Hot wallet balance is in lower threshold address=${hotWallet.address}`);
-  const mailerAccount = EnvConfigRegistry.getCustomEnvConfig('MAILER_ACCOUNT');
-  const mailerPassword = EnvConfigRegistry.getCustomEnvConfig('MAILER_PASSWORD');
-  const mailerReceiver = EnvConfigRegistry.getCustomEnvConfig('MAILER_RECEIVER');
-
-  if (!mailerAccount || !mailerPassword || !mailerReceiver) {
-    logger.error(
-      `Revise this: MAILER_ACCOUNT=${mailerAccount}, MAILER_PASSWORD=${mailerPassword}, MAILER_RECEIVER=${mailerReceiver}`
-    );
+  const appName: string = process.env.APP_NAME || 'Exchange Wallet';
+  const sender = EnvConfigRegistry.getCustomEnvConfig('MAIL_FROM_ADDRESS');
+  const senderName = EnvConfigRegistry.getCustomEnvConfig('MAIL_FROM_NAME');
+  const receiver = EnvConfigRegistry.getCustomEnvConfig('MAIL_RECIPIENT_COLD_WALLET');
+  if (!receiver || !Utils.isValidEmail(receiver)) {
+    logger.error(`Mailer could not send email to receiver=${receiver}. Please check it.`);
     return;
   }
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: mailerAccount,
-      pass: mailerPassword,
+  await rawdb.insertMailJob(manager, {
+    senderAddress: sender,
+    senderName,
+    recipientAddress: receiver,
+    title: `[${appName}] Hot wallet ${hotWallet.address} is near lower threshold`,
+    templateName: 'hot_wallet_balance_lower_threshold_layout.hbs',
+    content: {
+      lower_threshold: lower,
+      current_balance: balance,
+      address: hotWallet.address,
+      currency: sentRecord.currency,
     },
   });
-
-  const mailOptions = {
-    from: mailerAccount,
-    to: mailerReceiver,
-    subject: `Hot wallet ${hotWallet.address} is near lower threshold`,
-    html: `lower_threshold=${lower}, current_balance=${balance}, address=${hotWallet.address}, currency=${
-      sentRecord.currency
-    }`,
-  };
-
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    logger.info(`Message sent: ${info.messageId}`);
-    logger.info(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
-  } catch (err) {
-    logger.error('Cannot send email, ignore notifying');
-    logger.error(err);
-  }
 }
 
 export async function checkHotWalletIsSufficient(hotWallet: HotWallet, amount: BigNumber) {

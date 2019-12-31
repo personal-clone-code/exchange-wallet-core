@@ -12,6 +12,9 @@ export class Deposit {
   @Column({ name: 'currency', nullable: false })
   public currency: string;
 
+  @Column({ name: 'from_address', type: 'text', nullable: false })
+  public fromAddress: string;
+
   @Column({ name: 'to_address', nullable: false })
   public toAddress: string;
 
@@ -20,6 +23,9 @@ export class Deposit {
 
   @Column({ type: 'decimal', precision: 32, scale: 0, nullable: false })
   public amount: string;
+
+  @Column()
+  public memo: string | null;
 
   @Column({ name: 'block_number', nullable: false })
   public blockNumber: number;
@@ -35,6 +41,15 @@ export class Deposit {
 
   @Column({ name: 'collected_timestamp', nullable: false })
   public collectedTimestamp: number;
+
+  @Column({ name: 'collect_local_tx_id' })
+  public collectLocalTxId: number;
+
+  @Column({ name: 'seeded_txid' })
+  public seededTxid: string;
+
+  @Column({ name: 'seed_local_tx_id' })
+  public seedLocalTxId: number;
 
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;

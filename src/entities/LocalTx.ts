@@ -43,8 +43,8 @@ export class LocalTx {
   @Column('int', { name: 'ref_id', nullable: false })
   public refId: number;
 
-  @Column('text', { name: 'note', nullable: true })
-  public note: string | null;
+  @Column('varchar', { name: 'memo', nullable: true })
+  public memo: string | null;
 
   @Column('varchar', { length: 20, name: 'status', nullable: false })
   public status: string;

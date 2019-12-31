@@ -11,6 +11,7 @@ import {
   IRawTransaction,
   AccountBasedGateway,
   ICurrency,
+  HotWalletType,
 } from 'sota-common';
 import { Withdrawal, HotWallet, Address } from '../../entities';
 import { inspect } from 'util';
@@ -36,10 +37,10 @@ export async function pickerDoProcess(picker: BaseCurrencyWorker): Promise<void>
  * Tasks of picker:
  * - Find withdrawals that can be picked next round (see how records will be chosen in `getNextPickedWithdrawals` method)
  * - Find a hot wallet, which is free (no pending transaction) and sufficient for requesting amount
- * - Create a withdrawal_tx record, which will cover for the withdrawals above:
+ * - Create a local_tx record, which will cover for the withdrawals above:
  *   + For utxo-based currencies, we can process many withdrawals in one tx
  *   + For account-based currencies, we can only process 1 withdrawal in one tx
- * - Update `withdrawal_tx_id` and change `status` to `signing` for all selected withdrawal records
+ * - Update `local_tx_id` and change `status` to `signing` for all selected withdrawal records
  * - The tx is ready to be signed now
  *
  * Then the transaction should be ready to send to the network
@@ -52,7 +53,7 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
   // Pick a bunch of withdrawals and create a raw transaction for them
   const iCurrency = picker.getCurrency();
   const candidateWithdrawals = await rawdb.getNextPickedWithdrawals(manager, iCurrency.platform);
-  if (!candidateWithdrawals.length) {
+  if (!candidateWithdrawals || candidateWithdrawals.length === 0) {
     logger.info(`No more withdrawal need to be picked up. Will check upperthreshold hot wallet the next tick...`);
     await rawdb.checkUpperThreshold(manager, iCurrency.platform);
     return;
@@ -104,7 +105,14 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
 
   // Create withdrawal tx record
   try {
-    await rawdb.doPickingWithdrawals(manager, unsignedTx, hotWallet, currency.symbol, withdrawalIds);
+    await rawdb.doPickingWithdrawals(
+      manager,
+      unsignedTx,
+      hotWallet,
+      currency.symbol,
+      finalPickedWithdrawals
+      // withdrawlParams.amount
+    );
   } catch (e) {
     logger.fatal(`Could not finish picking withdrawal ids=[${withdrawalIds}] err=${e.toString()}`);
     throw e;
@@ -128,9 +136,16 @@ async function _pickerDoProcessUTXO(
     }
     amount = amount.plus(_amount);
   });
+
   let hotWallet: HotWallet;
   if (finalPickedWithdrawals.length) {
-    hotWallet = await rawdb.findSufficientHotWallet(manager, candidateWithdrawals[0].walletId, currency, amount);
+    hotWallet = await rawdb.findSufficientHotWallet(
+      manager,
+      candidateWithdrawals[0].walletId,
+      currency,
+      amount,
+      HotWalletType.Normal
+    );
     if (hotWallet) {
       const coldWithdrawals = candidateWithdrawals.filter(w => w.fromAddress === hotWallet.address);
       finalPickedWithdrawals.push(...coldWithdrawals);
@@ -151,11 +166,12 @@ async function _pickerDoProcessUTXO(
     for (const coldWithdrawal of coldWithdrawals) {
       hotWallet = await rawdb.findHotWalletByAddress(manager, coldWithdrawal.fromAddress);
       if (
-        !(await rawdb.checkHotWalletIsBusy(manager, hotWallet, [
-          WithdrawalStatus.SIGNING,
-          WithdrawalStatus.SIGNED,
-          WithdrawalStatus.SENT,
-        ]))
+        !(await rawdb.checkHotWalletIsBusy(
+          manager,
+          hotWallet,
+          [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
+          currency
+        ))
       ) {
         finalPickedWithdrawals.push(coldWithdrawal);
         break;
@@ -163,7 +179,6 @@ async function _pickerDoProcessUTXO(
     }
   }
   // Find an available internal hot wallet
-
   return {
     hotWallet,
     finalPickedWithdrawals,
@@ -179,10 +194,16 @@ async function _pickerDoProcessAccountBase(
   const finalPickedWithdrawals = [];
   let amount = new BigNumber(0);
   for (const _candidateWithdrawal of candidateWithdrawals) {
+    const currency = CurrencyRegistry.getOneCurrency(_candidateWithdrawal.currency);
     amount = _candidateWithdrawal.getAmount();
     if (_candidateWithdrawal.fromAddress === TMP_ADDRESS) {
-      const currency = CurrencyRegistry.getOneCurrency(_candidateWithdrawal.currency);
-      hotWallet = await rawdb.findSufficientHotWallet(manager, _candidateWithdrawal.walletId, currency, amount);
+      hotWallet = await rawdb.findSufficientHotWallet(
+        manager,
+        _candidateWithdrawal.walletId,
+        currency,
+        amount,
+        HotWalletType.Normal
+      );
       finalPickedWithdrawals.push(_candidateWithdrawal);
       break;
     }
@@ -191,11 +212,12 @@ async function _pickerDoProcessAccountBase(
       continue;
     }
     if (
-      await rawdb.checkHotWalletIsBusy(manager, hotWallet, [
-        WithdrawalStatus.SIGNING,
-        WithdrawalStatus.SIGNED,
-        WithdrawalStatus.SENT,
-      ])
+      await rawdb.checkHotWalletIsBusy(
+        manager,
+        hotWallet,
+        [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
+        currency
+      )
     ) {
       logger.info(`Hot wallet ${hotWallet.address} is busy, dont pick withdrawal collect to cold wallet`);
       continue;
@@ -205,6 +227,7 @@ async function _pickerDoProcessAccountBase(
       break;
     }
   }
+
   return {
     hotWallet,
     finalPickedWithdrawals,
@@ -238,7 +261,7 @@ async function _constructRawTransaction(
       const toAddress = vouts[0].toAddress;
       let tag;
       try {
-        tag = finalPickedWithdrawals[0].note ? JSON.parse(finalPickedWithdrawals[0].note).tag : '';
+        tag = finalPickedWithdrawals[0].memo || '';
       } catch (e) {
         // do nothing, maybe it's case collect to cold wallet, note is 'from machine'
       }
@@ -255,7 +278,9 @@ async function _constructRawTransaction(
   } catch (err) {
     // Most likely the fail reason is insufficient balance from hot wallet
     // Or there was problem with connection to the full node
-    logger.error(`Could not create raw tx address=${fromAddress}, vouts=${inspect(vouts)}, error=${inspect(err)}`);
+    logger.error(
+      `Could not create raw tx address=${fromAddress.address}, vouts=${inspect(vouts)}, error=${inspect(err)}`
+    );
 
     // update withdrawal record
     await rawdb.updateRecordsTimestamp(manager, Withdrawal, withdrawalIds);

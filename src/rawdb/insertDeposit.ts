@@ -12,7 +12,11 @@ const logger = getLogger('rawdb::insertDeposit');
  * @param {TransferEntry} output - transfer output that is extracted from a transaction
  * @param {boolean} isTxConfirmed - confirmation status of transaction on the blockchain network
  */
-export async function insertDeposit(manager: EntityManager, output: TransferEntry): Promise<void> {
+export async function insertDeposit(
+  manager: EntityManager,
+  output: TransferEntry,
+  senderAddresses: string[]
+): Promise<void> {
   // TODO: We need have a cache mechanism to prevent query flooding
   const address = await manager.getRepository(Address).findOneOrFail({ address: output.address });
   const wallet = await manager.getRepository(Wallet).findOneOrFail(address.walletId);
@@ -40,6 +44,7 @@ export async function insertDeposit(manager: EntityManager, output: TransferEntr
   const deposit = new Deposit();
   deposit.walletId = wallet.id;
   deposit.currency = currency;
+  deposit.fromAddress = JSON.stringify(senderAddresses);
   deposit.toAddress = toAddress;
   deposit.txid = txid;
   deposit.blockNumber = output.tx.height;
@@ -65,49 +70,11 @@ export async function insertDeposit(manager: EntityManager, output: TransferEntr
 
   // Persist deposit data in main table
   const depositId = (await manager.getRepository(Deposit).save(deposit)).id;
-
-  const walletId = wallet.id;
-  const refId = depositId;
-
-  if (address.isExternal) {
-    logger.info(`External Address ${address.address}, Only Webhook`);
-    await rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId);
-    return;
+  await rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId);
+  if (deposit.collectedTxid === 'NO_COLLECT_HOT_WALLET_ADDRESS') {
+    await rawdb.updateWalletBalanceAfterDeposit(manager, depositId, new BigNumber(deposit.amount));
   }
-
-  const walletBalance = await manager.getRepository(WalletBalance).findOne({ walletId, currency: deposit.currency });
-  if (!walletBalance) {
-    throw new Error(`Wallet balance doesn't exist: walletId=${walletId} currency=${deposit.currency}`);
-  }
-
-  const walletLog = new WalletLog();
-  walletLog.walletId = walletId;
-  walletLog.currency = deposit.currency;
-  walletLog.refCurrency = deposit.currency;
-  walletLog.event = WalletEvent.DEPOSIT;
-  walletLog.balanceChange = amount;
-  walletLog.refId = refId;
-
-  await Utils.PromiseAll([
-    // Update wallet balance
-    rawdb.increaseWalletBalance(manager, walletId, deposit.currency, output.amount),
-    // Record wallet log
-    rawdb.insertWalletLog(manager, walletLog),
-    // Persist deposit data in sub table
-    // rawdb.insertDepositSubRecord(manager, depositId, output),
-    // Create deposit log and webhook progress
-    rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId),
-  ]);
-
-  if (currency === BlockchainPlatform.Cardano) {
-    const hotWallet = await rawdb.findAnyHotWallet(manager, wallet.id, output.currency.platform, false);
-    await rawdb.upperThresholdHandle(manager, output.currency, hotWallet);
-  } else {
-    const hotWallet = await rawdb.findHotWalletByAddress(manager, output.address);
-    if (hotWallet) {
-      await rawdb.upperThresholdHandle(manager, output.currency, hotWallet);
-    }
-  }
+  return;
 }
 
 export default insertDeposit;
