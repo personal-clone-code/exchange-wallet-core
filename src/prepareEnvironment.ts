@@ -84,6 +84,18 @@ export async function prepareEnvironment(): Promise<void> {
     CurrencyRegistry.setCurrencyConfig(currency, config);
   });
 
+  // 30/12/2019 check redis is enable or not
+  if (EnvConfigRegistry.isUsingRedis()) {
+    const redisHost = EnvConfigRegistry.getCustomEnvConfig('REDIS_HOST');
+    const redisPort = EnvConfigRegistry.getCustomEnvConfig('REDIS_PORT');
+    const redisUrl = EnvConfigRegistry.getCustomEnvConfig('REDIS_URL');
+    if ((!redisHost && !redisUrl) || (!redisPort && !redisUrl)) {
+      throw new Error(
+        `Some redis configs are missing. REDIS_HOST=${redisHost}, REDIS_PORT=${redisPort}, REDIS_URL=${redisUrl}`
+      );
+    }
+  }
+
   const redisSubscriber = getRedisSubscriber();
   redisSubscriber.on('message', onRedisMessage);
 
