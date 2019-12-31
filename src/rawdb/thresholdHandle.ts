@@ -14,7 +14,7 @@ import {
 import * as rawdb from '.';
 import { EntityManager } from 'typeorm';
 import { WithdrawalStatus } from '../Enums';
-import { WithdrawalTx, WalletBalance, Withdrawal, HotWallet, Wallet } from '../entities';
+import { WithdrawalTx, WalletBalance, Withdrawal, HotWallet, Wallet, LocalTx } from '../entities';
 const nodemailer = require('nodemailer');
 const logger = getLogger('ThresholdHandle');
 
@@ -128,9 +128,6 @@ export async function upperThresholdHandle(
       balance: () => {
         return `balance - ${amount}`;
       },
-      withdrawalPending: () => {
-        return `withdrawal_pending + ${amount}`;
-      },
       updatedAt: Utils.nowInMillis(),
     })
     .where({
@@ -145,11 +142,11 @@ export async function upperThresholdHandle(
     );
 }
 
-export async function lowerThresholdHandle(manager: EntityManager, sentRecord: WithdrawalTx) {
+export async function lowerThresholdHandle(manager: EntityManager, sentRecord: LocalTx) {
   // do not throw Error in this function, this logic is optional
-  const hotWallet = await rawdb.findHotWalletByAddress(manager, sentRecord.hotWalletAddress);
+  const hotWallet = await rawdb.findHotWalletByAddress(manager, sentRecord.fromAddress);
   if (!hotWallet) {
-    logger.error(`hotWallet address=${sentRecord.hotWalletAddress} not found`);
+    logger.error(`hotWallet address=${sentRecord.fromAddress} not found`);
     return;
   }
   const currencyConfig = await rawdb.findOneCurrency(manager, sentRecord.currency, sentRecord.walletId);
@@ -223,6 +220,7 @@ export async function lowerThresholdHandle(manager: EntityManager, sentRecord: W
 export async function checkHotWalletIsSufficient(hotWallet: HotWallet, amount: BigNumber) {
   const gateway = GatewayRegistry.getGatewayInstance(hotWallet.currency);
   const hotWalletBalance = await gateway.getAddressBalance(hotWallet.address);
+  logger.debug(`checkHotWalletIsSufficient: wallet=${hotWallet.address} amount=${amount} balance=${hotWalletBalance}`);
   if (hotWalletBalance.gte(amount)) {
     return true;
   }

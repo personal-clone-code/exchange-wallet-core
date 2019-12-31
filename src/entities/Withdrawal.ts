@@ -33,7 +33,7 @@ export class Withdrawal {
   @Column('varchar', { length: 20, name: 'status', nullable: false })
   public status: string;
 
-  @Column('text', { name: 'note', nullable: true })
+  @Column('text', { name: 'memo', nullable: true })
   public note: string | null; // note if withdrawal is created by machine
 
   // @Column('varchar', { length: 255, name: 'hash_check', nullable: false })

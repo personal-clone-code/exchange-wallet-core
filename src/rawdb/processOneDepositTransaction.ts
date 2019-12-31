@@ -2,7 +2,7 @@ import { EntityManager, In, Raw } from 'typeorm';
 import { getLogger, Utils, BlockchainPlatform } from 'sota-common';
 import { BaseCrawler, Transaction } from 'sota-common';
 import insertDeposit from './insertDeposit';
-import { Address, HotWallet, InternalTransfer } from '../entities';
+import { Address, HotWallet, LocalTx } from '../entities';
 import * as rawdb from '../rawdb';
 
 const logger = getLogger('processOneDepositTransaction');
@@ -41,7 +41,7 @@ export async function processOneDepositTransaction(
     return;
   }
 
-  await Utils.PromiseAll(outputs.map(async output => insertDeposit(manager, output)));
+  await Utils.PromiseAll(outputs.map(async output => insertDeposit(manager, output, tx.extractSenderAddresses())));
 }
 
 /**
@@ -52,7 +52,7 @@ export async function processOneDepositTransaction(
  */
 async function isInternalTransfer(manager: EntityManager, tx: Transaction): Promise<boolean> {
   // Looking for the internal transfer table
-  const internalTx = await manager.getRepository(InternalTransfer).findOne({ txid: tx.txid });
+  const internalTx = await manager.getRepository(LocalTx).findOne({ txid: tx.txid });
   if (internalTx) {
     return true;
   }

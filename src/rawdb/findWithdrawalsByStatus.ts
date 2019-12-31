@@ -36,7 +36,6 @@ export async function findWithdrawalsPendingBalance(
     .where('status NOT IN (:...statuses)', {
       statuses: [WithdrawalStatus.COMPLETED, WithdrawalStatus.FAILED],
     })
-    .andWhere('user_id = :id', { id: userId })
     .andWhere('wallet_id = :id', { id: walletId })
     .andWhere('currency = :currency', { currency })
     .andWhere('from_address = :address', { address })

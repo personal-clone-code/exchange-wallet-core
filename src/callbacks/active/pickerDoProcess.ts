@@ -11,6 +11,7 @@ import {
   IRawTransaction,
   AccountBasedGateway,
   ICurrency,
+  HotWalletType,
 } from 'sota-common';
 import { Withdrawal, HotWallet, Address } from '../../entities';
 import { inspect } from 'util';
@@ -36,10 +37,10 @@ export async function pickerDoProcess(picker: BaseCurrencyWorker): Promise<void>
  * Tasks of picker:
  * - Find withdrawals that can be picked next round (see how records will be chosen in `getNextPickedWithdrawals` method)
  * - Find a hot wallet, which is free (no pending transaction) and sufficient for requesting amount
- * - Create a withdrawal_tx record, which will cover for the withdrawals above:
+ * - Create a local_tx record, which will cover for the withdrawals above:
  *   + For utxo-based currencies, we can process many withdrawals in one tx
  *   + For account-based currencies, we can only process 1 withdrawal in one tx
- * - Update `withdrawal_tx_id` and change `status` to `signing` for all selected withdrawal records
+ * - Update `local_tx_id` and change `status` to `signing` for all selected withdrawal records
  * - The tx is ready to be signed now
  *
  * Then the transaction should be ready to send to the network
@@ -104,7 +105,14 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
 
   // Create withdrawal tx record
   try {
-    await rawdb.doPickingWithdrawals(manager, unsignedTx, hotWallet, currency.symbol, withdrawalIds);
+    await rawdb.doPickingWithdrawals(
+      manager,
+      unsignedTx,
+      hotWallet,
+      currency.symbol,
+      finalPickedWithdrawals,
+      withdrawlParams.amount
+    );
   } catch (e) {
     logger.fatal(`Could not finish picking withdrawal ids=[${withdrawalIds}] err=${e.toString()}`);
     throw e;
@@ -130,7 +138,13 @@ async function _pickerDoProcessUTXO(
   });
   let hotWallet: HotWallet;
   if (finalPickedWithdrawals.length) {
-    hotWallet = await rawdb.findSufficientHotWallet(manager, candidateWithdrawals[0].walletId, currency, amount);
+    hotWallet = await rawdb.findSufficientHotWallet(
+      manager,
+      candidateWithdrawals[0].walletId,
+      currency,
+      amount,
+      HotWalletType.Normal
+    );
     if (hotWallet) {
       const coldWithdrawals = candidateWithdrawals.filter(w => w.fromAddress === hotWallet.address);
       finalPickedWithdrawals.push(...coldWithdrawals);
@@ -182,7 +196,13 @@ async function _pickerDoProcessAccountBase(
     amount = _candidateWithdrawal.getAmount();
     if (_candidateWithdrawal.fromAddress === TMP_ADDRESS) {
       const currency = CurrencyRegistry.getOneCurrency(_candidateWithdrawal.currency);
-      hotWallet = await rawdb.findSufficientHotWallet(manager, _candidateWithdrawal.walletId, currency, amount);
+      hotWallet = await rawdb.findSufficientHotWallet(
+        manager,
+        _candidateWithdrawal.walletId,
+        currency,
+        amount,
+        HotWalletType.Normal
+      );
       finalPickedWithdrawals.push(_candidateWithdrawal);
       break;
     }
