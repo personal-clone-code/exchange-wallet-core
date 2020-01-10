@@ -15,6 +15,7 @@ import * as rawdb from '.';
 import { EntityManager } from 'typeorm';
 import { WithdrawalStatus, WithdrawOutType } from '../Enums';
 import { WithdrawalTx, WalletBalance, Withdrawal, HotWallet, Wallet, LocalTx } from '../entities';
+import { getWithdrawalMode } from './findHotWallets';
 const nodemailer = require('nodemailer');
 const logger = getLogger('ThresholdHandle');
 
@@ -116,7 +117,7 @@ export async function upperThresholdHandle(
   withdrawal.memo = 'FROM_MACHINE';
   withdrawal.amount = amount;
   withdrawal.userId = hotWallet.userId;
-  withdrawal.type = WithdrawOutType.WITHDRAW_OUT_COLD;
+  withdrawal.type = getWithdrawalMode(manager, hotWallet.walletId) + WithdrawOutType.WITHDRAW_OUT_COLD_SUFFIX;
   withdrawal.walletId = hotWallet.walletId;
   withdrawal.toAddress = coldWallet.address;
   withdrawal.status = WithdrawalStatus.UNSIGNED;

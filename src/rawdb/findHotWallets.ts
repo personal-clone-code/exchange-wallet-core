@@ -1,10 +1,20 @@
 import _ from 'lodash';
 import { EntityManager, In } from 'typeorm';
-import { HotWallet, Withdrawal, RallyWallet, ColdWallet, Currency, LocalTx } from '../entities';
+import {
+  HotWallet,
+  Withdrawal,
+  RallyWallet,
+  ColdWallet,
+  Currency,
+  LocalTx,
+  UserWithdrawalMode,
+  Wallet,
+} from '../entities';
 import { WithdrawalStatus, LocalTxType, LocalTxStatus } from '../Enums';
 import { getLogger, BigNumber, ICurrency, GatewayRegistry, HotWalletType } from 'sota-common';
 
 const logger = getLogger('rawdb::findHotWallets');
+const DEFAULT_WITHDRAWAL_MODE = 'normal';
 
 /**
  * Get a hot wallet that has no pending transaction
@@ -113,11 +123,29 @@ export async function findColdWalletByAddress(manager: EntityManager, address: s
   return wallet;
 }
 
+export async function getWithdrawalMode(manager: EntityManager, walletId: number): Promise<string> {
+  const wallet = await manager.findOne(Wallet, {
+    id: walletId,
+  });
+  const userWithdrawalMode = await manager.findOne(UserWithdrawalMode, {
+    userId: wallet.userId,
+  });
+  return userWithdrawalMode ? userWithdrawalMode.withdrawalMode : DEFAULT_WITHDRAWAL_MODE;
+}
+
 export async function findOneCurrency(manager: EntityManager, symbol: string, walletId: number): Promise<Currency> {
-  const currency = await manager.findOne(Currency, {
+  let currency = await manager.findOne(Currency, {
     symbol,
     walletId,
+    withdrawalMode: await getWithdrawalMode(manager, walletId),
   });
+  if (!currency) {
+    currency = await manager.findOne(Currency, {
+      symbol,
+      walletId,
+      withdrawalMode: DEFAULT_WITHDRAWAL_MODE,
+    });
+  }
   return currency;
 }
 
