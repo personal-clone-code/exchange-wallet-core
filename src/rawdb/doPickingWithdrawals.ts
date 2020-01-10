@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import { EntityManager } from 'typeorm';
 import { IRawTransaction, Utils, BigNumber } from 'sota-common';
-import { HotWallet, LocalTx, Withdrawal, Deposit } from '../entities';
+import { HotWallet, LocalTx, Withdrawal, Deposit, Address } from '../entities';
 import { WithdrawalStatus, WithdrawalEvent, RefTable, LocalTxType, LocalTxStatus } from '../Enums';
 import * as rawdb from './index';
 
@@ -10,13 +10,13 @@ import * as rawdb from './index';
  *
  * @param manager
  * @param unsignedTx
- * @param hotWallet
+ * @param senderWallet
  * @param withdrawalIds
  */
 export async function doPickingWithdrawals(
   manager: EntityManager,
   unsignedTx: IRawTransaction,
-  hotWallet: HotWallet,
+  senderWallet: HotWallet | Address,
   currency: string,
   withdrawals: Withdrawal[]
   // amount: BigNumber
@@ -30,7 +30,7 @@ export async function doPickingWithdrawals(
 
   // Create local tx record
   const localTx = await rawdb.insertLocalTx(manager, {
-    fromAddress: hotWallet.address,
+    fromAddress: senderWallet.address,
     toAddress: 'FIND_IN_WITHDRAWAL',
     userId: withdrawals[0].userId,
     walletId: withdrawals[0].walletId,
@@ -49,7 +49,7 @@ export async function doPickingWithdrawals(
   const updatedValue = {
     withdrawalTxId: localTx.id,
     status: WithdrawalStatus.SIGNING,
-    fromAddress: hotWallet.address,
+    fromAddress: senderWallet.address,
     updatedAt: Utils.nowInMillis(),
   };
 

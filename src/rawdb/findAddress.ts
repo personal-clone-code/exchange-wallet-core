@@ -9,6 +9,10 @@ export async function findAddresses(manager: EntityManager, addresses: string[])
   return manager.getRepository(Address).find({ address: In(addresses) });
 }
 
+export async function findAddress(manager: EntityManager, address: string): Promise<Address> {
+  return manager.getRepository(Address).findOne({ address });
+}
+
 export async function checkAddressBusy(manager: EntityManager, address: string): Promise<boolean> {
   const collectingsFromAddress = await manager.getRepository(Deposit).find({
     toAddress: address,

@@ -16,14 +16,14 @@ import {
 import { Withdrawal, HotWallet, Address } from '../../entities';
 import { inspect } from 'util';
 import * as rawdb from '../../rawdb';
-import { WithdrawalStatus } from '../../Enums';
+import { WithdrawalStatus, WithdrawOutType } from '../../Enums';
 
 const logger = getLogger('pickerDoProcess');
 const TMP_ADDRESS = 'TMP_ADDRESS';
 let failedCounter = 0;
 
 interface IWithdrawlParams {
-  hotWallet: HotWallet;
+  senderWallet: HotWallet | Address;
   finalPickedWithdrawals: Withdrawal[];
   amount: BigNumber;
 }
@@ -36,7 +36,7 @@ export async function pickerDoProcess(picker: BaseCurrencyWorker): Promise<void>
 /**
  * Tasks of picker:
  * - Find withdrawals that can be picked next round (see how records will be chosen in `getNextPickedWithdrawals` method)
- * - Find a hot wallet, which is free (no pending transaction) and sufficient for requesting amount
+ * - Find a sender wallet, which is free (no pending transaction) and sufficient for requesting amount
  * - Create a local_tx record, which will cover for the withdrawals above:
  *   + For utxo-based currencies, we can process many withdrawals in one tx
  *   + For account-based currencies, we can only process 1 withdrawal in one tx
@@ -54,7 +54,7 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
   const iCurrency = picker.getCurrency();
   const candidateWithdrawals = await rawdb.getNextPickedWithdrawals(manager, iCurrency.platform);
   if (!candidateWithdrawals || candidateWithdrawals.length === 0) {
-    logger.info(`No more withdrawal need to be picked up. Will check upperthreshold hot wallet the next tick...`);
+    logger.info(`No more withdrawal need to be picked up. Will check upperthreshold sender wallet the next tick...`);
     await rawdb.checkUpperThreshold(manager, iCurrency.platform);
     return;
   }
@@ -73,18 +73,18 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
     logger.info(`Dont have suitable withdrawl record to pick`);
     return;
   }
-  const hotWallet: HotWallet = withdrawlParams.hotWallet;
+  const senderWallet = withdrawlParams.senderWallet;
   const withdrawalIds = finalPickedWithdrawals.map(w => w.id);
-  // Find an available internal hot wallet
-
-  if (!hotWallet) {
+  if (!senderWallet) {
     failedCounter += 1;
     if (failedCounter % 50 === 0) {
-      // Raise issue if the hot wallet is not available for too long...
-      logger.error(`No available hot wallet walletId=${walletId} currency=${currency} failedCounter=${failedCounter}`);
+      // Raise issue if the sender wallet is not available for too long...
+      logger.error(
+        `No available sender wallet walletId=${walletId} currency=${currency} failedCounter=${failedCounter}`
+      );
     } else {
       // Else just print info and continue to wait
-      logger.info(`No available hot wallet at the moment: walletId=${walletId} currency=${currency}`);
+      logger.info(`No available sender wallet at the moment: walletId=${walletId} currency=${currency}`);
     }
 
     await rawdb.updateRecordsTimestamp(manager, Withdrawal, withdrawalIds);
@@ -92,7 +92,7 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
     return;
   }
 
-  // Reset failed counter when there's available hot wallet
+  // Reset failed counter when there's available sender wallet
   failedCounter = 0;
 
   const unsignedTx: IRawTransaction = await _constructRawTransaction(currency, withdrawlParams, manager);
@@ -108,7 +108,7 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
     await rawdb.doPickingWithdrawals(
       manager,
       unsignedTx,
-      hotWallet,
+      senderWallet,
       currency.symbol,
       finalPickedWithdrawals
       // withdrawlParams.amount
@@ -120,7 +120,85 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
 
   return;
 }
+
 async function _pickerDoProcessUTXO(
+  candidateWithdrawals: Withdrawal[],
+  currency: ICurrency,
+  manager: EntityManager
+): Promise<IWithdrawlParams> {
+  let result = _pickerDoProcessUTXOExplicit(
+    candidateWithdrawals,
+    WithdrawOutType.EXPLICIT_FROM_HOT_WALLET,
+    currency,
+    manager
+  );
+  if (result) {
+    return result;
+  }
+
+  // result = _pickerDoProcessUTXOExplicit(
+  //   candidateWithdrawals,
+  //   WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS,
+  //   currency,
+  //   manager
+  // );
+  // if (result) {
+  //   return result;
+  // }
+
+  return _pickerDoProcessUTXONormal(candidateWithdrawals, currency, manager);
+}
+
+async function _pickerDoProcessUTXOExplicit(
+  candidateWithdrawals: Withdrawal[],
+  withdrawalType: WithdrawOutType,
+  currency: ICurrency,
+  manager: EntityManager
+): Promise<IWithdrawlParams> {
+  const candidateWithdrawalsByType = candidateWithdrawals.filter(w => w.type === withdrawalType);
+  if (candidateWithdrawalsByType.length <= 0) {
+    return null;
+  }
+
+  const fromAddress = candidateWithdrawalsByType[0].fromAddress;
+
+  let isBusy: boolean;
+  let senderWallet: HotWallet | Address;
+  if (withdrawalType === WithdrawOutType.EXPLICIT_FROM_HOT_WALLET) {
+    senderWallet = await rawdb.findHotWalletByAddress(manager, fromAddress);
+    isBusy = await rawdb.checkHotWalletIsBusy(
+      manager,
+      senderWallet,
+      [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
+      currency
+    );
+  }
+  if (withdrawalType === WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS) {
+    senderWallet = await rawdb.findAddress(manager, fromAddress);
+    isBusy = await rawdb.checkAddressBusy(manager, fromAddress);
+  }
+  if (!senderWallet || isBusy) {
+    return null;
+  }
+
+  let amount = new BigNumber(0);
+  const finalPickedWithdrawals = candidateWithdrawalsByType.filter(w => w.fromAddress === fromAddress);
+  finalPickedWithdrawals.forEach(withdrawal => {
+    const _amount = new BigNumber(withdrawal.amount);
+    // Safety check. This case should never happen. But we handle it just in case
+    if (_amount.eq(0)) {
+      return;
+    }
+    amount = amount.plus(_amount);
+  });
+  return {
+    senderWallet,
+    finalPickedWithdrawals,
+    amount,
+  };
+}
+
+async function _pickerDoProcessUTXONormal(
   candidateWithdrawals: Withdrawal[],
   currency: ICurrency,
   manager: EntityManager
@@ -178,9 +256,9 @@ async function _pickerDoProcessUTXO(
       }
     }
   }
-  // Find an available internal hot wallet
+  // Find an available internal sender wallet
   return {
-    hotWallet,
+    senderWallet: hotWallet,
     finalPickedWithdrawals,
     amount,
   };
@@ -190,14 +268,15 @@ async function _pickerDoProcessAccountBase(
   candidateWithdrawals: Withdrawal[],
   manager: EntityManager
 ): Promise<IWithdrawlParams> {
-  let hotWallet = null;
+  let senderWallet = null;
   const finalPickedWithdrawals = [];
   let amount = new BigNumber(0);
   for (const _candidateWithdrawal of candidateWithdrawals) {
     const currency = CurrencyRegistry.getOneCurrency(_candidateWithdrawal.currency);
     amount = _candidateWithdrawal.getAmount();
+
     if (_candidateWithdrawal.fromAddress === TMP_ADDRESS) {
-      hotWallet = await rawdb.findSufficientHotWallet(
+      senderWallet = await rawdb.findSufficientHotWallet(
         manager,
         _candidateWithdrawal.walletId,
         currency,
@@ -207,29 +286,42 @@ async function _pickerDoProcessAccountBase(
       finalPickedWithdrawals.push(_candidateWithdrawal);
       break;
     }
-    hotWallet = await rawdb.findHotWalletByAddress(manager, _candidateWithdrawal.fromAddress);
-    if (!hotWallet) {
-      continue;
+
+    senderWallet = await rawdb.findHotWalletByAddress(manager, _candidateWithdrawal.fromAddress);
+    if (senderWallet) {
+      if (
+        await rawdb.checkHotWalletIsBusy(
+          manager,
+          senderWallet,
+          [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
+          currency
+        )
+      ) {
+        logger.info(`Hot wallet ${senderWallet.address} is busy, dont pick withdrawal collect to cold wallet`);
+        continue;
+      }
+      if (rawdb.checkHotWalletIsSufficient(senderWallet, amount)) {
+        finalPickedWithdrawals.push(_candidateWithdrawal);
+        break;
+      }
     }
-    if (
-      await rawdb.checkHotWalletIsBusy(
-        manager,
-        hotWallet,
-        [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
-        currency
-      )
-    ) {
-      logger.info(`Hot wallet ${hotWallet.address} is busy, dont pick withdrawal collect to cold wallet`);
-      continue;
-    }
-    if (rawdb.checkHotWalletIsSufficient(hotWallet, amount)) {
-      finalPickedWithdrawals.push(_candidateWithdrawal);
-      break;
-    }
+
+    // senderWallet = await rawdb.findAddress(manager, _candidateWithdrawal.fromAddress);
+    // if (senderWallet) {
+    //   if (await rawdb.checkAddressBusy(manager, _candidateWithdrawal.fromAddress)) {
+    //     logger.info(`Deposit address ${senderWallet.address} is busy`);
+    //     continue;
+    //   }
+    //   // TODO: check sufficient deposit address
+    //   if (true) {
+    //     finalPickedWithdrawals.push(_candidateWithdrawal);
+    //     break;
+    //   }
+    // }
   }
 
   return {
-    hotWallet,
+    senderWallet,
     finalPickedWithdrawals,
     amount,
   };
@@ -242,7 +334,7 @@ async function _constructRawTransaction(
 ): Promise<IRawTransaction> {
   const vouts: IRawVOut[] = [];
   const finalPickedWithdrawals = withdrawlParams.finalPickedWithdrawals;
-  const fromAddress = withdrawlParams.hotWallet;
+  const fromAddress = withdrawlParams.senderWallet;
   const amount = withdrawlParams.amount;
   finalPickedWithdrawals.forEach(withdrawal => {
     vouts.push({
@@ -276,7 +368,7 @@ async function _constructRawTransaction(
     }
     return unsignedTx;
   } catch (err) {
-    // Most likely the fail reason is insufficient balance from hot wallet
+    // Most likely the fail reason is insufficient balance from sender wallet
     // Or there was problem with connection to the full node
     logger.error(
       `Could not create raw tx address=${fromAddress.address}, vouts=${inspect(vouts)}, error=${inspect(err)}`

@@ -39,7 +39,9 @@ export enum WalletEvent {
 
 export enum WithdrawOutType {
   WITHDRAW_OUT_COLD = 'withdraw_out_cold',
-  WITHDRAW_OUT_NORMAL = 'withdraw_out_normal',
+  WITHDRAW_OUT_NORMAL = 'normal',
+  EXPLICIT_FROM_HOT_WALLET = 'explicit_from_hot_wallet',
+  EXPLICIT_FROM_DEPOSIT_ADDRESS = 'explicit_from_deposit_address',
 }
 
 export enum WithdrawalEvent {
