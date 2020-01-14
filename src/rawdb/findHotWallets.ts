@@ -184,7 +184,7 @@ export async function getAllBusyHotWallets(manager: EntityManager, walletId: num
   const pendingStatuses = [LocalTxStatus.SENT, LocalTxStatus.SIGNED, LocalTxStatus.SIGNING];
   const seedTransactions = await manager.find(LocalTx, {
     walletId,
-    type: LocalTxType.SEED,
+    type: In([LocalTxType.SEED, LocalTxType.WITHDRAWAL_NORMAL, LocalTxType.WITHDRAWAL_COLD]),
     status: In(pendingStatuses),
   });
 
