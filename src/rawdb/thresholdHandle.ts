@@ -117,7 +117,7 @@ export async function upperThresholdHandle(
   withdrawal.memo = 'FROM_MACHINE';
   withdrawal.amount = amount;
   withdrawal.userId = hotWallet.userId;
-  withdrawal.type = getWithdrawalMode(manager, hotWallet.walletId) + WithdrawOutType.WITHDRAW_OUT_COLD_SUFFIX;
+  withdrawal.type = await getWithdrawalMode(manager, hotWallet.walletId) + WithdrawOutType.WITHDRAW_OUT_COLD_SUFFIX;
   withdrawal.walletId = hotWallet.walletId;
   withdrawal.toAddress = coldWallet.address;
   withdrawal.status = WithdrawalStatus.UNSIGNED;
