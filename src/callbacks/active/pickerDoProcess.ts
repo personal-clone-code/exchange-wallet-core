@@ -126,7 +126,7 @@ async function _pickerDoProcessUTXO(
   currency: ICurrency,
   manager: EntityManager
 ): Promise<IWithdrawlParams> {
-  let result = _pickerDoProcessUTXOExplicit(
+  let result = await _pickerDoProcessUTXOExplicit(
     candidateWithdrawals,
     WithdrawOutType.EXPLICIT_FROM_HOT_WALLET,
     currency,
@@ -146,7 +146,7 @@ async function _pickerDoProcessUTXO(
   //   return result;
   // }
 
-  return _pickerDoProcessUTXONormal(candidateWithdrawals, currency, manager);
+  return await _pickerDoProcessUTXONormal(candidateWithdrawals, currency, manager);
 }
 
 async function _pickerDoProcessUTXOExplicit(
