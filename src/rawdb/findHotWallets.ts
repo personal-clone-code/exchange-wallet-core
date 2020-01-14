@@ -221,6 +221,7 @@ export async function checkHotWalletIsBusy(
 ): Promise<boolean> {
   const [pendingTransactions] = await Promise.all([
     manager.find(LocalTx, {
+      fromAddress: hotWallet.address,
       currency: currency.symbol,
       type: In([LocalTxType.SEED, LocalTxType.WITHDRAWAL_NORMAL, LocalTxType.WITHDRAWAL_COLD]),
       status: In(pendingStatuses),
