@@ -151,11 +151,12 @@ async function _pickerDoProcessUTXO(
     for (const coldWithdrawal of coldWithdrawals) {
       hotWallet = await rawdb.findHotWalletByAddress(manager, coldWithdrawal.fromAddress);
       if (
-        !(await rawdb.checkHotWalletIsBusy(manager, hotWallet, [
-          WithdrawalStatus.SIGNING,
-          WithdrawalStatus.SIGNED,
-          WithdrawalStatus.SENT,
-        ]))
+        !(await rawdb.checkHotWalletIsBusy(
+          manager,
+          hotWallet,
+          [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
+          currency.platform
+        ))
       ) {
         finalPickedWithdrawals.push(coldWithdrawal);
         break;
@@ -180,8 +181,8 @@ async function _pickerDoProcessAccountBase(
   let amount = new BigNumber(0);
   for (const _candidateWithdrawal of candidateWithdrawals) {
     amount = _candidateWithdrawal.getAmount();
+    const currency = CurrencyRegistry.getOneCurrency(_candidateWithdrawal.currency);
     if (_candidateWithdrawal.fromAddress === TMP_ADDRESS) {
-      const currency = CurrencyRegistry.getOneCurrency(_candidateWithdrawal.currency);
       hotWallet = await rawdb.findSufficientHotWallet(manager, _candidateWithdrawal.walletId, currency, amount);
       finalPickedWithdrawals.push(_candidateWithdrawal);
       break;
@@ -191,11 +192,12 @@ async function _pickerDoProcessAccountBase(
       continue;
     }
     if (
-      await rawdb.checkHotWalletIsBusy(manager, hotWallet, [
-        WithdrawalStatus.SIGNING,
-        WithdrawalStatus.SIGNED,
-        WithdrawalStatus.SENT,
-      ])
+      await rawdb.checkHotWalletIsBusy(
+        manager,
+        hotWallet,
+        [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
+        currency.platform
+      )
     ) {
       logger.info(`Hot wallet ${hotWallet.address} is busy, dont pick withdrawal collect to cold wallet`);
       continue;

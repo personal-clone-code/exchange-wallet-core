@@ -42,7 +42,12 @@ async function _signerDoProcess(manager: EntityManager, signer: BasePlatformWork
 
   const withdrawalTxId = withdrawalTx.id;
   const hotWallet = await rawdb.getOneHotWallet(manager, currency.platform, withdrawalTx.hotWalletAddress);
-  const isBusy = await rawdb.checkHotWalletIsBusy(manager, hotWallet, [WithdrawalStatus.SIGNED, WithdrawalStatus.SENT]);
+  const isBusy = await rawdb.checkHotWalletIsBusy(
+    manager,
+    hotWallet,
+    [WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
+    currency.platform,
+  );
   // Check current hot wallet is busy?
   if (isBusy) {
     failedCounter += 1;

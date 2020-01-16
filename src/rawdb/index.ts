@@ -31,3 +31,4 @@ export * from './getNextPickedWithdrawals';
 export * from './getNextCurrencybyStatus';
 export * from './thresholdHandle';
 export * from './insertLocalTxDirty';
+export * from './hasAnySeedRequestedToAddress';
