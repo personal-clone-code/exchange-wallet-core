@@ -1,14 +1,6 @@
 import _ from 'lodash';
 import { EntityManager, In } from 'typeorm';
-import {
-  HotWallet,
-  Withdrawal,
-  RallyWallet,
-  ColdWallet,
-  Currency,
-  LocalTx,
-  Wallet,
-} from '../entities';
+import { HotWallet, Withdrawal, RallyWallet, ColdWallet, Currency, LocalTx, Wallet } from '../entities';
 import { WithdrawalStatus, LocalTxType, LocalTxStatus } from '../Enums';
 import { getLogger, BigNumber, ICurrency, GatewayRegistry, HotWalletType } from 'sota-common';
 
