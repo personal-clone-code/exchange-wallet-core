@@ -7,7 +7,6 @@ import {
   ColdWallet,
   Currency,
   LocalTx,
-  UserWithdrawalMode,
   Wallet,
 } from '../entities';
 import { WithdrawalStatus, LocalTxType, LocalTxStatus } from '../Enums';
@@ -127,10 +126,7 @@ export async function getWithdrawalMode(manager: EntityManager, walletId: number
   const wallet = await manager.findOne(Wallet, {
     id: walletId,
   });
-  const userWithdrawalMode = await manager.findOne(UserWithdrawalMode, {
-    userId: wallet.userId,
-  });
-  return userWithdrawalMode ? userWithdrawalMode.withdrawalMode : DEFAULT_WITHDRAWAL_MODE;
+  return wallet.withdrawalMode || DEFAULT_WITHDRAWAL_MODE;
 }
 
 export async function findOneCurrency(manager: EntityManager, symbol: string, walletId: number): Promise<Currency> {
