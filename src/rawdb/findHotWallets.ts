@@ -142,7 +142,12 @@ export async function findAnyRallyWallet(
   walletId: number,
   currency: string
 ): Promise<RallyWallet> {
-  const wallet = await manager.findOne(RallyWallet, { walletId, currency });
+  const withdrawalMode = await getWithdrawalMode(manager, walletId);
+  let wallet = await manager.findOne(RallyWallet, { walletId, currency, withdrawalMode });
+  if (wallet) {
+    return wallet;
+  }
+  wallet = await manager.findOne(RallyWallet, { walletId, currency });
   return wallet;
 }
 
