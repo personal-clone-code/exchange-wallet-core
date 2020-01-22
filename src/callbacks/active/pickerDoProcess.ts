@@ -170,7 +170,7 @@ async function _pickerDoProcessUTXO(
           manager,
           hotWallet,
           [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
-          currency
+          currency.platform
         ))
       ) {
         finalPickedWithdrawals.push(coldWithdrawal);
@@ -216,7 +216,7 @@ async function _pickerDoProcessAccountBase(
         manager,
         hotWallet,
         [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
-        currency
+        currency.platform
       )
     ) {
       logger.info(`Hot wallet ${hotWallet.address} is busy, dont pick withdrawal collect to cold wallet`);

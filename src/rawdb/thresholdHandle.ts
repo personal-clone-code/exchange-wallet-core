@@ -44,7 +44,7 @@ export async function upperThresholdHandle(
   hotWallet: HotWallet
 ): Promise<void> {
   const pendingStatuses = [WithdrawalStatus.SENT, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING];
-  if (await rawdb.checkHotWalletIsBusy(manager, hotWallet, pendingStatuses, iCurrency)) {
+  if (await rawdb.checkHotWalletIsBusy(manager, hotWallet, pendingStatuses, iCurrency.platform)) {
     logger.info(`Hot wallet address=${hotWallet.address} is busy, ignore collecting`);
     return;
   }
