@@ -170,7 +170,7 @@ async function _pickerDoProcessUTXOExplicit(
       manager,
       senderWallet,
       [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
-      currency
+      currency.platform
     );
   }
   if (withdrawalType === WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS) {
@@ -248,7 +248,7 @@ async function _pickerDoProcessUTXONormal(
           manager,
           hotWallet,
           [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
-          currency
+          currency.platform
         ))
       ) {
         finalPickedWithdrawals.push(coldWithdrawal);
@@ -294,7 +294,7 @@ async function _pickerDoProcessAccountBase(
           manager,
           senderWallet,
           [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
-          currency
+          currency.platform
         )
       ) {
         logger.info(`Hot wallet ${senderWallet.address} is busy, dont pick withdrawal collect to cold wallet`);

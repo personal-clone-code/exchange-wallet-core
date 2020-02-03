@@ -19,7 +19,7 @@ export abstract class BaseHotWalletSigner extends BaseSigner {
       this.manager,
       this.hotWallet,
       [LocalTxStatus.SIGNED, LocalTxStatus.SENT],
-      this.currency
+      this.currency.platform
     );
   }
 
