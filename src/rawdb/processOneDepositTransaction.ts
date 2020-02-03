@@ -1,9 +1,10 @@
 import { EntityManager, In, Raw } from 'typeorm';
-import { getLogger, Utils, BlockchainPlatform } from 'sota-common';
+import { getLogger, Utils, BlockchainPlatform, getClient, EnvConfigRegistry } from 'sota-common';
 import { BaseCrawler, Transaction } from 'sota-common';
 import insertDeposit from './insertDeposit';
 import { Address, HotWallet, LocalTx } from '../entities';
 import * as rawdb from '../rawdb';
+import _ from 'lodash';
 
 const logger = getLogger('processOneDepositTransaction');
 
@@ -35,6 +36,8 @@ export async function processOneDepositTransaction(
     return;
   }
 
+  await updateAddressBalance(manager, tx);
+
   // internal tx process
   if (await isInternalTransfer(manager, tx)) {
     logger.info(`Tx ${tx.txid} is a internal tx, will not write to deposit`);
@@ -42,6 +45,29 @@ export async function processOneDepositTransaction(
   }
 
   await Utils.PromiseAll(outputs.map(async output => insertDeposit(manager, output, tx.extractSenderAddresses())));
+}
+
+async function updateAddressBalance(manager: EntityManager, tx: Transaction) {
+  const redisClient = getClient();
+
+  const entries = tx.extractEntries();
+  const addresses = await rawdb.findAddresses(manager, entries.map(e => e.address));
+
+  await Utils.PromiseAll(
+    addresses.map(async address => {
+      redisClient.publish(
+        EnvConfigRegistry.getAppId(),
+        JSON.stringify({
+          event: 'EVENT_ADDRESS_BALANCE_CHANGED',
+          data: {
+            walletId: address.walletId,
+            currency: _.find(entries, e => e.address === address.address).currency.symbol,
+            address: address.address,
+          },
+        })
+      );
+    })
+  );
 }
 
 /**
