@@ -36,15 +36,17 @@ export async function prepareEnvironment(): Promise<void> {
   const connection = getConnection();
   logger.info(`Loading environment configurations from database...`);
 
-  const [currencyConfigs, envConfigs, erc20Tokens, trc20Tokens, eosTokens, omniTokens, terraTokens] = await Promise.all([
-    connection.getRepository(CurrencyConfig).find({}),
-    connection.getRepository(EnvConfig).find({}),
-    connection.getRepository(Erc20Token).find({}),
-    connection.getRepository(Trc20Token).find({}),
-    connection.getRepository(EosToken).find({}),
-    connection.getRepository(OmniToken).find({}),
-    connection.getRepository(TerraToken).find({}),
-  ]);
+  const [currencyConfigs, envConfigs, erc20Tokens, trc20Tokens, eosTokens, omniTokens, terraTokens] = await Promise.all(
+    [
+      connection.getRepository(CurrencyConfig).find({}),
+      connection.getRepository(EnvConfig).find({}),
+      connection.getRepository(Erc20Token).find({}),
+      connection.getRepository(Trc20Token).find({}),
+      connection.getRepository(EosToken).find({}),
+      connection.getRepository(OmniToken).find({}),
+      connection.getRepository(TerraToken).find({}),
+    ]
+  );
 
   envConfigs.forEach(config => {
     EnvConfigRegistry.setCustomEnvConfig(config.key, config.value);
