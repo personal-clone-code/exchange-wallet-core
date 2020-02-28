@@ -11,9 +11,9 @@ export async function updateWalletBalanceAfterCollecting(
   localTx: LocalTx,
   amount: BigNumber
 ): Promise<void> {
-  const address = await manager.getRepository(Address).findOneOrFail({ address: localTx.toAddress });
-  if (address.isExternal) {
-    logger.info(`External Address ${address.address} do not need to update walletBalance`);
+  const address = await manager.getRepository(Address).findOne({ address: localTx.toAddress });
+  if (!address) {
+    logger.info(`External Address ${localTx.toAddress} do not need to update walletBalance`);
     return;
   }
   const wallet = await manager.getRepository(Wallet).findOneOrFail(address.walletId);
