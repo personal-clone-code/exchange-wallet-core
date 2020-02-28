@@ -85,6 +85,10 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
       }
     }
 
+    if (rawdb.isExternalAddress(manager, rallyWallet.address)) {
+      await rawdb.insertWithdrawals(manager, records, rallyWallet.address, rallyWallet.userId);
+      return;
+    }
     rawTx = currency.isUTXOBased
       ? await _constructUtxoBasedCollectTx(records, rallyWallet.address)
       : await _constructAccountBasedCollectTx(records, rallyWallet.address);
