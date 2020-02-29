@@ -40,7 +40,7 @@ export async function updateWithdrawalsStatus(
         event === WithdrawalEvent.COMPLETED &&
         status === WithdrawalStatus.COMPLETED
       ) {
-        logger.info(`case collect to external address completed, update status colleted for record deposit`)
+        logger.info(`case collect to external address completed, update status colleted for record deposit`);
         const localTx = await manager.getRepository(LocalTx).findOneOrFail(withdrawalTxId);
         await updateDepositCollectStatusByWithdrawalTxId(
           manager,
