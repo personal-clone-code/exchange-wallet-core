@@ -98,9 +98,7 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
           });
         })
       );
-      logger.info(
-        `Collect tx queued: address=${rallyWallet.address}, txid=${rawTx.txid}, withdrawals=${records.map(r => r.id)}`
-      );
+      logger.info(`Collect tx queued: address=${rallyWallet.address}, withdrawals=${records.map(r => r.id)}`);
       return;
     }
     rawTx = currency.isUTXOBased
