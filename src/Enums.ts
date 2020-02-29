@@ -113,3 +113,8 @@ export enum MailStatus {
   SENT = 'sent',
   FAILED = 'failed',
 }
+
+export enum CollectType {
+  WITHDRAWAL = 'withdrawal',
+  INTERNAL_TRANSFER = 'internal_transfer',
+}

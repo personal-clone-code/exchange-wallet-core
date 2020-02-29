@@ -46,3 +46,29 @@ export async function updateDepositCollectStatusByCollectTxId(
 ): Promise<void> {
   await updateDepositCollectStatus(manager, transaction, status, event, 'collect');
 }
+
+export async function updateDepositCollectStatusByWithdrawalTxId(
+  manager: EntityManager,
+  transaction: LocalTx,
+  withdrawal_id,
+  status: CollectStatus,
+  event: DepositEvent
+): Promise<void> {
+  const records = await manager.getRepository(Deposit).find({
+    where: {
+      collectWithdrawalId: withdrawal_id,
+    },
+  });
+  const tasks: Array<Promise<any>> = [];
+  records.map(record => {
+    tasks.push(insertDepositLog(manager, record.id, event, transaction.id));
+  });
+  tasks.push(
+    manager.update(
+      Deposit,
+      { collectLocalTxId: transaction.id },
+      { collectStatus: status, collectedTimestamp: transaction.updatedAt }
+    )
+  );
+  await Utils.PromiseAll(tasks);
+}

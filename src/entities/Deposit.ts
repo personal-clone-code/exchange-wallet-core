@@ -51,6 +51,12 @@ export class Deposit {
   @Column({ name: 'seed_local_tx_id' })
   public seedLocalTxId: number;
 
+  @Column({ name: 'collect_withdrawal_id' })
+  public collectWithdrawalId: number;
+
+  @Column({ name: 'collect_type', nullable: false })
+  public collectType: string;
+
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;
 
