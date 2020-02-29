@@ -306,18 +306,18 @@ async function _pickerDoProcessAccountBase(
       }
     }
 
-    // senderWallet = await rawdb.findAddress(manager, _candidateWithdrawal.fromAddress);
-    // if (senderWallet) {
-    //   if (await rawdb.checkAddressBusy(manager, _candidateWithdrawal.fromAddress)) {
-    //     logger.info(`Deposit address ${senderWallet.address} is busy`);
-    //     continue;
-    //   }
-    //   // TODO: check sufficient deposit address
-    //   if (true) {
-    //     finalPickedWithdrawals.push(_candidateWithdrawal);
-    //     break;
-    //   }
-    // }
+    senderWallet = await rawdb.findAddress(manager, _candidateWithdrawal.fromAddress);
+    if (senderWallet) {
+      if (await rawdb.checkAddressBusy(manager, _candidateWithdrawal.fromAddress)) {
+        logger.info(`Deposit address ${senderWallet.address} is busy`);
+        continue;
+      }
+      // TODO: check sufficient deposit address
+      if (await rawdb.checkAddressIsSufficient(senderWallet, amount)) {
+        finalPickedWithdrawals.push(_candidateWithdrawal);
+        break;
+      }
+    }
   }
 
   return {
