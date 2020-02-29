@@ -45,8 +45,8 @@ export async function insertWithdrawals(
       CurrencyRegistry.getOneCurrency(records[0].currency)
     )
   );
-  tasks.push(manager.getRepository(Withdrawal).save(withdrawals));
   await Promise.all(tasks);
+
   return pairs;
 }
 

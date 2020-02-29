@@ -86,6 +86,7 @@ export enum LocalTxType {
   WITHDRAWAL_COLD = 'withdrawal_cold',
   SEED = 'seed',
   COLLECT = 'collect',
+  WITHDRAWAL_COLLECT = 'withdrawal_collect',
 }
 
 export enum LocalTxStatus {
@@ -117,4 +118,8 @@ export enum MailStatus {
 export enum CollectType {
   WITHDRAWAL = 'withdrawal',
   INTERNAL_TRANSFER = 'internal_transfer',
+}
+
+export enum WithdrawalMode {
+  NORMAL = 'normal',
 }

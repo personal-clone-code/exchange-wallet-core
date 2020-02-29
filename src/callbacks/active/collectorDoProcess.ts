@@ -156,7 +156,7 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
  * @param deposits
  * @param toAddress
  */
-async function _constructUtxoBasedCollectTx(deposits: Deposit[], toAddress: string): Promise<IRawTransaction> {
+export async function _constructUtxoBasedCollectTx(deposits: Deposit[], toAddress: string): Promise<IRawTransaction> {
   const currency = CurrencyRegistry.getOneCurrency(deposits[0].currency);
   const gateway = GatewayRegistry.getGatewayInstance(currency) as BitcoinBasedGateway;
   const utxos: IInsightUtxoInfo[] = [];

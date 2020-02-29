@@ -133,7 +133,7 @@ async function updateLocalTxAndRelatedTables(
 
   await rawdb.updateLocalTxStatus(manager, localTx.id, LocalTxStatus.SENT, { txid });
 
-  if (localTx.isWithdrawal()) {
+  if (localTx.isWithdrawal() || localTx.isWithdrawalCollect()) {
     await rawdb.updateWithdrawalsStatus(manager, localTx.id, WithdrawalStatus.SENT, WithdrawalEvent.SENT, {
       txid,
     });
@@ -164,7 +164,7 @@ async function reconstructLocalTx(
   txResult?: ISubmittedTransaction
 ): Promise<void> {
   await rawdb.updateLocalTxStatus(manager, localTx.id, LocalTxStatus.FAILED);
-  if (localTx.isWithdrawal()) {
+  if (localTx.isWithdrawal() || localTx.isWithdrawalCollect()) {
     await rawdb.updateWithdrawalsStatus(
       manager,
       localTx.id,

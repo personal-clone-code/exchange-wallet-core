@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import { EntityManager, getConnection } from 'typeorm';
+import { EntityManager, getConnection, In } from 'typeorm';
 import {
   getLogger,
   BaseCurrencyWorker,
@@ -12,11 +12,16 @@ import {
   AccountBasedGateway,
   ICurrency,
   HotWalletType,
+  Utils,
+  BitcoinBasedGateway,
+  IInsightUtxoInfo,
+  IBoiledVOut,
 } from 'sota-common';
-import { Withdrawal, HotWallet, Address } from '../../entities';
+import { Withdrawal, HotWallet, Address, Deposit } from '../../entities';
 import { inspect } from 'util';
 import * as rawdb from '../../rawdb';
-import { WithdrawalStatus, WithdrawOutType } from '../../Enums';
+import { WithdrawalStatus, WithdrawOutType, LocalTxType } from '../../Enums';
+import { _constructUtxoBasedCollectTx } from '..';
 
 const logger = getLogger('pickerDoProcess');
 const TMP_ADDRESS = 'TMP_ADDRESS';
@@ -102,7 +107,10 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
     await rawdb.updateRecordsTimestamp(manager, Withdrawal, withdrawalIds);
     return;
   }
-
+  const type =
+    finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS
+      ? LocalTxType.WITHDRAWAL_COLLECT
+      : LocalTxType.WITHDRAWAL_NORMAL;
   // Create withdrawal tx record
   try {
     await rawdb.doPickingWithdrawals(
@@ -110,7 +118,8 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
       unsignedTx,
       senderWallet,
       currency.symbol,
-      finalPickedWithdrawals
+      finalPickedWithdrawals,
+      type
       // withdrawlParams.amount
     );
   } catch (e) {
@@ -136,15 +145,25 @@ async function _pickerDoProcessUTXO(
     return result;
   }
 
-  // result = _pickerDoProcessUTXOExplicit(
-  //   candidateWithdrawals,
-  //   WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS,
-  //   currency,
-  //   manager
-  // );
-  // if (result) {
-  //   return result;
-  // }
+  const result2 = _pickerDoProcessUTXOExplicit(
+    candidateWithdrawals,
+    WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS,
+    currency,
+    manager
+  );
+  if (result2) {
+    return result2;
+  }
+
+  const result3 = _pickerDoProcessUTXOExplicit(
+    candidateWithdrawals,
+    WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS,
+    currency,
+    manager
+  );
+  if (result3) {
+    return result3;
+  }
 
   return await _pickerDoProcessUTXONormal(candidateWithdrawals, currency, manager);
 }
@@ -173,7 +192,10 @@ async function _pickerDoProcessUTXOExplicit(
       currency.platform
     );
   }
-  if (withdrawalType === WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS) {
+  if (
+    withdrawalType === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS ||
+    withdrawalType === WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS
+  ) {
     senderWallet = await rawdb.findAddress(manager, fromAddress);
     isBusy = await rawdb.checkAddressBusy(manager, fromAddress);
   }
@@ -243,16 +265,18 @@ async function _pickerDoProcessUTXONormal(
     const coldWithdrawals = candidateWithdrawals.filter(w => w.fromAddress !== TMP_ADDRESS);
     for (const coldWithdrawal of coldWithdrawals) {
       hotWallet = await rawdb.findHotWalletByAddress(manager, coldWithdrawal.fromAddress);
-      if (
-        !(await rawdb.checkHotWalletIsBusy(
-          manager,
-          hotWallet,
-          [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
-          currency.platform
-        ))
-      ) {
-        finalPickedWithdrawals.push(coldWithdrawal);
-        break;
+      if (hotWallet) {
+        if (
+          !(await rawdb.checkHotWalletIsBusy(
+            manager,
+            hotWallet,
+            [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
+            currency.platform
+          ))
+        ) {
+          finalPickedWithdrawals.push(coldWithdrawal);
+          break;
+        }
       }
     }
   }
@@ -308,7 +332,14 @@ async function _pickerDoProcessAccountBase(
 
     senderWallet = await rawdb.findAddress(manager, _candidateWithdrawal.fromAddress);
     if (senderWallet) {
-      if (await rawdb.checkAddressBusy(manager, _candidateWithdrawal.fromAddress)) {
+      if (
+        await rawdb.checkAddressIsBusy(
+          manager,
+          senderWallet.address,
+          [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
+          currency.platform
+        )
+      ) {
         logger.info(`Deposit address ${senderWallet.address} is busy`);
         continue;
       }
@@ -348,7 +379,19 @@ async function _constructRawTransaction(
 
   try {
     if (currency.isUTXOBased) {
-      unsignedTx = await (gateway as UTXOBasedGateway).constructRawTransaction(fromAddress.address, vouts);
+      if (
+        finalPickedWithdrawals[0].type !== WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS &&
+        finalPickedWithdrawals[0].type !== WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS
+      ) {
+        unsignedTx = await (gateway as UTXOBasedGateway).constructRawTransaction(fromAddress.address, vouts);
+      } else {
+        const deposits = await manager.getRepository(Deposit).find({
+          where: {
+            collectWithdrawalId: In(finalPickedWithdrawals.map(w => w.id)),
+          },
+        });
+        unsignedTx = await _constructUtxoBasedCollectTx(deposits, finalPickedWithdrawals[0].toAddress);
+      }
     } else {
       const toAddress = vouts[0].toAddress;
       let tag;

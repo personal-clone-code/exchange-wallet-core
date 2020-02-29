@@ -18,7 +18,8 @@ export async function doPickingWithdrawals(
   unsignedTx: IRawTransaction,
   senderWallet: HotWallet | Address,
   currency: string,
-  withdrawals: Withdrawal[]
+  withdrawals: Withdrawal[],
+  localTxType?: LocalTxType
   // amount: BigNumber
 ): Promise<LocalTx> {
   const withdrawalIds = withdrawals.map(w => w.id);
@@ -38,7 +39,7 @@ export async function doPickingWithdrawals(
     refCurrency: withdrawals[0].currency,
     refId: 0,
     refTable: RefTable.WITHDRAWAL,
-    type: LocalTxType.WITHDRAWAL_NORMAL,
+    type: localTxType || LocalTxType.WITHDRAWAL_NORMAL,
     status: LocalTxStatus.SIGNING,
     unsignedRaw: unsignedTx.unsignedRaw,
     unsignedTxid: unsignedTx.txid,

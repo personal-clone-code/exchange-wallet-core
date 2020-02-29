@@ -1,8 +1,9 @@
-import { Utils } from 'sota-common';
+import { Utils, GatewayRegistry } from 'sota-common';
 import { Deposit, LocalTx } from '../entities';
 import { EntityManager } from 'typeorm';
 import { CollectStatus, DepositEvent } from '../Enums';
 import { insertDepositLog } from './insertDepositLog';
+import { updateAddressBalance } from '.';
 
 async function updateDepositCollectStatus(
   manager: EntityManager,
@@ -66,9 +67,16 @@ export async function updateDepositCollectStatusByWithdrawalTxId(
   tasks.push(
     manager.update(
       Deposit,
-      { collectLocalTxId: transaction.id },
-      { collectStatus: status, collectedTimestamp: transaction.updatedAt }
+      { collectWithdrawalId: withdrawal_id },
+      {
+        collectStatus: status,
+        collectedTimestamp: transaction.updatedAt,
+        collectLocalTxId: transaction.id,
+        collectedTxid: transaction.txid,
+      }
     )
   );
+  const tx = await GatewayRegistry.getGatewayInstance(transaction.currency).getOneTransaction(transaction.txid);
+  tasks.push(updateAddressBalance(manager, tx));
   await Utils.PromiseAll(tasks);
 }
