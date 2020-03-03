@@ -85,22 +85,6 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
       }
     }
 
-    if (rawdb.isExternalAddress(manager, rallyWallet.address)) {
-      logger.info(`${rallyWallet.address} is external, create withdrawal record to withdraw out`);
-      const pairs = await rawdb.insertWithdrawals(manager, records, rallyWallet.address, rallyWallet.userId);
-      await Promise.all(
-        records.map(async r => {
-          await manager.update(Deposit, r.id, {
-            updatedAt: Utils.nowInMillis(),
-            collectStatus: CollectStatus.COLLECTING,
-            collectWithdrawalId: pairs.get(r.id),
-            collectType: CollectType.WITHDRAWAL,
-          });
-        })
-      );
-      logger.info(`Collect tx queued: address=${rallyWallet.address}, withdrawals=${records.map(r => r.id)}`);
-      return;
-    }
     rawTx = currency.isUTXOBased
       ? await _constructUtxoBasedCollectTx(records, rallyWallet.address)
       : await _constructAccountBasedCollectTx(records, rallyWallet.address);
@@ -124,6 +108,23 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
 
   if (!rawTx) {
     throw new Error('rawTx is undefined because of unknown problem');
+  }
+
+  if (rawdb.isExternalAddress(manager, rallyWallet.address)) {
+    logger.info(`${rallyWallet.address} is external, create withdrawal record to withdraw out`);
+    const pairs = await rawdb.insertWithdrawals(manager, records, rallyWallet.address, rallyWallet.userId);
+    await Promise.all(
+      records.map(async r => {
+        await manager.update(Deposit, r.id, {
+          updatedAt: Utils.nowInMillis(),
+          collectStatus: CollectStatus.COLLECTING,
+          collectWithdrawalId: pairs.get(r.id),
+          collectType: CollectType.WITHDRAWAL,
+        });
+      })
+    );
+    logger.info(`Collect tx queued: address=${rallyWallet.address}, withdrawals=${records.map(r => r.id)}`);
+    return;
   }
 
   const localTx = await rawdb.insertLocalTx(manager, {
