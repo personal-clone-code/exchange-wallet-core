@@ -139,7 +139,7 @@ async function _pickerDoProcessUTXO(
   currency: ICurrency,
   manager: EntityManager
 ): Promise<IWithdrawlParams> {
-  const result3 = _pickerDoProcessUTXOExplicit(
+  const result3 = await _pickerDoProcessUTXOExplicit(
     candidateWithdrawals,
     WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS,
     currency,
@@ -149,7 +149,7 @@ async function _pickerDoProcessUTXO(
     return result3;
   }
 
-  const result2 = _pickerDoProcessUTXOExplicit(
+  const result2 = await _pickerDoProcessUTXOExplicit(
     candidateWithdrawals,
     WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS,
     currency,
@@ -168,8 +168,10 @@ async function _pickerDoProcessUTXOExplicit(
   currency: ICurrency,
   manager: EntityManager
 ): Promise<IWithdrawlParams> {
+  logger.info(`Pick case Collect UTXO`);
   const candidateWithdrawalsByType = candidateWithdrawals.filter(w => w.type === withdrawalType);
   if (candidateWithdrawalsByType.length <= 0) {
+    logger.info(`Dont have withdrawal case Collect UTXO`);
     return null;
   }
 
@@ -206,6 +208,7 @@ async function _pickerDoProcessUTXONormal(
   currency: ICurrency,
   manager: EntityManager
 ): Promise<IWithdrawlParams> {
+  logger.info(`Pick case Normal UTXO`);
   const finalPickedWithdrawals: Withdrawal[] = [];
   let amount = new BigNumber(0);
   finalPickedWithdrawals.push(...candidateWithdrawals.filter(w => w.fromAddress === TMP_ADDRESS));
