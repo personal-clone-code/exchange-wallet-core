@@ -372,8 +372,10 @@ async function _constructRawTransaction(
         finalPickedWithdrawals[0].type !== WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS &&
         finalPickedWithdrawals[0].type !== WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS
       ) {
+        logger.info(`picking withdrawal record case UTXO and withdraw from hot wallet`);
         unsignedTx = await (gateway as UTXOBasedGateway).constructRawTransaction(fromAddress.address, vouts);
       } else {
+        logger.info(`picking withdrawal record case UTXO collect`);
         const deposits = await manager.getRepository(Deposit).find({
           where: {
             collectWithdrawalId: In(finalPickedWithdrawals.map(w => w.id)),
@@ -391,9 +393,10 @@ async function _constructRawTransaction(
       }
       if (
         (finalPickedWithdrawals[0] &&
-          (finalPickedWithdrawals[0].type === WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS) ||
-        finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS)
+          finalPickedWithdrawals[0].type === WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS) ||
+        finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS
       ) {
+        logger.info(`picking withdrawal record case Account Base collect`);
         unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
           fromAddress.address,
           toAddress,
@@ -404,6 +407,7 @@ async function _constructRawTransaction(
           }
         );
       } else {
+        logger.info(`picking withdrawal record case Account Base normal`);
         unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
           fromAddress.address,
           toAddress,
