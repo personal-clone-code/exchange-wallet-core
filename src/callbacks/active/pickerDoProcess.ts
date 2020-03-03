@@ -298,53 +298,58 @@ async function _pickerDoProcessAccountBase(
   for (const _candidateWithdrawal of candidateWithdrawals) {
     const currency = CurrencyRegistry.getOneCurrency(_candidateWithdrawal.currency);
     amount = _candidateWithdrawal.getAmount();
-
-    if (_candidateWithdrawal.fromAddress === TMP_ADDRESS) {
-      senderWallet = await rawdb.findSufficientHotWallet(
-        manager,
-        _candidateWithdrawal.walletId,
-        currency,
-        amount,
-        HotWalletType.Normal
-      );
-      finalPickedWithdrawals.push(_candidateWithdrawal);
-      break;
-    }
-
-    senderWallet = await rawdb.findHotWalletByAddress(manager, _candidateWithdrawal.fromAddress);
-    if (senderWallet) {
-      if (
-        await rawdb.checkHotWalletIsBusy(
-          manager,
-          senderWallet,
-          [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
-          currency.platform
-        )
+    if (
+      _candidateWithdrawal.type === WithdrawOutType.EXPLICIT_FROM_HOT_WALLET ||
+      _candidateWithdrawal.type.endsWith(WithdrawOutType.WITHDRAW_OUT_COLD_SUFFIX)
+    ) {
+      senderWallet = await rawdb.findHotWalletByAddress(manager, _candidateWithdrawal.fromAddress);
+      if (senderWallet) {
+        if (
+          await rawdb.checkHotWalletIsBusy(
+            manager,
+            senderWallet,
+            [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
+            currency.platform
+          )
+        ) {
+          logger.info(`Hot wallet ${senderWallet.address} is busy, dont pick withdrawal collect to cold wallet`);
+          continue;
+        }
+        if (rawdb.checkHotWalletIsSufficient(senderWallet, amount)) {
+          finalPickedWithdrawals.push(_candidateWithdrawal);
+          break;
+        }
+      } else if (
+        _candidateWithdrawal.type === WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS ||
+        _candidateWithdrawal.type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS
       ) {
-        logger.info(`Hot wallet ${senderWallet.address} is busy, dont pick withdrawal collect to cold wallet`);
-        continue;
-      }
-      if (rawdb.checkHotWalletIsSufficient(senderWallet, amount)) {
-        finalPickedWithdrawals.push(_candidateWithdrawal);
-        break;
-      }
-    }
-
-    senderWallet = await rawdb.findAddress(manager, _candidateWithdrawal.fromAddress);
-    if (senderWallet) {
-      if (
-        await rawdb.checkAddressIsBusy(
+        senderWallet = await rawdb.findAddress(manager, _candidateWithdrawal.fromAddress);
+        if (senderWallet) {
+          if (
+            await rawdb.checkAddressIsBusy(
+              manager,
+              senderWallet.address,
+              [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
+              currency.platform
+            )
+          ) {
+            logger.info(`Deposit address ${senderWallet.address} is busy`);
+            continue;
+          }
+          // TODO: check sufficient deposit address
+          if (await rawdb.checkAddressIsSufficient(senderWallet, amount)) {
+            finalPickedWithdrawals.push(_candidateWithdrawal);
+            break;
+          }
+        }
+      } else {
+        senderWallet = await rawdb.findSufficientHotWallet(
           manager,
-          senderWallet.address,
-          [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
-          currency.platform
-        )
-      ) {
-        logger.info(`Deposit address ${senderWallet.address} is busy`);
-        continue;
-      }
-      // TODO: check sufficient deposit address
-      if (await rawdb.checkAddressIsSufficient(senderWallet, amount)) {
+          _candidateWithdrawal.walletId,
+          currency,
+          amount,
+          HotWalletType.Normal
+        );
         finalPickedWithdrawals.push(_candidateWithdrawal);
         break;
       }
@@ -405,6 +410,7 @@ async function _constructRawTransaction(
         toAddress,
         amount,
         {
+          isConsolidate: currency.isNative,
           destinationTag: tag,
         }
       );
