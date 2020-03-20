@@ -1,10 +1,11 @@
 import _ from 'lodash';
 import { EntityManager, In } from 'typeorm';
-import { HotWallet, Withdrawal, RallyWallet, ColdWallet, Currency, LocalTx } from '../entities';
+import { HotWallet, Withdrawal, RallyWallet, ColdWallet, Currency, LocalTx, Wallet } from '../entities';
 import { WithdrawalStatus, LocalTxType, LocalTxStatus } from '../Enums';
 import { getLogger, BigNumber, ICurrency, GatewayRegistry, HotWalletType } from 'sota-common';
 
 const logger = getLogger('rawdb::findHotWallets');
+const DEFAULT_WITHDRAWAL_MODE = 'normal';
 
 /**
  * Get a hot wallet that has no pending transaction
@@ -113,11 +114,26 @@ export async function findColdWalletByAddress(manager: EntityManager, address: s
   return wallet;
 }
 
+export async function getWithdrawalMode(manager: EntityManager, walletId: number): Promise<string> {
+  const wallet = await manager.findOne(Wallet, {
+    id: walletId,
+  });
+  return wallet.withdrawalMode || DEFAULT_WITHDRAWAL_MODE;
+}
+
 export async function findOneCurrency(manager: EntityManager, symbol: string, walletId: number): Promise<Currency> {
-  const currency = await manager.findOne(Currency, {
+  let currency = await manager.findOne(Currency, {
     symbol,
     walletId,
+    withdrawalMode: await getWithdrawalMode(manager, walletId),
   });
+  if (!currency) {
+    currency = await manager.findOne(Currency, {
+      symbol,
+      walletId,
+      withdrawalMode: DEFAULT_WITHDRAWAL_MODE,
+    });
+  }
   return currency;
 }
 
@@ -126,7 +142,12 @@ export async function findAnyRallyWallet(
   walletId: number,
   currency: string
 ): Promise<RallyWallet> {
-  const wallet = await manager.findOne(RallyWallet, { walletId, currency });
+  const withdrawalMode = await getWithdrawalMode(manager, walletId);
+  let wallet = await manager.findOne(RallyWallet, { walletId, currency, withdrawalMode });
+  if (wallet) {
+    return wallet;
+  }
+  wallet = await manager.findOne(RallyWallet, { walletId, currency });
   return wallet;
 }
 
@@ -156,7 +177,7 @@ export async function getAllBusyHotWallets(manager: EntityManager, walletId: num
   const pendingStatuses = [LocalTxStatus.SENT, LocalTxStatus.SIGNED, LocalTxStatus.SIGNING];
   const seedTransactions = await manager.find(LocalTx, {
     walletId,
-    type: LocalTxType.SEED,
+    type: In([LocalTxType.SEED, LocalTxType.WITHDRAWAL_NORMAL, LocalTxType.WITHDRAWAL_COLD]),
     status: In(pendingStatuses),
   });
 
@@ -193,6 +214,7 @@ export async function checkHotWalletIsBusy(
 ): Promise<boolean> {
   const [pendingTransactions] = await Promise.all([
     manager.find(LocalTx, {
+      fromAddress: hotWallet.address,
       currency: platform,
       type: In([LocalTxType.SEED, LocalTxType.WITHDRAWAL_NORMAL, LocalTxType.WITHDRAWAL_COLD]),
       status: In(pendingStatuses),

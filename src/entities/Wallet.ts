@@ -15,6 +15,9 @@ export class Wallet {
   @Column({ name: 'currency', nullable: false })
   public currency: string;
 
+  @Column({ name: 'withdrawal_mode', nullable: false })
+  public withdrawalMode: string;
+
   @Column({ name: 'secret', nullable: false })
   public secret: string;
 

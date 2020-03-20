@@ -15,6 +15,9 @@ export class Currency {
   @Column({ name: 'symbol', nullable: false })
   public symbol: string;
 
+  @Column({ name: 'withdrawal_mode', nullable: false })
+  public withdrawalMode: string;
+
   @Column({
     name: 'minimum_withdrawal',
     type: 'decimal',

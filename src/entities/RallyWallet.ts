@@ -18,6 +18,9 @@ export class RallyWallet {
   @Column({ name: 'type' })
   public type: string;
 
+  @Column({ name: 'withdrawal_mode', nullable: false })
+  public withdrawalMode: string;
+
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;
 

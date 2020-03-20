@@ -14,7 +14,8 @@ import {
 import * as rawdb from '.';
 import { EntityManager } from 'typeorm';
 import { WithdrawalStatus, WithdrawOutType } from '../Enums';
-import { WithdrawalTx, WalletBalance, Withdrawal, HotWallet, Wallet, LocalTx } from '../entities';
+import { WithdrawalTx, WalletBalance, Withdrawal, HotWallet, Wallet, LocalTx, Address } from '../entities';
+import { getWithdrawalMode } from './findHotWallets';
 const nodemailer = require('nodemailer');
 const logger = getLogger('ThresholdHandle');
 
@@ -116,7 +117,7 @@ export async function upperThresholdHandle(
   withdrawal.memo = 'FROM_MACHINE';
   withdrawal.amount = amount;
   withdrawal.userId = hotWallet.userId;
-  withdrawal.type = WithdrawOutType.WITHDRAW_OUT_COLD;
+  withdrawal.type = (await getWithdrawalMode(manager, hotWallet.walletId)) + WithdrawOutType.WITHDRAW_OUT_COLD_SUFFIX;
   withdrawal.walletId = hotWallet.walletId;
   withdrawal.toAddress = coldWallet.address;
   withdrawal.status = WithdrawalStatus.UNSIGNED;
@@ -190,6 +191,16 @@ export async function checkHotWalletIsSufficient(hotWallet: HotWallet, amount: B
   const gateway = GatewayRegistry.getGatewayInstance(hotWallet.currency);
   const hotWalletBalance = await gateway.getAddressBalance(hotWallet.address);
   logger.debug(`checkHotWalletIsSufficient: wallet=${hotWallet.address} amount=${amount} balance=${hotWalletBalance}`);
+  if (hotWalletBalance.gte(amount)) {
+    return true;
+  }
+  return false;
+}
+
+export async function checkAddressIsSufficient(address: Address, amount: BigNumber): Promise<boolean> {
+  const gateway = GatewayRegistry.getGatewayInstance(address.currency);
+  const hotWalletBalance = await gateway.getAddressBalance(address.address);
+  logger.debug(`checkAddressSufficient: wallet=${address.address} amount=${amount} balance=${hotWalletBalance}`);
   if (hotWalletBalance.gte(amount)) {
     return true;
   }

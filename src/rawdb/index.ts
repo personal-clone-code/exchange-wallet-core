@@ -37,3 +37,7 @@ export * from './updateWalletBalanceAfterCollecting';
 export * from './updateWalletBalanceAfterDeposit';
 export * from './hasAnySeedRequestedToAddress';
 export * from './doExecuteMailService';
+export * from './updateAddressBalanceFromNetwork';
+export * from './handlePendingWithdrawalBalance';
+export * from './isExternalAddress';
+export * from './insertWithdrawals';

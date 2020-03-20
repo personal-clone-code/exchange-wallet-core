@@ -38,8 +38,11 @@ export enum WalletEvent {
 }
 
 export enum WithdrawOutType {
-  WITHDRAW_OUT_COLD = 'withdraw_out_cold',
-  WITHDRAW_OUT_NORMAL = 'withdraw_out_normal',
+  WITHDRAW_OUT_COLD_SUFFIX = '_cold_withdrawal',
+  WITHDRAW_OUT_NORMAL = 'normal',
+  EXPLICIT_FROM_HOT_WALLET = 'explicit_from_hot_wallet',
+  EXPLICIT_FROM_DEPOSIT_ADDRESS = 'explicit_from_deposit_address',
+  AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS = 'auto_collected_from_deposit_address',
 }
 
 export enum WithdrawalEvent {
@@ -83,6 +86,7 @@ export enum LocalTxType {
   WITHDRAWAL_COLD = 'withdrawal_cold',
   SEED = 'seed',
   COLLECT = 'collect',
+  WITHDRAWAL_COLLECT = 'withdrawal_collect',
 }
 
 export enum LocalTxStatus {
@@ -109,4 +113,13 @@ export enum MailStatus {
   CREATED = 'created',
   SENT = 'sent',
   FAILED = 'failed',
+}
+
+export enum CollectType {
+  WITHDRAWAL = 'withdrawal',
+  INTERNAL_TRANSFER = 'internal_transfer',
+}
+
+export enum WithdrawalMode {
+  NORMAL = 'normal',
 }

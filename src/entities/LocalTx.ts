@@ -116,4 +116,8 @@ export class LocalTx {
   public isCollectTx(): boolean {
     return this.type === LocalTxType.COLLECT;
   }
+
+  public isWithdrawalCollect(): boolean {
+    return this.type === LocalTxType.WITHDRAWAL_COLLECT;
+  }
 }
