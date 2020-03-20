@@ -22,3 +22,12 @@ export async function updateAllHotWalletAddresses(manager: EntityManager, addres
   });
   await Promise.all(tasks);
 }
+
+export async function getOneAddress(manager: EntityManager, currency: string, address: string): Promise<Address> {
+  const hotWallet = await manager.findOne(Address, { currency, address });
+  if (!hotWallet) {
+    throw new Error(`Could not get address with specific information: currency=${currency}, address=${address}`);
+  }
+
+  return hotWallet;
+}

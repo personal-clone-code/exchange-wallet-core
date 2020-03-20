@@ -68,7 +68,7 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
   const fee = resTx.getNetworkFee();
 
   const isTxSucceed = transactionStatus === TransactionStatus.COMPLETED;
-  if (sentRecord.isWithdrawal()) {
+  if (sentRecord.isWithdrawal() || sentRecord.isWithdrawalCollect()) {
     await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
   } else if (sentRecord.isCollectTx()) {
     await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx);

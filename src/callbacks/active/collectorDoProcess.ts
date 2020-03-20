@@ -16,7 +16,7 @@ import {
 import _ from 'lodash';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
-import { CollectStatus, LocalTxType, RefTable, LocalTxStatus } from '../../Enums';
+import { CollectStatus, LocalTxType, RefTable, LocalTxStatus, CollectType } from '../../Enums';
 import { Deposit } from '../../entities';
 
 const logger = getLogger('collectorDoProcess');
@@ -110,6 +110,23 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     throw new Error('rawTx is undefined because of unknown problem');
   }
 
+  if (rawdb.isExternalAddress(manager, rallyWallet.address)) {
+    logger.info(`${rallyWallet.address} is external, create withdrawal record to withdraw out`);
+    const pairs = await rawdb.insertWithdrawals(manager, records, rallyWallet.address, rallyWallet.userId);
+    await Promise.all(
+      records.map(async r => {
+        await manager.update(Deposit, r.id, {
+          updatedAt: Utils.nowInMillis(),
+          collectStatus: CollectStatus.COLLECTING,
+          collectWithdrawalId: pairs.get(r.id),
+          collectType: CollectType.WITHDRAWAL,
+        });
+      })
+    );
+    logger.info(`Collect tx queued: address=${rallyWallet.address}, withdrawals=${records.map(r => r.id)}`);
+    return;
+  }
+
   const localTx = await rawdb.insertLocalTx(manager, {
     fromAddress: 'FIND_IN_DEPOSIT',
     toAddress: rallyWallet.address,
@@ -140,7 +157,7 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
  * @param deposits
  * @param toAddress
  */
-async function _constructUtxoBasedCollectTx(deposits: Deposit[], toAddress: string): Promise<IRawTransaction> {
+export async function _constructUtxoBasedCollectTx(deposits: Deposit[], toAddress: string): Promise<IRawTransaction> {
   const currency = CurrencyRegistry.getOneCurrency(deposits[0].currency);
   const gateway = GatewayRegistry.getGatewayInstance(currency) as BitcoinBasedGateway;
   const utxos: IInsightUtxoInfo[] = [];
