@@ -241,7 +241,7 @@ async function _pickerDoProcessUTXONormal(
         }
         amount = amount.plus(_amount);
       });
-      if (!(await rawdb.checkHotWalletIsSufficient(hotWallet, amount))) {
+      if (!(await rawdb.checkHotWalletIsSufficient(hotWallet, currency, amount))) {
         throw new Error(`Hot wallet is insufficient, check me please!`);
       }
     }
@@ -302,7 +302,7 @@ async function _pickerDoProcessAccountBase(
           logger.info(`Hot wallet ${senderWallet.address} is busy, dont pick withdrawal collect to cold wallet`);
           continue;
         }
-        if (rawdb.checkHotWalletIsSufficient(senderWallet, amount)) {
+        if (rawdb.checkHotWalletIsSufficient(senderWallet, currency, amount)) {
           finalPickedWithdrawals.push(_candidateWithdrawal);
           break;
         }
@@ -325,7 +325,7 @@ async function _pickerDoProcessAccountBase(
           continue;
         }
         // TODO: check sufficient deposit address
-        if (await rawdb.checkAddressIsSufficient(senderWallet, amount)) {
+        if (await rawdb.checkAddressIsSufficient(senderWallet, currency, amount)) {
           finalPickedWithdrawals.push(_candidateWithdrawal);
           break;
         }
