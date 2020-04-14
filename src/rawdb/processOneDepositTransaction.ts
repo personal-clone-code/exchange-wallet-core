@@ -1,9 +1,11 @@
-import { EntityManager, In, Raw } from 'typeorm';
-import { getLogger, Utils, BlockchainPlatform } from 'sota-common';
+import { EntityManager, In, Raw, Not } from 'typeorm';
+import { getLogger, Utils, BlockchainPlatform, getClient, EnvConfigRegistry } from 'sota-common';
 import { BaseCrawler, Transaction } from 'sota-common';
 import insertDeposit from './insertDeposit';
-import { Address, HotWallet, InternalTransfer } from '../entities';
+import { Address, HotWallet, LocalTx, RallyWallet } from '../entities';
 import * as rawdb from '../rawdb';
+import _ from 'lodash';
+import { WithdrawalMode } from '../Enums';
 
 const logger = getLogger('processOneDepositTransaction');
 
@@ -35,13 +37,38 @@ export async function processOneDepositTransaction(
     return;
   }
 
+  await updateAddressBalance(manager, tx);
+
   // internal tx process
   if (await isInternalTransfer(manager, tx)) {
     logger.info(`Tx ${tx.txid} is a internal tx, will not write to deposit`);
     return;
   }
 
-  await Utils.PromiseAll(outputs.map(async output => insertDeposit(manager, output)));
+  await Utils.PromiseAll(outputs.map(async output => insertDeposit(manager, output, tx.extractSenderAddresses())));
+}
+
+export async function updateAddressBalance(manager: EntityManager, tx: Transaction) {
+  const redisClient = getClient();
+
+  const entries = tx.extractEntries();
+  const addresses = await rawdb.findAddresses(manager, entries.map(e => e.address));
+  logger.info(`push event redis: EVENT_ADDRESS_BALANCE_CHANGED`);
+  await Utils.PromiseAll(
+    addresses.map(async address => {
+      redisClient.publish(
+        EnvConfigRegistry.getAppId(),
+        JSON.stringify({
+          event: 'EVENT_ADDRESS_BALANCE_CHANGED',
+          data: {
+            walletId: address.walletId,
+            currency: _.find(entries, e => e.address === address.address).currency.symbol,
+            address: address.address,
+          },
+        })
+      );
+    })
+  );
 }
 
 /**
@@ -52,7 +79,7 @@ export async function processOneDepositTransaction(
  */
 async function isInternalTransfer(manager: EntityManager, tx: Transaction): Promise<boolean> {
   // Looking for the internal transfer table
-  const internalTx = await manager.getRepository(InternalTransfer).findOne({ txid: tx.txid });
+  const internalTx = await manager.getRepository(LocalTx).findOne({ txid: tx.txid });
   if (internalTx) {
     return true;
   }

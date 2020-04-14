@@ -7,11 +7,13 @@ import {
   Utils,
   settleEnvironment,
   getRedisSubscriber,
+  registerMailEventCallback,
 } from 'sota-common';
-import { CurrencyConfig, EnvConfig, Erc20Token, EosToken, Trc20Token } from './entities';
+import { CurrencyConfig, EnvConfig, Erc20Token, EosToken, Trc20Token, NemEnvConfig } from './entities';
 import _ from 'lodash';
 import { prepareWalletBalanceAll } from './callbacks';
 import { OmniToken } from './entities/OmniToken';
+import { IMailJobProps, insertMailJob } from './rawdb';
 
 const logger = getLogger('prepareEnvironment');
 
@@ -49,6 +51,12 @@ export async function prepareEnvironment(): Promise<void> {
     EnvConfigRegistry.setCustomEnvConfig(config.key, config.value);
   });
 
+  // register NEM env config
+  const nemEnvConfigs = await connection.getRepository(NemEnvConfig).find({});
+  nemEnvConfigs.forEach(config => {
+    EnvConfigRegistry.setCustomEnvConfig(config.key, config.value);
+  });
+
   const erc20Currencies: ICurrency[] = [];
   erc20Tokens.forEach(token => {
     CurrencyRegistry.registerErc20Token(token.contractAddress, token.symbol, token.name, token.decimal);
@@ -82,8 +90,44 @@ export async function prepareEnvironment(): Promise<void> {
     CurrencyRegistry.setCurrencyConfig(currency, config);
   });
 
+  // 30/12/2019 check redis is enable or not
+  if (EnvConfigRegistry.isUsingRedis()) {
+    const redisHost = EnvConfigRegistry.getCustomEnvConfig('REDIS_HOST');
+    const redisPort = EnvConfigRegistry.getCustomEnvConfig('REDIS_PORT');
+    const redisUrl = EnvConfigRegistry.getCustomEnvConfig('REDIS_URL');
+    if ((!redisHost && !redisUrl) || (!redisPort && !redisUrl)) {
+      throw new Error(
+        `Some redis configs are missing. REDIS_HOST=${redisHost}, REDIS_PORT=${redisPort}, REDIS_URL=${redisUrl}`
+      );
+    }
+  }
+
   const redisSubscriber = getRedisSubscriber();
   redisSubscriber.on('message', onRedisMessage);
+
+  registerMailEventCallback(async messages => {
+    const appName: string = process.env.APP_NAME || 'Exchange Wallet';
+    const receiver = EnvConfigRegistry.getCustomEnvConfig('MAIL_RECIPIENT_ERROR_ALERT');
+    if (!receiver) {
+      logger.warn(`Could not send to receiver=${receiver}. Please check the recepient address.`);
+      return;
+    }
+    const sender = EnvConfigRegistry.getCustomEnvConfig('MAIL_FROM_ADDRESS');
+    const senderName = EnvConfigRegistry.getCustomEnvConfig('MAIL_FROM_NAME');
+    await connection.transaction(async manager => {
+      const props: IMailJobProps = {
+        senderAddress: sender,
+        senderName,
+        recipientAddress: receiver,
+        title: `[${appName}] Error Notifier`,
+        templateName: 'logger_error_notifier_layout.hbs',
+        content: {
+          error_message: messages.join('<br />'),
+        },
+      };
+      await insertMailJob(manager, props);
+    });
+  });
 
   await settleEnvironment();
 

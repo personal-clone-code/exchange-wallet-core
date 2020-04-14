@@ -33,13 +33,7 @@ export async function findOneGroupOfCollectableDeposits(
   amount: BigNumber;
 }> {
   const uncollectStatuses = [CollectStatus.UNCOLLECTED];
-  const deltaTime = 1 * 60 * 1000; // 1 minutes
-  const { walletId, currency, records } = await findOneGroupOfDeposits(
-    manager,
-    currencies,
-    uncollectStatuses,
-    deltaTime
-  );
+  const { walletId, currency, records } = await findOneGroupOfDeposits(manager, currencies, uncollectStatuses);
 
   if (!currency || !records.length) {
     return {
@@ -74,10 +68,18 @@ export async function findOneGroupOfCollectableDeposits(
   }
 
   if (totalAmount.lt(new BigNumber(currencyInfo.minimumCollectAmount))) {
-    logger.info(`${currency.symbol} does not have a enough collect amount, next time`);
+    const depositIds = finalRecords.map(deposit => deposit.id);
+    logger.info(
+      `${currency.symbol} does not have a enough collect amount, next time\
+      depositIds=[${depositIds}], \
+      totalAmount=${totalAmount.toString()}\
+      minCollectAmountConfig=${currencyInfo.minimumCollectAmount}`
+    );
+
     if (finalRecords.length > 0) {
       await rawdb.updateRecordsTimestamp(manager, Deposit, finalRecords.map(r => r.id));
     }
+
     return {
       walletId: 0,
       currency: null,
@@ -161,8 +163,7 @@ export async function findOneGroupOfDepositsNeedSeedingFee(
 export async function findOneGroupOfDeposits(
   manager: EntityManager,
   currencies: string[],
-  collectStatuses: CollectStatus[],
-  deltaTime?: number
+  collectStatuses: CollectStatus[]
 ): Promise<{ walletId: number; currency: ICurrency; records: Deposit[] }> {
   // find and filter first group
   const now = Utils.nowInMillis();
@@ -173,7 +174,6 @@ export async function findOneGroupOfDeposits(
     where: {
       currency: In(currencies),
       collectStatus: In(collectStatuses),
-      updatedAt: deltaTime ? LessThan(now - deltaTime) : undefined,
     },
   });
 
@@ -198,14 +198,22 @@ export async function findOneGroupOfDeposits(
   const selectedCurrency = uncollectedDeposits[0].currency;
   const currency = CurrencyRegistry.getOneCurrency(selectedCurrency);
 
-  let records = uncollectedDeposits.filter(deposit => {
+  const records = uncollectedDeposits.filter(deposit => {
     return deposit.walletId === selectedWalletId && deposit.currency === selectedCurrency;
   });
 
   // in this version, account base is collect one by one
-  if (!currency.isUTXOBased) {
-    records = [records[0]];
-  }
+  // if (!currency.isUTXOBased) {
+  //   records = [records[0]];
+  // }
 
   return { walletId: selectedWalletId, currency, records };
+}
+
+export async function findDepositsInCollectingTx(manager: EntityManager, localTxId: number): Promise<Deposit[]> {
+  return await manager.getRepository(Deposit).find({
+    where: {
+      collectLocalTxId: localTxId,
+    },
+  });
 }
