@@ -110,7 +110,7 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     throw new Error('rawTx is undefined because of unknown problem');
   }
 
-  if (rawdb.isExternalAddress(manager, rallyWallet.address)) {
+  if (await rawdb.isExternalAddress(manager, rallyWallet.address)) {
     logger.info(`${rallyWallet.address} is external, create withdrawal record to withdraw out`);
     const pairs = await rawdb.insertWithdrawals(manager, records, rallyWallet.address, rallyWallet.userId);
     await Promise.all(
