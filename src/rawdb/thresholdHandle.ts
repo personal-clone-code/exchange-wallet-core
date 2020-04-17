@@ -187,8 +187,12 @@ export async function lowerThresholdHandle(manager: EntityManager, sentRecord: L
   });
 }
 
-export async function checkHotWalletIsSufficient(hotWallet: HotWallet, amount: BigNumber) {
-  const gateway = GatewayRegistry.getGatewayInstance(hotWallet.currency);
+export async function checkHotWalletIsSufficient(
+  hotWallet: HotWallet,
+  currency: ICurrency,
+  amount: BigNumber
+): Promise<boolean> {
+  const gateway = GatewayRegistry.getGatewayInstance(currency);
   const hotWalletBalance = await gateway.getAddressBalance(hotWallet.address);
   logger.debug(`checkHotWalletIsSufficient: wallet=${hotWallet.address} amount=${amount} balance=${hotWalletBalance}`);
   if (hotWalletBalance.gte(amount)) {
@@ -197,8 +201,12 @@ export async function checkHotWalletIsSufficient(hotWallet: HotWallet, amount: B
   return false;
 }
 
-export async function checkAddressIsSufficient(address: Address, amount: BigNumber): Promise<boolean> {
-  const gateway = GatewayRegistry.getGatewayInstance(address.currency);
+export async function checkAddressIsSufficient(
+  address: Address,
+  currency: ICurrency,
+  amount: BigNumber
+): Promise<boolean> {
+  const gateway = GatewayRegistry.getGatewayInstance(currency);
   const hotWalletBalance = await gateway.getAddressBalance(address.address);
   logger.debug(`checkAddressSufficient: wallet=${address.address} amount=${amount} balance=${hotWalletBalance}`);
   if (hotWalletBalance.gte(amount)) {
