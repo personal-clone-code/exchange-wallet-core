@@ -125,7 +125,7 @@ async function updateLocalTxAndRelatedTables(
   status: LocalTxStatus.SENT | LocalTxStatus.FAILED
 ): Promise<void> {
   if (status === LocalTxStatus.FAILED) {
-    reconstructLocalTx(manager, localTx, { txid });
+    await reconstructLocalTx(manager, localTx, { txid });
     return;
   }
 
