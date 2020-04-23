@@ -18,6 +18,7 @@ export async function updateWithdrawalTxWallets(
   });
 
   let walletEvent: WalletEvent;
+  const currency = CurrencyRegistry.getOneCurrency(localTx.currency);
   const feeCurrency = CurrencyRegistry.getOneCurrency(localTx.currency).platform;
 
   if (!withdrawals.length) {
@@ -41,7 +42,11 @@ export async function updateWithdrawalTxWallets(
 
     if (event === WithdrawalEvent.COMPLETED) {
       walletEvent = WalletEvent.WITHDRAW_COMPLETED;
-      balanceChange = '-' + record.amount;
+      if (currency.isNative) {
+        balanceChange = '-' + new BigNumber(record.amount).minus(fee).toString();
+      } else {
+        balanceChange = '-' + record.amount;
+      }
     }
     const walletLog = new WalletLog();
     walletLog.walletId = walletBalance.walletId;
@@ -57,7 +62,13 @@ export async function updateWithdrawalTxWallets(
         .update(WalletBalance)
         .set({
           balance: () => {
-            return event === WithdrawalEvent.COMPLETED ? `balance - ${record.amount}` : `balance`;
+            if (event === WithdrawalEvent.COMPLETED) {
+              if (currency.isNative) {
+                return `balance - ${new BigNumber(record.amount).minus(fee).toString()}`;
+              }
+              return `balance - ${record.amount}`;
+            }
+            return `balance`;
           },
           updatedAt: Utils.nowInMillis(),
         })
