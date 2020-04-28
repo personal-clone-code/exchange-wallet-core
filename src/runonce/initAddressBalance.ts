@@ -26,7 +26,7 @@ export default async function initAddressBalance(): Promise<void> {
     return;
   }
 
-  const tasks = [];
+  const tasks: Array<Promise<void>> = [];
   addresses.map(address => {
     CurrencyRegistry.getCurrenciesOfPlatform(address.currency as BlockchainPlatform).map(currency => {
       logger.info(`add task: ${address.walletId} | ${currency.symbol} | ${address.address}`);
