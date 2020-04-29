@@ -1,0 +1,12 @@
+import { EntityManager } from 'typeorm';
+import { KmsDataKey, Address, KmsCmk, HotWallet } from '../../entities';
+export declare function checkPrivateKeyIsUnencrypted(): Promise<void>;
+export declare function fixPrivateKeyIsUnencrypted(): Promise<void>;
+export declare function _checkPrivateKeyIsUnencrypted(manager: EntityManager): Promise<void>;
+export declare function _fixPrivateKeyIsUnencrypted(manager: EntityManager): Promise<void>;
+export declare function getKmsDataKey(manager: EntityManager): Promise<KmsDataKey>;
+export declare function _getAllUnEncryptedHotWallets(manager: EntityManager): Promise<HotWallet[]>;
+export declare function _getUnEncryptedAddresses(manager: EntityManager, offset: number): Promise<Address[]>;
+export declare function checkExistKms(manager: EntityManager): Promise<KmsCmk[]>;
+export declare function checkAddress(privateKey: string): boolean;
+export declare function encryptPrivateKey(privateKey: string, dataKey: KmsDataKey): Promise<string>;
