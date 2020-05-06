@@ -20,6 +20,8 @@ var dbtools = __importStar(require("./src/dbtools"));
 exports.dbtools = dbtools;
 var runOnce = __importStar(require("./src/runonce"));
 exports.runOnce = runOnce;
+var rawdb = __importStar(require("./src/rawdb"));
+exports.rawdb = rawdb;
 __export(require("./src/factories/CurrencyDepositFactory"));
 __export(require("./src/WebhookProcessor"));
 __export(require("./src/MailServiceProcessor"));
