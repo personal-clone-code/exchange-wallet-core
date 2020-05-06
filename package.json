@@ -1,6 +1,6 @@
 {
   "name": "@sotatek/exchange-wallet-core",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Core modules of wallet service for Crypto Exchanges",
   "main": "dist/index.js",
   "directories": {
@@ -55,10 +55,11 @@
     "nodemailer": "^6.2.1",
     "reflect-metadata": "0.1.12",
     "sota-common": "npm:@sotatek/crypto-currency-common@^0.1",
-    "typeorm": "0.2.11",
+    "typeorm": "^0.2.11",
     "typescript": "3.2.2"
   },
   "peerDependencies": {
-    "sota-common": "npm:@sotatek/crypto-currency-common@^0.1"
+    "sota-common": "npm:@sotatek/crypto-currency-common@^0.1",
+    "typeorm": "^0.2.11"
   }
 }
