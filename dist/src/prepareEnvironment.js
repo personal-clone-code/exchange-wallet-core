@@ -1,9 +1,10 @@
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -33,6 +34,13 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
+};
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var typeorm_1 = require("typeorm");
@@ -171,10 +179,10 @@ function prepareEnvironment() {
                 case 4:
                     _b.sent();
                     return [4, sota_common_1.Utils.PromiseAll([
-                            callbacks_1.prepareWalletBalanceAll(eosCurrencies.concat([sota_common_1.CurrencyRegistry.EOS])),
-                            callbacks_1.prepareWalletBalanceAll(trc20Currencies.concat([sota_common_1.CurrencyRegistry.Tomo])),
-                            callbacks_1.prepareWalletBalanceAll(erc20Currencies.concat([sota_common_1.CurrencyRegistry.Ethereum])),
-                            callbacks_1.prepareWalletBalanceAll(omniCurrencies.concat([sota_common_1.CurrencyRegistry.Bitcoin])),
+                            callbacks_1.prepareWalletBalanceAll(__spreadArrays(eosCurrencies, [sota_common_1.CurrencyRegistry.EOS])),
+                            callbacks_1.prepareWalletBalanceAll(__spreadArrays(trc20Currencies, [sota_common_1.CurrencyRegistry.Tomo])),
+                            callbacks_1.prepareWalletBalanceAll(__spreadArrays(erc20Currencies, [sota_common_1.CurrencyRegistry.Ethereum])),
+                            callbacks_1.prepareWalletBalanceAll(__spreadArrays(omniCurrencies, [sota_common_1.CurrencyRegistry.Bitcoin])),
                         ])];
                 case 5:
                     _b.sent();
