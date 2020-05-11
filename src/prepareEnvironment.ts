@@ -146,7 +146,7 @@ export async function prepareEnvironment(): Promise<void> {
     prepareWalletBalanceAll([...trc20Currencies, CurrencyRegistry.Tomo]),
     prepareWalletBalanceAll([...erc20Currencies, CurrencyRegistry.Ethereum]),
     prepareWalletBalanceAll([...omniCurrencies, CurrencyRegistry.Bitcoin]),
-    prepareWalletBalanceAll([...omniCurrencies, CurrencyRegistry.Terra]),
+    prepareWalletBalanceAll([...terraCurrencies, CurrencyRegistry.Terra]),
   ]);
 
   logger.info(`Environment has been setup successfully...`);
