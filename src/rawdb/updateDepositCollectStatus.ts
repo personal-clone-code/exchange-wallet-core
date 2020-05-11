@@ -51,7 +51,7 @@ export async function updateDepositCollectStatusByCollectTxId(
 export async function updateDepositCollectStatusByWithdrawalTxId(
   manager: EntityManager,
   transaction: LocalTx,
-  withdrawal_id,
+  withdrawal_id: number,
   status: CollectStatus,
   event: DepositEvent
 ): Promise<void> {

@@ -316,7 +316,7 @@ async function _pickerDoProcessAccountBase(
         if (
           await rawdb.checkAddressIsBusy(
             manager,
-            senderWallet.address,
+            senderWallet,
             [WithdrawalStatus.SIGNING, WithdrawalStatus.SIGNED, WithdrawalStatus.SENT],
             currency.platform
           )
