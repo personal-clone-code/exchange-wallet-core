@@ -1,16 +1,16 @@
 import { EntityManager } from 'typeorm';
-import { CollectStatus } from '../Enums';
-import { WalletBalance, WalletLog } from '../entities';
+import { CollectStatus, WalletEvent } from '../Enums';
+import { WalletBalance, WalletLog, LocalTx } from '../entities';
 
 import * as rawdb from './index';
 import { Utils, CurrencyRegistry, BigNumber } from 'sota-common';
-import { InternalTransfer } from '../entities/InternalTransfer';
 
 export async function updateWalletBalanceOnlyFee(
   manager: EntityManager,
-  transfer: InternalTransfer,
+  transfer: LocalTx,
   status: CollectStatus,
-  fee: BigNumber
+  fee: BigNumber,
+  typeFee: WalletEvent
 ): Promise<WalletBalance> {
   let balanceChange: string;
   const walletBalance = await manager.findOne(WalletBalance, {
@@ -34,7 +34,7 @@ export async function updateWalletBalanceOnlyFee(
   withdrawalFeeLog.currency = transfer.currency;
   withdrawalFeeLog.refCurrency = transfer.currency;
   withdrawalFeeLog.balanceChange = balanceChange;
-  withdrawalFeeLog.event = transfer.type;
+  withdrawalFeeLog.event = typeFee;
   withdrawalFeeLog.refId = transfer.id;
 
   const currency = CurrencyRegistry.getOneCurrency(transfer.currency);

@@ -19,10 +19,10 @@ export class Address {
   @Column({ name: 'is_hd' })
   public isHd: boolean;
 
-  @PrimaryColumn({ name: 'hd_path' })
+  @Column({ name: 'hd_path' })
   public hdPath: string;
 
-  @PrimaryColumn({ name: 'secret' })
+  @Column({ name: 'secret' })
   public secret: string;
 
   @Column({ name: 'created_at', type: 'bigint' })

@@ -1,7 +1,6 @@
 export * from './abstracts/XDeposit';
 export * from './abstracts/XWithdrawalTx';
 export * from './Deposit';
-export * from './InternalTransfer';
 export * from './DepositLog';
 export * from './Erc20Token';
 export * from './Trc20Token';
@@ -28,3 +27,9 @@ export * from './EnvConfig';
 export * from './UserCurrency';
 export * from './EosToken';
 export * from './TerraToken';
+export * from './LocalTx';
+export * from './KmsCmk';
+export * from './MailJob';
+export * from './MailLog';
+export * from './NemEnvConfig';
+export * from './AddressBalance';

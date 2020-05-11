@@ -1,9 +1,10 @@
 import { getLogger, Utils, ISubmittedTransaction } from 'sota-common';
-import { Withdrawal } from '../entities';
+import { Withdrawal, LocalTx } from '../entities';
 import { EntityManager } from 'typeorm';
 import insertWebhookProgress from './insertWebhookProgress';
-import { WebhookType, WithdrawalEvent, WithdrawalStatus } from '../Enums';
+import { WebhookType, WithdrawalEvent, WithdrawalStatus, WithdrawOutType, CollectStatus, DepositEvent } from '../Enums';
 import insertWithdrawalLog from './insertWithdrawalLog';
+import { updateDepositCollectStatusByWithdrawalTxId } from '.';
 
 const logger = getLogger('rawdb::updateWithdrawalsTxStatus');
 
@@ -32,6 +33,22 @@ export async function updateWithdrawalsStatus(
         if (transactionResult.hasOwnProperty('txid')) {
           record.txid = transactionResult.txid;
         }
+      }
+
+      if (
+        record.type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS &&
+        event === WithdrawalEvent.COMPLETED &&
+        status === WithdrawalStatus.COMPLETED
+      ) {
+        logger.info(`case collect to external address completed, update status colleted for record deposit`);
+        const localTx = await manager.getRepository(LocalTx).findOneOrFail(withdrawalTxId);
+        await updateDepositCollectStatusByWithdrawalTxId(
+          manager,
+          localTx,
+          record.id,
+          CollectStatus.COLLECTED,
+          DepositEvent.COLLECTED
+        );
       }
 
       const [newRecord] = await Utils.PromiseAll([

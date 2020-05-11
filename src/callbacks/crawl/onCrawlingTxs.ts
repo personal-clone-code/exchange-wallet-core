@@ -39,7 +39,7 @@ async function _onCrawlingTxs(
   const allAddresses: string[] = Array.from(txsByAddress.keys());
 
   // Filter out related addresses
-  const watchingAddresses = await rawdb.filterWatchingAddresses(manager, allAddresses);
+  const watchingAddresses = await rawdb.filterWatchingAddresses(manager, crawler.getNativeCurrency(), allAddresses);
 
   // Ger related transactions
   const watchingTxs = watchingAddresses.reduce((memo, watchingAddress) => {
