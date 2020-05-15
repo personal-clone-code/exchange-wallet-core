@@ -43,7 +43,8 @@ export async function updateWithdrawalTxWallets(
     if (event === WithdrawalEvent.COMPLETED) {
       walletEvent = WalletEvent.WITHDRAW_COMPLETED;
       if (currency.isNative) {
-        balanceChange = '-' + new BigNumber(record.amount).minus(fee).toString();
+        const balanceAfter = new BigNumber(record.amount).minus(fee);
+        balanceChange = `-${balanceAfter.lte(0) ? record.amount : balanceAfter.toString()}`;
       } else {
         balanceChange = '-' + record.amount;
       }
@@ -64,7 +65,8 @@ export async function updateWithdrawalTxWallets(
           balance: () => {
             if (event === WithdrawalEvent.COMPLETED) {
               if (currency.isNative) {
-                return `balance - ${new BigNumber(record.amount).minus(fee).toString()}`;
+                const walletBalanceAfter = new BigNumber(record.amount).minus(fee);
+                return `balance - ${walletBalanceAfter.lte(0) ? record.amount : walletBalanceAfter.toString()}`;
               }
               return `balance - ${record.amount}`;
             }
