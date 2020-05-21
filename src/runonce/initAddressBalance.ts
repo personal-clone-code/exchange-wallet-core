@@ -8,7 +8,7 @@ const logger = getLogger('initAddressBalance');
 
 const PAGE_SIZE = 10;
 const PAGE_IDX_FILE = `/var/tmp/${EnvConfigRegistry.getAppId()}_initAddressBalance_pageIdx`;
-let pageIdx = 0;
+let pageIdx: number = 0;
 loadPageIdx();
 
 export default async function initAddressBalance(): Promise<void> {
@@ -53,7 +53,7 @@ function loadPageIdx() {
 
 function savePageIdx() {
   try {
-    fs.writeFileSync(PAGE_IDX_FILE, pageIdx);
+    fs.writeFileSync(PAGE_IDX_FILE, pageIdx.toString());
   } catch (err) {
     logger.error(err);
   }

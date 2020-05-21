@@ -12,6 +12,8 @@ import {
   IInsightUtxoInfo,
   ISignedRawTransaction,
   ICurrency,
+  UTXOBasedGateway,
+  BlockchainPlatform,
 } from 'sota-common';
 import _ from 'lodash';
 import { EntityManager, getConnection } from 'typeorm';
@@ -159,13 +161,12 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
  */
 export async function _constructUtxoBasedCollectTx(deposits: Deposit[], toAddress: string): Promise<IRawTransaction> {
   const currency = CurrencyRegistry.getOneCurrency(deposits[0].currency);
-  const gateway = GatewayRegistry.getGatewayInstance(currency) as BitcoinBasedGateway;
+  const gateway = GatewayRegistry.getGatewayInstance(currency) as UTXOBasedGateway;
   const utxos: IInsightUtxoInfo[] = [];
   const weirdVouts: IBoiledVOut[] = [];
   const depositAddresses: string[] = [];
-
-  await Utils.PromiseAll(
-    deposits.map(async deposit => {
+  if (currency.platform === BlockchainPlatform.NEO) {
+    for (const deposit of deposits) {
       const depositAddress = deposit.toAddress;
       const txid = deposit.txid;
       if (depositAddresses.indexOf(depositAddress) === -1) {
@@ -193,8 +194,44 @@ export async function _constructUtxoBasedCollectTx(deposits: Deposit[], toAddres
 
         utxos.push(utxo);
       });
-    })
-  );
+      if (!utxos.length) {
+        continue;
+      }
+      break;
+    }
+  } else {
+    await Utils.PromiseAll(
+      deposits.map(async deposit => {
+        const depositAddress = deposit.toAddress;
+        const txid = deposit.txid;
+        if (depositAddresses.indexOf(depositAddress) === -1) {
+          depositAddresses.push(depositAddress);
+        }
+
+        const depositVouts = await gateway.getOneTxVouts(deposit.txid, depositAddress);
+        const allAddressUtxos = await gateway.getOneAddressUtxos(depositAddress);
+        depositVouts.forEach(vout => {
+          // Something went wrong. This output has been spent.
+          if (vout.spentTxId) {
+            weirdVouts.push(vout);
+            return;
+          }
+
+          const utxo = allAddressUtxos.find(u => {
+            return u.txid === txid && u.address === depositAddress && u.vout === vout.n;
+          });
+
+          // Double check. Something went wrong here as well. The output has been spent.
+          if (!utxo) {
+            logger.error(`Output has been spent already: address=${depositAddress}, txid=${txid}, n=${vout.n}`);
+            return;
+          }
+
+          utxos.push(utxo);
+        });
+      })
+    );
+  }
 
   // Safety check, just in case
   if (weirdVouts.length > 0) {
@@ -203,7 +240,7 @@ export async function _constructUtxoBasedCollectTx(deposits: Deposit[], toAddres
 
   // Final check. Guarding one more time, whether total value from utxos is equal to deposits' value
   const depositAmount = deposits.reduce((memo, d) => memo.plus(new BigNumber(d.amount)), new BigNumber(0));
-  const utxoAmount = utxos.reduce((memo, u) => memo.plus(new BigNumber(u.satoshis)), new BigNumber(0));
+  const utxoAmount = utxos.reduce((memo, u) => memo.plus(new BigNumber(u.satoshis || 0)), new BigNumber(0));
 
   if (!depositAmount.eq(utxoAmount)) {
     throw new Error(`Mismatch collecting values: depositAmount=${depositAmount}, utxoAmount=${utxoAmount}`);
