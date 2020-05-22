@@ -1,0 +1,17 @@
+import { EntityManager } from 'typeorm';
+import { HotWallet, RallyWallet, ColdWallet, Currency } from '../entities';
+import { BigNumber, ICurrency, HotWalletType } from 'sota-common';
+export declare function findSufficientHotWallet(manager: EntityManager, walletId: number, currency: ICurrency, amount: BigNumber, type: HotWalletType): Promise<HotWallet>;
+export declare function findFreeHotWallets(manager: EntityManager, walletId: number, currency: string): Promise<HotWallet[]>;
+export declare function findAnyHotWallet(manager: EntityManager, walletId: number, currency: string, isExternal: boolean): Promise<HotWallet>;
+export declare function findHotWalletByAddress(manager: EntityManager, address: string): Promise<HotWallet>;
+export declare function findColdWalletByAddress(manager: EntityManager, address: string): Promise<ColdWallet>;
+export declare function getWithdrawalMode(manager: EntityManager, walletId: number): Promise<string>;
+export declare function findOneCurrency(manager: EntityManager, symbol: string, walletId: number): Promise<Currency>;
+export declare function findAnyRallyWallet(manager: EntityManager, walletId: number, currency: string): Promise<RallyWallet>;
+export declare function findAnyColdWallet(manager: EntityManager, walletId: number, currency: string): Promise<ColdWallet>;
+export declare function findAnyInternalHotWallet(manager: EntityManager, walletId: number, currency: string): Promise<HotWallet>;
+export declare function findAnyExternalHotWallet(manager: EntityManager, walletId: number, currency: string): Promise<HotWallet>;
+export declare function getAllBusyHotWallets(manager: EntityManager, walletId: number): Promise<string[]>;
+export declare function getOneHotWallet(manager: EntityManager, currency: string, address: string): Promise<HotWallet>;
+export declare function checkHotWalletIsBusy(manager: EntityManager, hotWallet: HotWallet, pendingStatuses: string[], platform: string): Promise<boolean>;
