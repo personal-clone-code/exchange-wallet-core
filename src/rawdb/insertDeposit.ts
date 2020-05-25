@@ -71,7 +71,10 @@ export async function insertDeposit(
   // Persist deposit data in main table
   const depositId = (await manager.getRepository(Deposit).save(deposit)).id;
   await rawdb.insertDepositLog(manager, depositId, DepositEvent.CREATED, depositId, wallet.userId);
-  if (deposit.collectedTxid === 'NO_COLLECT_HOT_WALLET_ADDRESS') {
+  if (
+    deposit.collectedTxid === 'NO_COLLECT_HOT_WALLET_ADDRESS' ||
+    currencyInfo.platform === BlockchainPlatform.Cardano
+  ) {
     await rawdb.updateWalletBalanceAfterDeposit(manager, depositId, new BigNumber(deposit.amount));
   }
   return;
