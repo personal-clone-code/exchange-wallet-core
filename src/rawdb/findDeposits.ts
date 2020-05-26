@@ -45,7 +45,7 @@ export async function findOneGroupOfCollectableDeposits(
   }
 
   const finalRecords: Deposit[] = [];
-  if (currency.isUTXOBased) {
+  if (currency.isUTXOBased && currency.platform !== BlockchainPlatform.NEO) {
     finalRecords.push(...records);
   } else {
     const chosenAddress = records[0].toAddress;

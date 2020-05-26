@@ -165,8 +165,8 @@ export async function _constructUtxoBasedCollectTx(deposits: Deposit[], toAddres
   const utxos: IInsightUtxoInfo[] = [];
   const weirdVouts: IBoiledVOut[] = [];
   const depositAddresses: string[] = [];
-  if (currency.platform === BlockchainPlatform.NEO) {
-    for (const deposit of deposits) {
+  await Utils.PromiseAll(
+    deposits.map(async deposit => {
       const depositAddress = deposit.toAddress;
       const txid = deposit.txid;
       if (depositAddresses.indexOf(depositAddress) === -1) {
@@ -194,44 +194,8 @@ export async function _constructUtxoBasedCollectTx(deposits: Deposit[], toAddres
 
         utxos.push(utxo);
       });
-      if (!utxos.length) {
-        continue;
-      }
-      break;
-    }
-  } else {
-    await Utils.PromiseAll(
-      deposits.map(async deposit => {
-        const depositAddress = deposit.toAddress;
-        const txid = deposit.txid;
-        if (depositAddresses.indexOf(depositAddress) === -1) {
-          depositAddresses.push(depositAddress);
-        }
-
-        const depositVouts = await gateway.getOneTxVouts(deposit.txid, depositAddress);
-        const allAddressUtxos = await gateway.getOneAddressUtxos(depositAddress);
-        depositVouts.forEach(vout => {
-          // Something went wrong. This output has been spent.
-          if (vout.spentTxId) {
-            weirdVouts.push(vout);
-            return;
-          }
-
-          const utxo = allAddressUtxos.find(u => {
-            return u.txid === txid && u.address === depositAddress && u.vout === vout.n;
-          });
-
-          // Double check. Something went wrong here as well. The output has been spent.
-          if (!utxo) {
-            logger.error(`Output has been spent already: address=${depositAddress}, txid=${txid}, n=${vout.n}`);
-            return;
-          }
-
-          utxos.push(utxo);
-        });
-      })
-    );
-  }
+    })
+  );
 
   // Safety check, just in case
   if (weirdVouts.length > 0) {
