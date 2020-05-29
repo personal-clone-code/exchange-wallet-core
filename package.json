@@ -1,6 +1,6 @@
 {
-  "name": "wallet-core",
-  "version": "0.0.5",
+  "name": "@sotatek/exchange-wallet-core",
+  "version": "0.0.8",
   "description": "Core modules of wallet service for Crypto Exchanges",
   "main": "dist/index.js",
   "directories": {

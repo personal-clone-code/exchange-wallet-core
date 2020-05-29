@@ -57,7 +57,7 @@ export async function increaseMailJobRetryCount(manager: EntityManager, jobId: n
     .update(MailJob)
     .set({
       retryCount: () => `retry_count + 1`,
-      updatedAt: () => Utils.now() + 3 * 60 * 1000,
+      updatedAt: () => `${Utils.now() + 3 * 60 * 1000}`,
     })
     .where({
       id: jobId,

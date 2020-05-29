@@ -53,7 +53,7 @@ function loadPageIdx() {
 
 function savePageIdx() {
   try {
-    fs.writeFileSync(PAGE_IDX_FILE, pageIdx);
+    fs.writeFileSync(PAGE_IDX_FILE, pageIdx.toString());
   } catch (err) {
     logger.error(err);
   }

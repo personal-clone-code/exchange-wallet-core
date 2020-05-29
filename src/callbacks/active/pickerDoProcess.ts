@@ -16,11 +16,12 @@ import {
   BitcoinBasedGateway,
   IInsightUtxoInfo,
   IBoiledVOut,
+  BaseGateway,
 } from 'sota-common';
 import { Withdrawal, HotWallet, Address, Deposit } from '../../entities';
 import { inspect } from 'util';
 import * as rawdb from '../../rawdb';
-import { WithdrawalStatus, WithdrawOutType, LocalTxType } from '../../Enums';
+import { WithdrawalStatus, WithdrawOutType, LocalTxType, SettingKey } from '../../Enums';
 import { _constructUtxoBasedCollectTx } from '..';
 
 const logger = getLogger('pickerDoProcess');
@@ -32,6 +33,11 @@ interface IWithdrawlParams {
   finalPickedWithdrawals: Withdrawal[];
   amount: BigNumber;
 }
+interface INetworkFee {
+  gasLimit: number;
+  gasPrice: number;
+}
+
 export async function pickerDoProcess(picker: BaseCurrencyWorker): Promise<void> {
   await getConnection().transaction(async manager => {
     await _pickerDoProcess(manager, picker);
@@ -411,13 +417,19 @@ async function _constructRawTransaction(
         );
       } else {
         logger.info(`picking withdrawal record case Account Base normal`);
+        let options: any = {
+          destinationTag: tag,
+        };
+        const explicitNetworkFee = await handleNetworkFee(manager, gateway, currency);
+        if (explicitNetworkFee) {
+          options.explicitGasPrice = explicitNetworkFee.gasPrice;
+          options.explicitGasLimit = explicitNetworkFee.gasLimit;
+        }
         unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
           fromAddress.address,
           toAddress,
           amount,
-          {
-            destinationTag: tag,
-          }
+          options,
         );
       }
     }
@@ -432,6 +444,51 @@ async function _constructRawTransaction(
     // update withdrawal record
     await rawdb.updateRecordsTimestamp(manager, Withdrawal, withdrawalIds);
     return null;
+  }
+}
+
+/**
+ * This logic just handle to Ethreum platform.
+ * I'm not sure whether other platforms can control network fees or not.
+ * So if this one is expanded for other platforms, `fee_threshold` should be setting in `currency` instead of `setting` table.
+ * Tasks of handle network fee:
+ * - find in `setting` table to get fee_threshold
+ * - get estimate fee at process time
+ * - if setting is not found or `setting.value` = '0' => handle network fee as normal
+ * - else if estimate fee is less than or equal to fee threshold setting => handle network fee as normal
+ * - the other cases, network fee = fee threshold setting
+ * @param manager 
+ * @param gateway 
+ * @param currency 
+ */
+async function handleNetworkFee(
+    manager: EntityManager, 
+    gateway: BaseGateway,
+    currency: ICurrency,
+  ): Promise<INetworkFee> {
+  const setting = await rawdb.findSettingByKey(manager, SettingKey.ETH_FEE_THRESHOLD.toUpperCase());
+  if (!setting || setting.value === '0') {
+    logger.info(`Network fee threshold is not set. Handle network fee as normal.`);
+    return null;
+  }
+  const feeThreshold = new BigNumber(setting.value);
+
+  const estimateFee = await gateway.estimateFee({
+    isConsolidate: currency.isNative,
+  });
+
+  if (estimateFee.lte(feeThreshold)) {
+    logger.info(`Estimate fee = ${estimateFee} is less than or equal fee_threshold setting = ${feeThreshold} => Use estimate fee.`);
+    return null;
+  }
+
+  // fixed gasLimit is maximum value to process Ethreum transaction
+  const gasLimit = 150000;
+  const gasPrice = feeThreshold.div(gasLimit).integerValue().toNumber();
+  logger.info(`Estimate fee = ${estimateFee} is greater than fee_threshold setting = ${feeThreshold}. Gas limit = ${gasLimit}, gas price = ${gasPrice}`)
+  return {
+    gasLimit,
+    gasPrice,
   }
 }
 
