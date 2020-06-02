@@ -16,12 +16,14 @@ import {
   BitcoinBasedGateway,
   IInsightUtxoInfo,
   IBoiledVOut,
+  TransactionBaseType,
 } from 'sota-common';
 import { Withdrawal, HotWallet, Address, Deposit } from '../../entities';
 import { inspect } from 'util';
 import * as rawdb from '../../rawdb';
 import { WithdrawalStatus, WithdrawOutType, LocalTxType } from '../../Enums';
 import { _constructUtxoBasedCollectTx } from '..';
+import CosmosBasedGateway, { IMultiCurrenciesParamsConstructTx } from 'sota-common/src/CosmosBasedGateway';
 
 const logger = getLogger('pickerDoProcess');
 const TMP_ADDRESS = 'TMP_ADDRESS';
@@ -370,57 +372,77 @@ async function _constructRawTransaction(
   const withdrawalIds = finalPickedWithdrawals.map(w => w.id);
 
   try {
-    if (currency.isUTXOBased) {
-      if (
-        finalPickedWithdrawals[0].type !== WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS &&
-        finalPickedWithdrawals[0].type !== WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS
-      ) {
-        logger.info(`picking withdrawal record case UTXO and withdraw from hot wallet`);
-        unsignedTx = await (gateway as UTXOBasedGateway).constructRawTransaction(fromAddress.address, vouts);
-      } else {
-        logger.info(`picking withdrawal record case UTXO collect`);
-        const deposits = await manager.getRepository(Deposit).find({
-          where: {
-            collectWithdrawalId: In(finalPickedWithdrawals.map(w => w.id)),
-          },
-        });
-        unsignedTx = await _constructUtxoBasedCollectTx(deposits, finalPickedWithdrawals[0].toAddress);
+    if (currency.type) {
+      switch (currency.type) {
+        case TransactionBaseType.COSMOS: {
+          // TODO: Support multisend in the future...
+          const paramConstructRawTx: IMultiCurrenciesParamsConstructTx = {
+            fromAddress: fromAddress.address,
+            toAddress: vouts[0].toAddress,
+            entries: [
+              {
+                currency,
+                amount,
+              },
+            ],
+          };
+          unsignedTx = await (gateway as CosmosBasedGateway).constructRawTransaction(paramConstructRawTx, {});
+        }
       }
     } else {
-      const toAddress = vouts[0].toAddress;
-      let tag;
-      try {
-        tag = finalPickedWithdrawals[0].memo || '';
-      } catch (e) {
-        // do nothing, maybe it's case collect to cold wallet, note is 'from machine'
-      }
-      if (
-        (finalPickedWithdrawals[0] &&
-          finalPickedWithdrawals[0].type === WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS) ||
-        finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS
-      ) {
-        logger.info(`picking withdrawal record case Account Base collect`);
-        unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
-          fromAddress.address,
-          toAddress,
-          amount,
-          {
-            destinationTag: tag,
-            isConsolidate: currency.isNative,
-          }
-        );
+      if (currency.isUTXOBased) {
+        if (
+          finalPickedWithdrawals[0].type !== WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS &&
+          finalPickedWithdrawals[0].type !== WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS
+        ) {
+          logger.info(`picking withdrawal record case UTXO and withdraw from hot wallet`);
+          unsignedTx = await (gateway as UTXOBasedGateway).constructRawTransaction(fromAddress.address, vouts);
+        } else {
+          logger.info(`picking withdrawal record case UTXO collect`);
+          const deposits = await manager.getRepository(Deposit).find({
+            where: {
+              collectWithdrawalId: In(finalPickedWithdrawals.map(w => w.id)),
+            },
+          });
+          unsignedTx = await _constructUtxoBasedCollectTx(deposits, finalPickedWithdrawals[0].toAddress);
+        }
       } else {
-        logger.info(`picking withdrawal record case Account Base normal`);
-        unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
-          fromAddress.address,
-          toAddress,
-          amount,
-          {
-            destinationTag: tag,
-          }
-        );
+        const toAddress = vouts[0].toAddress;
+        let tag;
+        try {
+          tag = finalPickedWithdrawals[0].memo || '';
+        } catch (e) {
+          // do nothing, maybe it's case collect to cold wallet, note is 'from machine'
+        }
+        if (
+          (finalPickedWithdrawals[0] &&
+            finalPickedWithdrawals[0].type === WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS) ||
+          finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS
+        ) {
+          logger.info(`picking withdrawal record case Account Base collect`);
+          unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
+            fromAddress.address,
+            toAddress,
+            amount,
+            {
+              destinationTag: tag,
+              isConsolidate: currency.isNative,
+            }
+          );
+        } else {
+          logger.info(`picking withdrawal record case Account Base normal`);
+          unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
+            fromAddress.address,
+            toAddress,
+            amount,
+            {
+              destinationTag: tag,
+            }
+          );
+        }
       }
     }
+
     return unsignedTx;
   } catch (err) {
     // Most likely the fail reason is insufficient balance from sender wallet
