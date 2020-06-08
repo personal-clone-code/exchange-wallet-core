@@ -9,7 +9,7 @@ import {
   getRedisSubscriber,
   registerMailEventCallback,
 } from 'sota-common';
-import { CurrencyConfig, EnvConfig, Erc20Token, EosToken, Trc20Token, NemEnvConfig } from './entities';
+import { CurrencyConfig, EnvConfig, Erc20Token, EosToken, Trc20Token, NemEnvConfig, TerraToken } from './entities';
 import _ from 'lodash';
 import { prepareWalletBalanceAll } from './callbacks';
 import { OmniToken } from './entities/OmniToken';
@@ -38,14 +38,17 @@ export async function prepareEnvironment(): Promise<void> {
   const connection = getConnection();
   logger.info(`Loading environment configurations from database...`);
 
-  const [currencyConfigs, envConfigs, erc20Tokens, trc20Tokens, eosTokens, omniTokens] = await Promise.all([
-    connection.getRepository(CurrencyConfig).find({}),
-    connection.getRepository(EnvConfig).find({}),
-    connection.getRepository(Erc20Token).find({}),
-    connection.getRepository(Trc20Token).find({}),
-    connection.getRepository(EosToken).find({}),
-    connection.getRepository(OmniToken).find({}),
-  ]);
+  const [currencyConfigs, envConfigs, erc20Tokens, trc20Tokens, eosTokens, omniTokens, terraTokens] = await Promise.all(
+    [
+      connection.getRepository(CurrencyConfig).find({}),
+      connection.getRepository(EnvConfig).find({}),
+      connection.getRepository(Erc20Token).find({}),
+      connection.getRepository(Trc20Token).find({}),
+      connection.getRepository(EosToken).find({}),
+      connection.getRepository(OmniToken).find({}),
+      connection.getRepository(TerraToken).find({}),
+    ]
+  );
 
   envConfigs.forEach(config => {
     EnvConfigRegistry.setCustomEnvConfig(config.key, config.value);
@@ -79,6 +82,12 @@ export async function prepareEnvironment(): Promise<void> {
   eosTokens.forEach(token => {
     CurrencyRegistry.registerEosToken(token.code, token.symbol, token.scale);
     eosCurrencies.push(CurrencyRegistry.getOneCurrency(`eos.${token.symbol}`));
+  });
+
+  const terraCurrencies: ICurrency[] = [];
+  terraTokens.forEach(token => {
+    CurrencyRegistry.registerTerraToken(token.code, token.symbol, token.scale);
+    terraCurrencies.push(CurrencyRegistry.getOneCurrency(`terra.${token.symbol}`));
   });
 
   currencyConfigs.forEach(config => {
@@ -137,6 +146,7 @@ export async function prepareEnvironment(): Promise<void> {
     prepareWalletBalanceAll([...trc20Currencies, CurrencyRegistry.Tomo]),
     prepareWalletBalanceAll([...erc20Currencies, CurrencyRegistry.Ethereum]),
     prepareWalletBalanceAll([...omniCurrencies, CurrencyRegistry.Bitcoin]),
+    prepareWalletBalanceAll([...terraCurrencies, CurrencyRegistry.Terra]),
   ]);
 
   logger.info(`Environment has been setup successfully...`);
