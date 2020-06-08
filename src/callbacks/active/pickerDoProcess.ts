@@ -374,7 +374,7 @@ async function _constructRawTransaction(
   try {
     if (currency.type) {
       switch (currency.type) {
-        case TransactionBaseType.COSMOS: {
+        case TransactionBaseType.COSMOS:
           // TODO: Support multisend in the future...
           const paramConstructRawTx: IMultiCurrenciesParamsConstructTx = {
             fromAddress: fromAddress.address,
@@ -386,8 +386,21 @@ async function _constructRawTransaction(
               },
             ],
           };
-          unsignedTx = await (gateway as CosmosBasedGateway).constructRawTransaction(paramConstructRawTx, {});
-        }
+
+          let tag;
+          try {
+            tag = finalPickedWithdrawals[0].memo || '';
+          } catch (e) {
+            // do nothing, maybe it's case collect to cold wallet, note is 'from machine'
+          }
+
+          unsignedTx = await (gateway as CosmosBasedGateway).constructRawTransaction(paramConstructRawTx, {
+            destinationTag: tag,
+            isConsolidate: currency.isNative,
+          });
+          break;
+        default:
+          throw new Error(`TODO: currency.type: ${currency.type}`);
       }
     } else {
       if (currency.isUTXOBased) {
