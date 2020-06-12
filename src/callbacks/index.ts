@@ -9,6 +9,7 @@ export * from './active/verifierDoProcess';
 export * from './active/collectorDoProcess';
 export * from './active/feeSeederDoProcess';
 export * from './active/handleRedisMessage';
+export * from './active/maxFeeDoProcessor';
 export * from './crawl/onBlockCrawled';
 export * from './crawl/onTxCrawled';
 export * from './crawl/onCrawlingTxs';

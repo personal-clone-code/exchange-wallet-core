@@ -17,8 +17,9 @@ import {
   IInsightUtxoInfo,
   IBoiledVOut,
   BaseGateway,
+  IToken,
 } from 'sota-common';
-import { Withdrawal, HotWallet, Address, Deposit } from '../../entities';
+import { Withdrawal, HotWallet, Address, Deposit, MaxFee } from '../../entities';
 import { inspect } from 'util';
 import * as rawdb from '../../rawdb';
 import { WithdrawalStatus, WithdrawOutType, LocalTxType, SettingKey } from '../../Enums';
@@ -63,6 +64,7 @@ export async function pickerDoProcess(picker: BaseCurrencyWorker): Promise<void>
 async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWorker): Promise<void> {
   // Pick a bunch of withdrawals and create a raw transaction for them
   const iCurrency = picker.getCurrency();
+
   const candidateWithdrawals = await rawdb.getNextPickedWithdrawals(manager, iCurrency.platform);
   if (!candidateWithdrawals || candidateWithdrawals.length === 0) {
     logger.info(`No more withdrawal need to be picked up. Will check upperthreshold sender wallet the next tick...`);
@@ -73,6 +75,13 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
   const walletId = candidateWithdrawals[0].walletId;
   const symbol = candidateWithdrawals[0].currency;
   const currency = CurrencyRegistry.getOneCurrency(symbol);
+
+  // check max_fee vs fee_threshold
+  const checkFee = await checkMaxFee(manager, currency);
+  if (!checkFee) {
+    return;
+  }
+
   let withdrawlParams: IWithdrawlParams;
   if (currency.isUTXOBased) {
     withdrawlParams = await _pickerDoProcessUTXO(candidateWithdrawals, currency, manager);
@@ -449,8 +458,7 @@ async function _constructRawTransaction(
 
 /**
  * This logic just handle to Ethreum platform.
- * I'm not sure whether other platforms can control network fees or not.
- * So if this one is expanded for other platforms, `fee_threshold` should be setting in `currency` instead of `setting` table.
+ * If this one is expanded for other platforms, `fee_threshold` should be setting in `currency` instead of `setting` table.
  * Tasks of handle network fee:
  * - find in `setting` table to get fee_threshold
  * - get estimate fee at process time
@@ -490,6 +498,49 @@ async function handleNetworkFee(
     gasLimit,
     gasPrice,
   }
+}
+
+/**
+ * Tasks of checkMaxFee:
+ * - Get max fee by usd on setting
+ * - Get current max fee (calculated according to the fomula: current price eth * current estimate fee)
+ * - if current max fee greater than max fee setting => pending all withdrawals
+ * @param manager 
+ * @param currency 
+ */
+async function checkMaxFee(
+  manager: EntityManager,
+  currency: ICurrency,
+): Promise<boolean> {
+  const maxFeeSetting = await rawdb.findSettingByKey(manager, SettingKey.MAX_FEE_BY_USD.toUpperCase());
+  if (!maxFeeSetting) {
+    logger.info(`Max fee by usd is not set. Handle network fee as normal.`)
+    return true;
+  }
+  const maxFeeByUsdSetting = new BigNumber(maxFeeSetting.value);
+
+  const maxFee = await manager.getRepository(MaxFee).findOne({
+    order: {
+      updatedAt: 'DESC',
+    },
+    where: {
+      currency: currency.isNative? currency.platform : (currency as IToken).tokenType,
+    },
+  });
+  if (!maxFee) {
+    throw new Error(`EthPickerDoProcess: Database has no max fee records. Please check maxFeeDoProcess`);
+  }
+  // price every 5 minutes 1 time
+  if (Date.now() - maxFee.updatedAt > 300000) {
+    throw new Error(`EthPickerDoProcess: The lastest maxFee record is old. Please check maxFeeDoProcess`)
+  }
+
+  if (new BigNumber(maxFee.feeByUsd).gt(maxFeeByUsdSetting)) {
+    logger.warn(`PickerDoProcess will suspend all withdrawals because max_fee_by_usd in setting = ${maxFeeByUsdSetting} less than current max_fee = ${maxFee.feeByUsd}`);
+    return false;
+  }
+
+  return true;
 }
 
 export default pickerDoProcess;
