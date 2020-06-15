@@ -22,6 +22,7 @@ import {
   LocalTxStatus,
 } from '../../Enums';
 import { LocalTx, DepositLog, Deposit, Wallet } from '../../entities';
+import { updateAddressBalance } from '../../rawdb/processOneDepositTransaction';
 
 const logger = getLogger('verifierDoProcess');
 
@@ -77,6 +78,8 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
   } else {
     logger.error(`verifierDoProcess not supported localTxType: ${sentRecord.type}`);
   }
+
+  updateAddressBalance(manager, resTx);
 }
 
 async function verifierWithdrawalDoProcess(
