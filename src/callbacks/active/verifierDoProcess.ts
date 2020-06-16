@@ -21,7 +21,7 @@ import {
   LocalTxType,
   LocalTxStatus,
 } from '../../Enums';
-import { LocalTx, DepositLog, Deposit, Wallet } from '../../entities';
+import { LocalTx, DepositLog, Deposit, Wallet, Withdrawal, Address } from '../../entities';
 import { updateAddressBalance } from '../../rawdb/processOneDepositTransaction';
 
 const logger = getLogger('verifierDoProcess');
@@ -69,8 +69,27 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
   const fee = resTx.getNetworkFee();
 
   const isTxSucceed = transactionStatus === TransactionStatus.COMPLETED;
-  if (sentRecord.isWithdrawal() || sentRecord.isWithdrawalCollect()) {
+  if (sentRecord.isWithdrawal()) {
     await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
+  } else if (sentRecord.isWithdrawalCollect()) {
+    // TODO: HOT FIX CASE EMERGENCY EXTERNAL ADDRESS
+    const withdrawals = await manager.getRepository(Withdrawal).find({
+      where: {
+        withdrawalTxId: sentRecord.id,
+      },
+    });
+
+    if (withdrawals && withdrawals.length) {
+      const toAddress = withdrawals[0].toAddress;
+      const addressRecord = await manager.getRepository(Address).findOne({ address: toAddress });
+      if (addressRecord) {
+        await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx);
+      } else {
+        await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
+      }
+    } else {
+      throw new Error(`Cannot find withdrawls record with localtx_id : ${sentRecord.id}`);
+    }
   } else if (sentRecord.isCollectTx()) {
     await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx);
   } else if (sentRecord.isSeedTx()) {
