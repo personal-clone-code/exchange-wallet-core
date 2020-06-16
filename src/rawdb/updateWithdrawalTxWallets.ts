@@ -58,6 +58,7 @@ export async function updateWithdrawalTxWallets(
     if (event === WithdrawalEvent.COMPLETED) {
       walletEvent = WalletEvent.WITHDRAW_COMPLETED;
       if (fromAddressRecord && !toAddressRecord) {
+        logger.debug(`case hot wallet to normal address`);
         if (currency.isNative) {
           const balanceAfter = new BigNumber(record.amount).minus(fee);
           balanceChange = `-${balanceAfter.lte(0) ? record.amount : balanceAfter.toString()}`;
@@ -65,12 +66,15 @@ export async function updateWithdrawalTxWallets(
           balanceChange = '-' + record.amount;
         }
       } else if (!fromAddressRecord && toAddressRecord) {
+        logger.debug(`case normal address to hot wallet`);
         if (currency.isNative) {
           const balanceAfter = new BigNumber(record.amount).minus(fee);
           balanceChange = `+${balanceAfter.lte(0) ? record.amount : balanceAfter.toString()}`;
         } else {
           balanceChange = '+' + record.amount;
         }
+      } else {
+        logger.debug(`case normal address to normal address`);
       }
     }
     const walletLog = new WalletLog();
