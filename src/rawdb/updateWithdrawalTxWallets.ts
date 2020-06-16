@@ -75,6 +75,7 @@ export async function updateWithdrawalTxWallets(
         }
       } else {
         logger.debug(`case normal address to normal address`);
+        balanceChange = '0';
       }
     }
     const walletLog = new WalletLog();
