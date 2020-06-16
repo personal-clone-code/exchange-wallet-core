@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 import { BigNumber, CurrencyRegistry, getLogger } from 'sota-common';
 import { EntityManager } from 'typeorm';
 import { WithdrawalEvent, WalletEvent } from '../Enums';
-import { WalletBalance, WalletLog, Withdrawal, LocalTx, Address } from '../entities';
+import { WalletBalance, WalletLog, Withdrawal, LocalTx, Address, HotWallet } from '../entities';
 
 import * as rawdb from './index';
 import { Utils } from 'sota-common';
@@ -25,16 +25,21 @@ export async function updateWithdrawalTxWallets(
     return null;
   }
 
+  let minusFee = false;
+
   const tasks: Array<Promise<any>> = _.map(withdrawals, async record => {
     const toAddress = record.toAddress;
-    const addressRecord = await manager.getRepository(Address).findOne({ address: toAddress });
-    if (addressRecord) {
-      logger.debug(`internal address: ${addressRecord.address}`);
-      return;
-    }
+    const fromAddress = record.fromAddress;
 
-    const isExternalTransfer = addressRecord ? false : true;
-    logger.debug(`is external address?: ${isExternalTransfer}`);
+    const toAddressRecord = await manager
+      .getRepository(HotWallet)
+      .findOne({ address: toAddress, walletId: record.walletId });
+    const fromAddressRecord = await manager
+      .getRepository(HotWallet)
+      .findOne({ address: fromAddress, walletId: record.walletId });
+
+    // TODO only for case withdraw and only correct if withdraw from one address
+    minusFee = fromAddressRecord ? true : false;
 
     let balanceChange: string;
     const walletBalance = await manager.findOne(WalletBalance, {
@@ -52,14 +57,14 @@ export async function updateWithdrawalTxWallets(
 
     if (event === WithdrawalEvent.COMPLETED) {
       walletEvent = WalletEvent.WITHDRAW_COMPLETED;
-      if (isExternalTransfer) {
+      if (fromAddressRecord && !toAddressRecord) {
         if (currency.isNative) {
           const balanceAfter = new BigNumber(record.amount).minus(fee);
           balanceChange = `-${balanceAfter.lte(0) ? record.amount : balanceAfter.toString()}`;
         } else {
           balanceChange = '-' + record.amount;
         }
-      } else {
+      } else if (!fromAddressRecord && toAddressRecord) {
         if (currency.isNative) {
           const balanceAfter = new BigNumber(record.amount).minus(fee);
           balanceChange = `+${balanceAfter.lte(0) ? record.amount : balanceAfter.toString()}`;
@@ -102,7 +107,7 @@ export async function updateWithdrawalTxWallets(
     ]);
   });
 
-  if (event === WithdrawalEvent.COMPLETED) {
+  if (event === WithdrawalEvent.COMPLETED && minusFee) {
     const withdrawalFeeLog = new WalletLog();
     withdrawalFeeLog.walletId = withdrawals[0].walletId;
     withdrawalFeeLog.currency = feeCurrency;
