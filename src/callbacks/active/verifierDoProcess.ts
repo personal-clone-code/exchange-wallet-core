@@ -72,28 +72,7 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
   if (sentRecord.isWithdrawal()) {
     await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
   } else if (sentRecord.isWithdrawalCollect()) {
-    // TODO: HOT FIX CASE EMERGENCY EXTERNAL ADDRESS
-    const withdrawals = await manager.getRepository(Withdrawal).find({
-      where: {
-        withdrawalTxId: sentRecord.id,
-      },
-    });
-
-    logger.debug(`withdrawals: ${withdrawals.map(w => w.id)}`);
-
-    if (withdrawals && withdrawals.length) {
-      const toAddress = withdrawals[0].toAddress;
-      const addressRecord = await manager.getRepository(Address).findOne({ address: toAddress });
-      if (addressRecord) {
-        logger.debug(`external address: ${addressRecord.address}`);
-        await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx);
-      } else {
-        logger.debug(`internal address: ${toAddress}`);
-        await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
-      }
-    } else {
-      throw new Error(`Cannot find withdrawls record with localtx_id : ${sentRecord.id}`);
-    }
+    await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
   } else if (sentRecord.isCollectTx()) {
     await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx);
   } else if (sentRecord.isSeedTx()) {

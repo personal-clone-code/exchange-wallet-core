@@ -1,12 +1,12 @@
 import * as _ from 'lodash';
-import { BigNumber, CurrencyRegistry } from 'sota-common';
+import { BigNumber, CurrencyRegistry, getLogger } from 'sota-common';
 import { EntityManager } from 'typeorm';
 import { WithdrawalEvent, WalletEvent } from '../Enums';
-import { WalletBalance, WalletLog, Withdrawal, LocalTx } from '../entities';
+import { WalletBalance, WalletLog, Withdrawal, LocalTx, Address } from '../entities';
 
 import * as rawdb from './index';
 import { Utils } from 'sota-common';
-
+const logger = getLogger(`updateWithdrawalTxWallets`);
 export async function updateWithdrawalTxWallets(
   manager: EntityManager,
   localTx: LocalTx,
@@ -26,6 +26,16 @@ export async function updateWithdrawalTxWallets(
   }
 
   const tasks: Array<Promise<any>> = _.map(withdrawals, async record => {
+    const toAddress = record.toAddress;
+    const addressRecord = await manager.getRepository(Address).findOne({ address: toAddress });
+    if (addressRecord) {
+      logger.debug(`internal address: ${addressRecord.address}`);
+      return;
+    }
+
+    const isExternalTransfer = addressRecord ? false : true;
+    logger.debug(`is external address?: ${isExternalTransfer}`);
+
     let balanceChange: string;
     const walletBalance = await manager.findOne(WalletBalance, {
       walletId: record.walletId,
@@ -42,11 +52,20 @@ export async function updateWithdrawalTxWallets(
 
     if (event === WithdrawalEvent.COMPLETED) {
       walletEvent = WalletEvent.WITHDRAW_COMPLETED;
-      if (currency.isNative) {
-        const balanceAfter = new BigNumber(record.amount).minus(fee);
-        balanceChange = `-${balanceAfter.lte(0) ? record.amount : balanceAfter.toString()}`;
+      if (isExternalTransfer) {
+        if (currency.isNative) {
+          const balanceAfter = new BigNumber(record.amount).minus(fee);
+          balanceChange = `-${balanceAfter.lte(0) ? record.amount : balanceAfter.toString()}`;
+        } else {
+          balanceChange = '-' + record.amount;
+        }
       } else {
-        balanceChange = '-' + record.amount;
+        if (currency.isNative) {
+          const balanceAfter = new BigNumber(record.amount).minus(fee);
+          balanceChange = `+${balanceAfter.lte(0) ? record.amount : balanceAfter.toString()}`;
+        } else {
+          balanceChange = '+' + record.amount;
+        }
       }
     }
     const walletLog = new WalletLog();
