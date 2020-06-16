@@ -92,11 +92,7 @@ export async function updateWithdrawalTxWallets(
         .set({
           balance: () => {
             if (event === WithdrawalEvent.COMPLETED) {
-              if (currency.isNative) {
-                const walletBalanceAfter = new BigNumber(record.amount).minus(fee);
-                return `balance - ${walletBalanceAfter.lte(0) ? record.amount : walletBalanceAfter.toString()}`;
-              }
-              return `balance - ${record.amount}`;
+              return `balance + ${balanceChange}`;
             }
             return `balance`;
           },
