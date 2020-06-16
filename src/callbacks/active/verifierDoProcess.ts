@@ -88,7 +88,7 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
         logger.debug(`external address: ${addressRecord.address}`);
         await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx);
       } else {
-        logger.debug(`internal address: ${addressRecord.address}`);
+        logger.debug(`internal address: ${toAddress}`);
         await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
       }
     } else {
