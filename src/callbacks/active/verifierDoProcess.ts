@@ -79,12 +79,16 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
       },
     });
 
+    logger.debug(`withdrawals: ${withdrawals.map(w => w.id)}`);
+
     if (withdrawals && withdrawals.length) {
       const toAddress = withdrawals[0].toAddress;
       const addressRecord = await manager.getRepository(Address).findOne({ address: toAddress });
       if (addressRecord) {
+        logger.debug(`external address: ${addressRecord.address}`);
         await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx);
       } else {
+        logger.debug(`internal address: ${addressRecord.address}`);
         await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
       }
     } else {
