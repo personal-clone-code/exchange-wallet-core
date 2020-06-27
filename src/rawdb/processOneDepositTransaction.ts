@@ -1,11 +1,10 @@
-import { EntityManager, In, Raw, Not } from 'typeorm';
-import { getLogger, Utils, BlockchainPlatform, getClient, EnvConfigRegistry } from 'sota-common';
+import { EntityManager, In } from 'typeorm';
+import { getLogger, Utils, getRedisClient, EnvConfigRegistry } from 'sota-common';
 import { BaseCrawler, Transaction } from 'sota-common';
 import insertDeposit from './insertDeposit';
-import { Address, HotWallet, LocalTx, RallyWallet } from '../entities';
+import { Address, HotWallet, LocalTx } from '../entities';
 import * as rawdb from '../rawdb';
 import _ from 'lodash';
-import { WithdrawalMode } from '../Enums';
 
 const logger = getLogger('processOneDepositTransaction');
 
@@ -49,7 +48,7 @@ export async function processOneDepositTransaction(
 }
 
 export async function updateAddressBalance(manager: EntityManager, tx: Transaction) {
-  const redisClient = getClient();
+  const redisClient = getRedisClient();
 
   const entries = tx.extractEntries();
   const addresses = await rawdb.findAddresses(manager, entries.map(e => e.address));
