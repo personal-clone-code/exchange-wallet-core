@@ -159,7 +159,7 @@ function _pickerDoProcess(manager, picker) {
                     return [3, 17];
                 case 16:
                     e_1 = _a.sent();
-                    logger.fatal("Could not finish picking withdrawal ids=[" + withdrawalIds + "] err=" + e_1.toString());
+                    logger.error("Could not finish picking withdrawal ids=[" + withdrawalIds + "] err=" + e_1.toString());
                     throw e_1;
                 case 17: return [2];
             }

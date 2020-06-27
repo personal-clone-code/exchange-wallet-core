@@ -142,7 +142,7 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
       // withdrawlParams.amount
     );
   } catch (e) {
-    logger.fatal(`Could not finish picking withdrawal ids=[${withdrawalIds}] err=${e.toString()}`);
+    logger.error(`Could not finish picking withdrawal ids=[${withdrawalIds}] err=${e.toString()}`);
     throw e;
   }
 
@@ -465,12 +465,12 @@ async function _constructRawTransaction(
  * - if setting is not found or `setting.value` = '0' => handle network fee as normal
  * - else if estimate fee is less than or equal to fee threshold setting => handle network fee as normal
  * - the other cases, network fee = fee threshold setting
- * @param manager 
- * @param gateway 
- * @param currency 
+ * @param manager
+ * @param gateway
+ * @param currency
  */
 async function handleNetworkFee(
-    manager: EntityManager, 
+    manager: EntityManager,
     gateway: BaseGateway,
     currency: ICurrency,
   ): Promise<INetworkFee> {
@@ -505,8 +505,8 @@ async function handleNetworkFee(
  * - Get max fee by usd on setting
  * - Get current max fee (calculated according to the fomula: current price eth * current estimate fee)
  * - if current max fee greater than max fee setting => pending all withdrawals
- * @param manager 
- * @param currency 
+ * @param manager
+ * @param currency
  */
 async function checkMaxFee(
   manager: EntityManager,
