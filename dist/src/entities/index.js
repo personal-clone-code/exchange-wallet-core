@@ -37,7 +37,4 @@ __export(require("./MailJob"));
 __export(require("./MailLog"));
 __export(require("./NemEnvConfig"));
 __export(require("./AddressBalance"));
-__export(require("./Setting"));
-__export(require("./MaxFee"));
-__export(require("./CoinMarketCapKey"));
 //# sourceMappingURL=index.js.map

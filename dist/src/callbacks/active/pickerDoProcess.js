@@ -78,7 +78,7 @@ function pickerDoProcess(picker) {
 exports.pickerDoProcess = pickerDoProcess;
 function _pickerDoProcess(manager, picker) {
     return __awaiter(this, void 0, void 0, function () {
-        var iCurrency, candidateWithdrawals, walletId, symbol, currency, checkFee, withdrawlParams, finalPickedWithdrawals, senderWallet, withdrawalIds, unsignedTx, type, e_1;
+        var iCurrency, candidateWithdrawals, walletId, symbol, currency, withdrawlParams, finalPickedWithdrawals, senderWallet, withdrawalIds, unsignedTx, type, e_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -96,22 +96,16 @@ function _pickerDoProcess(manager, picker) {
                     walletId = candidateWithdrawals[0].walletId;
                     symbol = candidateWithdrawals[0].currency;
                     currency = sota_common_1.CurrencyRegistry.getOneCurrency(symbol);
-                    return [4, checkMaxFee(manager, currency)];
-                case 4:
-                    checkFee = _a.sent();
-                    if (!checkFee) {
-                        return [2];
-                    }
-                    if (!currency.isUTXOBased) return [3, 6];
+                    if (!currency.isUTXOBased) return [3, 5];
                     return [4, _pickerDoProcessUTXO(candidateWithdrawals, currency, manager)];
-                case 5:
+                case 4:
                     withdrawlParams = _a.sent();
-                    return [3, 8];
-                case 6: return [4, _pickerDoProcessAccountBase(candidateWithdrawals, manager)];
+                    return [3, 7];
+                case 5: return [4, _pickerDoProcessAccountBase(candidateWithdrawals, manager)];
+                case 6:
+                    withdrawlParams = _a.sent();
+                    _a.label = 7;
                 case 7:
-                    withdrawlParams = _a.sent();
-                    _a.label = 8;
-                case 8:
                     if (!withdrawlParams) {
                         logger.info("Dont have suitable withdrawl record to pick withdrawlParams is " + withdrawlParams);
                         return [2];
@@ -123,7 +117,7 @@ function _pickerDoProcess(manager, picker) {
                     }
                     senderWallet = withdrawlParams.senderWallet;
                     withdrawalIds = finalPickedWithdrawals.map(function (w) { return w.id; });
-                    if (!!senderWallet) return [3, 10];
+                    if (!!senderWallet) return [3, 9];
                     failedCounter += 1;
                     if (failedCounter % 50 === 0) {
                         logger.error("No available sender wallet walletId=" + walletId + " currency=" + currency + " failedCounter=" + failedCounter);
@@ -132,36 +126,36 @@ function _pickerDoProcess(manager, picker) {
                         logger.info("No available sender wallet at the moment: walletId=" + walletId + " currency=" + currency);
                     }
                     return [4, rawdb.updateRecordsTimestamp(manager, entities_1.Withdrawal, withdrawalIds)];
-                case 9:
+                case 8:
                     _a.sent();
                     return [2];
-                case 10:
+                case 9:
                     failedCounter = 0;
                     return [4, _constructRawTransaction(currency, withdrawlParams, manager)];
-                case 11:
+                case 10:
                     unsignedTx = _a.sent();
-                    if (!!unsignedTx) return [3, 13];
+                    if (!!unsignedTx) return [3, 12];
                     logger.error("Could not construct unsigned tx. Just wait until the next tick...");
                     return [4, rawdb.updateRecordsTimestamp(manager, entities_1.Withdrawal, withdrawalIds)];
-                case 12:
+                case 11:
                     _a.sent();
                     return [2];
-                case 13:
+                case 12:
                     type = finalPickedWithdrawals[0].type === Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS
                         ? Enums_1.LocalTxType.WITHDRAWAL_COLLECT
                         : Enums_1.LocalTxType.WITHDRAWAL_NORMAL;
-                    _a.label = 14;
-                case 14:
-                    _a.trys.push([14, 16, , 17]);
+                    _a.label = 13;
+                case 13:
+                    _a.trys.push([13, 15, , 16]);
                     return [4, rawdb.doPickingWithdrawals(manager, unsignedTx, senderWallet, currency.symbol, finalPickedWithdrawals, type)];
-                case 15:
+                case 14:
                     _a.sent();
-                    return [3, 17];
-                case 16:
+                    return [3, 16];
+                case 15:
                     e_1 = _a.sent();
                     logger.error("Could not finish picking withdrawal ids=[" + withdrawalIds + "] err=" + e_1.toString());
                     throw e_1;
-                case 17: return [2];
+                case 16: return [2];
             }
         });
     });
@@ -375,7 +369,7 @@ function _pickerDoProcessAccountBase(candidateWithdrawals, manager) {
 }
 function _constructRawTransaction(currency, withdrawlParams, manager) {
     return __awaiter(this, void 0, void 0, function () {
-        var vouts, finalPickedWithdrawals, fromAddress, amount, unsignedTx, gateway, withdrawalIds, deposits, toAddress, tag, options, explicitNetworkFee, err_1;
+        var vouts, finalPickedWithdrawals, fromAddress, amount, unsignedTx, gateway, withdrawalIds, deposits, toAddress, tag, err_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -394,7 +388,7 @@ function _constructRawTransaction(currency, withdrawlParams, manager) {
                     withdrawalIds = finalPickedWithdrawals.map(function (w) { return w.id; });
                     _a.label = 1;
                 case 1:
-                    _a.trys.push([1, 13, , 15]);
+                    _a.trys.push([1, 12, , 14]);
                     if (!currency.isUTXOBased) return [3, 7];
                     if (!(finalPickedWithdrawals[0].type !== Enums_1.WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS &&
                         finalPickedWithdrawals[0].type !== Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS)) return [3, 3];
@@ -416,7 +410,7 @@ function _constructRawTransaction(currency, withdrawlParams, manager) {
                 case 5:
                     unsignedTx = _a.sent();
                     _a.label = 6;
-                case 6: return [3, 12];
+                case 6: return [3, 11];
                 case 7:
                     toAddress = vouts[0].toAddress;
                     tag = void 0;
@@ -435,103 +429,24 @@ function _constructRawTransaction(currency, withdrawlParams, manager) {
                         })];
                 case 8:
                     unsignedTx = _a.sent();
-                    return [3, 12];
+                    return [3, 11];
                 case 9:
                     logger.info("picking withdrawal record case Account Base normal");
-                    options = {
-                        destinationTag: tag,
-                    };
-                    return [4, handleNetworkFee(manager, gateway, currency)];
+                    return [4, gateway.constructRawTransaction(fromAddress.address, toAddress, amount, {
+                            destinationTag: tag,
+                        })];
                 case 10:
-                    explicitNetworkFee = _a.sent();
-                    if (explicitNetworkFee) {
-                        options.explicitGasPrice = explicitNetworkFee.gasPrice;
-                        options.explicitGasLimit = explicitNetworkFee.gasLimit;
-                    }
-                    return [4, gateway.constructRawTransaction(fromAddress.address, toAddress, amount, options)];
-                case 11:
                     unsignedTx = _a.sent();
-                    _a.label = 12;
-                case 12: return [2, unsignedTx];
-                case 13:
+                    _a.label = 11;
+                case 11: return [2, unsignedTx];
+                case 12:
                     err_1 = _a.sent();
                     logger.error("Could not create raw tx address=" + fromAddress.address + ", vouts=" + util_1.inspect(vouts) + ", error=" + util_1.inspect(err_1));
                     return [4, rawdb.updateRecordsTimestamp(manager, entities_1.Withdrawal, withdrawalIds)];
-                case 14:
+                case 13:
                     _a.sent();
                     return [2, null];
-                case 15: return [2];
-            }
-        });
-    });
-}
-function handleNetworkFee(manager, gateway, currency) {
-    return __awaiter(this, void 0, void 0, function () {
-        var setting, feeThreshold, estimateFee, gasLimit, gasPrice;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4, rawdb.findSettingByKey(manager, Enums_1.SettingKey.ETH_FEE_THRESHOLD.toUpperCase())];
-                case 1:
-                    setting = _a.sent();
-                    if (!setting || setting.value === '0') {
-                        logger.info("Network fee threshold is not set. Handle network fee as normal.");
-                        return [2, null];
-                    }
-                    feeThreshold = new sota_common_1.BigNumber(setting.value);
-                    return [4, gateway.estimateFee({
-                            isConsolidate: currency.isNative,
-                        })];
-                case 2:
-                    estimateFee = _a.sent();
-                    if (estimateFee.lte(feeThreshold)) {
-                        logger.info("Estimate fee = " + estimateFee + " is less than or equal fee_threshold setting = " + feeThreshold + " => Use estimate fee.");
-                        return [2, null];
-                    }
-                    gasLimit = 150000;
-                    gasPrice = feeThreshold.div(gasLimit).integerValue().toNumber();
-                    logger.info("Estimate fee = " + estimateFee + " is greater than fee_threshold setting = " + feeThreshold + ". Gas limit = " + gasLimit + ", gas price = " + gasPrice);
-                    return [2, {
-                            gasLimit: gasLimit,
-                            gasPrice: gasPrice,
-                        }];
-            }
-        });
-    });
-}
-function checkMaxFee(manager, currency) {
-    return __awaiter(this, void 0, void 0, function () {
-        var maxFeeSetting, maxFeeByUsdSetting, maxFee;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4, rawdb.findSettingByKey(manager, Enums_1.SettingKey.MAX_FEE_BY_USD.toUpperCase())];
-                case 1:
-                    maxFeeSetting = _a.sent();
-                    if (!maxFeeSetting) {
-                        logger.info("Max fee by usd is not set. Handle network fee as normal.");
-                        return [2, true];
-                    }
-                    maxFeeByUsdSetting = new sota_common_1.BigNumber(maxFeeSetting.value);
-                    return [4, manager.getRepository(entities_1.MaxFee).findOne({
-                            order: {
-                                updatedAt: 'DESC',
-                            },
-                            where: {
-                                currency: currency.isNative ? currency.platform : currency.tokenType,
-                            },
-                        })];
-                case 2:
-                    maxFee = _a.sent();
-                    if (!maxFee) {
-                        throw new Error("EthPickerDoProcess: Database has no max fee records. Please check maxFeeDoProcess");
-                    }
-                    if (Date.now() - maxFee.updatedAt > 300000) {
-                        throw new Error("EthPickerDoProcess: The lastest maxFee record is old. Please check maxFeeDoProcess");
-                    }
-                    if (new sota_common_1.BigNumber(maxFee.feeByUsd).gt(maxFeeByUsdSetting)) {
-                        logger.warn("PickerDoProcess will suspend all withdrawals because max_fee_by_usd in setting = " + maxFeeByUsdSetting + " less than current max_fee = " + maxFee.feeByUsd);
-                        return [2, false];
-                    }
-                    return [2, true];
+                case 14: return [2];
             }
         });
     });

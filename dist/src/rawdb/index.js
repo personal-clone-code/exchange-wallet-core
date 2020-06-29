@@ -46,5 +46,4 @@ __export(require("./updateAddressBalanceFromNetwork"));
 __export(require("./handlePendingWithdrawalBalance"));
 __export(require("./isExternalAddress"));
 __export(require("./insertWithdrawals"));
-__export(require("./findSetting"));
 //# sourceMappingURL=index.js.map

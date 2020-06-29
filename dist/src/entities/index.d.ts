@@ -32,6 +32,3 @@ export * from './MailJob';
 export * from './MailLog';
 export * from './NemEnvConfig';
 export * from './AddressBalance';
-export * from './Setting';
-export * from './MaxFee';
-export * from './CoinMarketCapKey';

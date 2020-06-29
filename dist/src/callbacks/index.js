@@ -14,7 +14,6 @@ __export(require("./active/verifierDoProcess"));
 __export(require("./active/collectorDoProcess"));
 __export(require("./active/feeSeederDoProcess"));
 __export(require("./active/handleRedisMessage"));
-__export(require("./active/maxFeeDoProcessor"));
 __export(require("./crawl/onBlockCrawled"));
 __export(require("./crawl/onTxCrawled"));
 __export(require("./crawl/onCrawlingTxs"));
