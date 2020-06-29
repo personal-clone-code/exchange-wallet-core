@@ -1,5 +1,5 @@
 import * as _ from 'lodash';
-import { BaseIntervalWorker, getLogger, Mailer, registerMailEventCallback } from 'sota-common';
+import { BaseIntervalWorker, getLogger, Mailer } from 'sota-common';
 import { getConnection, EntityManager } from 'typeorm';
 import * as rawdb from './rawdb';
 import { renderTemplate } from './mailer/renderTemplate';

@@ -134,57 +134,12 @@ export async function lowerThresholdHandle(manager: EntityManager, sentRecord: L
     logger.error(`hotWallet address=${sentRecord.fromAddress} not found`);
     return;
   }
-  const currencyConfig = await rawdb.findOneCurrency(manager, sentRecord.currency, sentRecord.walletId);
-  if (!currencyConfig || !currencyConfig.lowerThreshold) {
-    logger.error(`Currency threshold symbol=${sentRecord.currency} is not found or lower threshold is not setted`);
-    return;
+  await _lowerThresholdHandle(manager, sentRecord, hotWallet, sentRecord.currency);
+
+  const currency: ICurrency = CurrencyRegistry.getOneCurrency(sentRecord.currency);
+  if (!currency.isNative) {
+    await _lowerThresholdHandle(manager, sentRecord, hotWallet, currency.platform);
   }
-
-  const lower = new BigNumber(currencyConfig.lowerThreshold);
-  const gateway = GatewayRegistry.getGatewayInstance(sentRecord.currency);
-  let balance = await gateway.getAddressBalance(hotWallet.address);
-
-  const pending = await rawdb.findWithdrawalsPendingBalance(
-    manager,
-    hotWallet.walletId,
-    hotWallet.userId,
-    sentRecord.currency,
-    hotWallet.address
-  );
-  balance = balance.minus(pending);
-
-  if (lower.eq(0) || balance.gt(lower)) {
-    logger.info(
-      `Hot wallet symbol=${sentRecord.currency} address=${
-        hotWallet.address
-      } is not in lower threshold, ignore notifying`
-    );
-    return;
-  }
-
-  // TBD: this code from Logger.ts, should move to Util or somewhere better
-  logger.info(`Hot wallet balance is in lower threshold address=${hotWallet.address}`);
-  const appName: string = process.env.APP_NAME || 'Exchange Wallet';
-  const sender = EnvConfigRegistry.getCustomEnvConfig('MAIL_FROM_ADDRESS');
-  const senderName = EnvConfigRegistry.getCustomEnvConfig('MAIL_FROM_NAME');
-  const receiver = EnvConfigRegistry.getCustomEnvConfig('MAIL_RECIPIENT_COLD_WALLET');
-  if (!receiver || !Utils.isValidEmail(receiver)) {
-    logger.error(`Mailer could not send email to receiver=${receiver}. Please check it.`);
-    return;
-  }
-  await rawdb.insertMailJob(manager, {
-    senderAddress: sender,
-    senderName,
-    recipientAddress: receiver,
-    title: `[${appName}] Hot wallet ${hotWallet.address} is near lower threshold`,
-    templateName: 'hot_wallet_balance_lower_threshold_layout.hbs',
-    content: {
-      lower_threshold: lower,
-      current_balance: balance,
-      address: hotWallet.address,
-      currency: sentRecord.currency,
-    },
-  });
 }
 
 export async function checkHotWalletIsSufficient(
@@ -213,4 +168,63 @@ export async function checkAddressIsSufficient(
     return true;
   }
   return false;
+}
+
+export async function _lowerThresholdHandle(
+  manager: EntityManager,
+  sentRecord: LocalTx,
+  hotWallet: HotWallet,
+  currency: string,
+) {
+  const currencyConfig = await rawdb.findOneCurrency(manager, currency, sentRecord.walletId);
+  if (!currencyConfig || !currencyConfig.lowerThreshold) {
+    logger.error(`Currency threshold symbol=${currency} is not found or lower threshold is not setted`);
+    return;
+  }
+
+  const lower = new BigNumber(currencyConfig.lowerThreshold);
+  const gateway = GatewayRegistry.getGatewayInstance(currency);
+  let balance = await gateway.getAddressBalance(hotWallet.address);
+
+  const pending = await rawdb.findWithdrawalsPendingBalance(
+    manager,
+    hotWallet.walletId,
+    hotWallet.userId,
+    currency,
+    hotWallet.address
+  );
+  balance = balance.minus(pending);
+
+  if (lower.eq(0) || balance.gt(lower)) {
+    logger.info(
+      `Hot wallet symbol=${currency} address=${
+        hotWallet.address
+      } is not in lower threshold, ignore notifying`
+    );
+    return;
+  }
+
+  // TBD: this code from Logger.ts, should move to Util or somewhere better
+  logger.info(`Hot wallet balance is in lower threshold address=${hotWallet.address}`);
+  const appName: string = process.env.APP_NAME || 'Exchange Wallet';
+  const sender = EnvConfigRegistry.getCustomEnvConfig('MAIL_FROM_ADDRESS');
+  const senderName = EnvConfigRegistry.getCustomEnvConfig('MAIL_FROM_NAME');
+  const receiver = EnvConfigRegistry.getCustomEnvConfig('MAIL_RECIPIENT_COLD_WALLET');
+  if (!receiver || !Utils.isValidEmail(receiver)) {
+    logger.error(`Mailer could not send email to receiver=${receiver}. Please check it.`);
+    return;
+  }
+  await rawdb.insertMailJob(manager, {
+    senderAddress: sender,
+    senderName,
+    recipientAddress: receiver,
+    title: `[${appName}] Hot wallet ${hotWallet.address} is near lower threshold`,
+    templateName: 'hot_wallet_balance_lower_threshold_layout.hbs',
+    content: {
+      lower_threshold: lower,
+      current_balance: balance,
+      address: hotWallet.address,
+      currency: currency,
+    },
+  });
 }

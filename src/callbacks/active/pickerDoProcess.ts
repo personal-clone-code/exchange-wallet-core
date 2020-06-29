@@ -127,7 +127,7 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
       // withdrawlParams.amount
     );
   } catch (e) {
-    logger.fatal(`Could not finish picking withdrawal ids=[${withdrawalIds}] err=${e.toString()}`);
+    logger.error(`Could not finish picking withdrawal ids=[${withdrawalIds}] err=${e.toString()}`);
     throw e;
   }
 

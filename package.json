@@ -1,30 +1,17 @@
 {
-  "name": "wallet-core",
-  "version": "0.1.0",
+  "name": "@sotatek/exchange-wallet-core",
+  "version": "0.0.15",
   "description": "Core modules of wallet service for Crypto Exchanges",
-  "main": "index.ts",
+  "main": "dist/index.js",
   "directories": {
     "doc": "docs",
     "test": "test"
   },
   "scripts": {
-    "lint": "tslint 'src/**/*.ts'",
-    "jslint": "echo 'JSLint'",
-    "fix": "npm run lint -- --fix",
-    "jsfix": "npm run jslint -- --fix",
-    "test": "mocha -r ts-node/register src/**/*.spec.ts",
-    "build": "tsc"
+    "test": "NETWORK=rinkeby mocha --timeout 15000 -r ts-node/register ./test/testEthGateway.spec.ts"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/sotatek-dev/exchange-wallet-core.git"
-  },
-  "author": "",
+  "author": "an.nguyen@sotatek.com",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/sotatek-dev/exchange-wallet-core/issues"
-  },
-  "homepage": "https://github.com/sotatek-dev/exchange-wallet-core#readme",
   "devDependencies": {
     "@types/assert": "1.4.1",
     "@types/chai": "4.1.7",
@@ -43,18 +30,18 @@
     "mocha": "5.2.0",
     "nyc": "13.3.0",
     "prettier": "1.15.3",
-    "ts-node": "7.0.1",
+    "ts-node": "8.10.1",
     "tslint": "5.11.0",
     "tslint-config-prettier": "1.17.0",
     "tslint-eslint-rules": "5.4.0",
-    "tslint-plugin-prettier": "2.0.1"
+    "tslint-plugin-prettier": "2.0.1",
+    "typescript": "3.8.3"
   },
   "dependencies": {
     "@types/bcryptjs": "2.4.2",
     "@types/hbs": "^4.0.1",
     "@types/lodash": "4.14.119",
     "@types/mysql": "2.15.5",
-    "@types/node": "10.12.18",
     "@types/node-fetch": "2.3.3",
     "@types/uuid": "3.4.4",
     "aws-sdk": "2.384.0",
@@ -67,8 +54,11 @@
     "node-fetch": "2.5.0",
     "nodemailer": "^6.2.1",
     "reflect-metadata": "0.1.12",
-    "sota-common": "../sota-common",
-    "typeorm": "0.2.11",
-    "typescript": "3.2.2"
+    "sota-common": "npm:@sotatek/crypto-currency-common@^0.*",
+    "typeorm": "^0.2.11"
+  },
+  "peerDependencies": {
+    "sota-common": "npm:@sotatek/crypto-currency-common@^0.*",
+    "typeorm": "^0.2.11"
   }
 }

@@ -123,3 +123,8 @@ export enum CollectType {
 export enum WithdrawalMode {
   NORMAL = 'normal',
 }
+
+export enum SettingKey {
+  ETH_FEE_THRESHOLD = 'eth_fee_threshold',
+  MAX_FEE_BY_USD = 'max_fee_by_usd',
+}
