@@ -48,6 +48,7 @@ var rawdb = __importStar(require("../../rawdb"));
 var typeorm_1 = require("typeorm");
 var Enums_1 = require("../../Enums");
 var entities_1 = require("../../entities");
+var processOneDepositTransaction_1 = require("../../rawdb/processOneDepositTransaction");
 var logger = sota_common_1.getLogger('verifierDoProcess');
 function verifierDoProcess(verfifier) {
     return __awaiter(this, void 0, void 0, function () {
@@ -127,7 +128,9 @@ function _verifierDoProcess(manager, verifier) {
                 case 11:
                     logger.error("verifierDoProcess not supported localTxType: " + sentRecord.type);
                     _a.label = 12;
-                case 12: return [2];
+                case 12:
+                    processOneDepositTransaction_1.updateAddressBalance(manager, resTx);
+                    return [2];
             }
         });
     });
