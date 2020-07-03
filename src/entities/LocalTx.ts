@@ -35,7 +35,7 @@ export class LocalTx {
   public refCurrencySymbol: string;
 
   @Column('varchar', { length: 40, name: 'type', nullable: false })
-  public type: LocalTxType;
+  public type: string;
 
   @Column('varchar', { length: 100, name: 'ref_table', nullable: false })
   public refTable: string;
