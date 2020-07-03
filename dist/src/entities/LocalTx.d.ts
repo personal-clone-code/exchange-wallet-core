@@ -1,4 +1,3 @@
-import { LocalTxType } from '../Enums';
 export declare class LocalTx {
     id: number;
     userId: number;
@@ -10,7 +9,7 @@ export declare class LocalTx {
     currencySymbol: string;
     refCurrency: string;
     refCurrencySymbol: string;
-    type: LocalTxType;
+    type: string;
     refTable: string;
     refId: number;
     memo: string | null;
