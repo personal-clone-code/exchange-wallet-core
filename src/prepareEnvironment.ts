@@ -9,7 +9,7 @@ import {
   getRedisSubscriber,
   registerMailEventCallback,
 } from 'sota-common';
-import { CurrencyConfig, EnvConfig, Erc20Token, EosToken, Trc20Token, NemEnvConfig, TerraToken } from './entities';
+import { CurrencyConfig, EnvConfig, Erc20Token, EosToken, Trc20Token, NemEnvConfig, TerraToken, CosmosToken } from './entities';
 import _ from 'lodash';
 import { prepareWalletBalanceAll } from './callbacks';
 import { OmniToken } from './entities/OmniToken';
@@ -38,7 +38,7 @@ export async function prepareEnvironment(): Promise<void> {
   const connection = getConnection();
   logger.info(`Loading environment configurations from database...`);
 
-  const [currencyConfigs, envConfigs, erc20Tokens, trc20Tokens, eosTokens, omniTokens, terraTokens] = await Promise.all(
+  const [currencyConfigs, envConfigs, erc20Tokens, trc20Tokens, eosTokens, omniTokens, terraTokens, cosmosTokens] = await Promise.all(
     [
       connection.getRepository(CurrencyConfig).find({}),
       connection.getRepository(EnvConfig).find({}),
@@ -47,6 +47,7 @@ export async function prepareEnvironment(): Promise<void> {
       connection.getRepository(EosToken).find({}),
       connection.getRepository(OmniToken).find({}),
       connection.getRepository(TerraToken).find({}),
+      connection.getRepository(CosmosToken).find({}),
     ]
   );
 
@@ -88,6 +89,12 @@ export async function prepareEnvironment(): Promise<void> {
   terraTokens.forEach(token => {
     CurrencyRegistry.registerTerraToken(token.code, token.symbol, token.scale);
     terraCurrencies.push(CurrencyRegistry.getOneCurrency(`terra.${token.symbol}`));
+  });
+
+  const cosmosCurrencies: ICurrency[] = [];
+  cosmosTokens.forEach(token => {
+    CurrencyRegistry.registerCosmosToken(token.code, token.symbol, token.scale);
+    cosmosCurrencies.push(CurrencyRegistry.getOneCurrency(`cosmos.${token.symbol}`));
   });
 
   currencyConfigs.forEach(config => {
@@ -147,6 +154,7 @@ export async function prepareEnvironment(): Promise<void> {
     prepareWalletBalanceAll([...erc20Currencies, CurrencyRegistry.Ethereum]),
     prepareWalletBalanceAll([...omniCurrencies, CurrencyRegistry.Bitcoin]),
     prepareWalletBalanceAll([...terraCurrencies, CurrencyRegistry.Terra]),
+    prepareWalletBalanceAll([...cosmosCurrencies, CurrencyRegistry.Cosmos]),
   ]);
 
   logger.info(`Environment has been setup successfully...`);
