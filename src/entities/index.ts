@@ -26,6 +26,7 @@ export * from './KmsDataKey';
 export * from './EnvConfig';
 export * from './UserCurrency';
 export * from './EosToken';
+export * from './TerraToken';
 export * from './LocalTx';
 export * from './KmsCmk';
 export * from './MailJob';
