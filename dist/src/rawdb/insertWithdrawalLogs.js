@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.insertWithdrawalLogs = void 0;
 var sota_common_1 = require("sota-common");
 var WithdrawalLog_1 = require("../entities/WithdrawalLog");
 var logger = sota_common_1.getLogger('rawdb::insertWithdrawalLog');

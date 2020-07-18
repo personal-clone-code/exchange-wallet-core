@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SettingKey = exports.WithdrawalMode = exports.CollectType = exports.MailStatus = exports.RefTable = exports.LocalTxStatus = exports.LocalTxType = exports.CollectStatus = exports.WithdrawalStatus = exports.WithdrawalEvent = exports.WithdrawOutType = exports.WalletEvent = exports.DepositEvent = exports.WebhookType = void 0;
 var WebhookType;
 (function (WebhookType) {
     WebhookType["DEPOSIT"] = "deposit";

@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SignerFactory = void 0;
 var CollectingSigner_1 = require("./CollectingSigner");
 var WithdrawalSigner_1 = require("./WithdrawalSigner");
 var SeedingSigner_1 = require("./SeedingSigner");

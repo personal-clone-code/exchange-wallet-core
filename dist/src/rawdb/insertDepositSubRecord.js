@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.insertDepositSubRecord = void 0;
 var CurrencyDepositFactory_1 = require("../factories/CurrencyDepositFactory");
 function insertDepositSubRecord(manager, depositId, output) {
     return __awaiter(this, void 0, void 0, function () {

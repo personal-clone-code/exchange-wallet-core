@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getNextCurrencyByStatus = void 0;
 var typeorm_1 = require("typeorm");
 var entities_1 = require("../entities");
 function getNextCurrencyByStatus(manager, currencies, statuses) {

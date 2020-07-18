@@ -9,6 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Trc20Token = void 0;
 var typeorm_1 = require("typeorm");
 var Trc20Token = (function () {
     function Trc20Token() {

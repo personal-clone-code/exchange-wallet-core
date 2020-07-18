@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.findWithdrawalTxByStatus = void 0;
 var entities_1 = require("../entities");
 var typeorm_1 = require("typeorm");
 function findWithdrawalTxByStatus(manager, currency, status) {

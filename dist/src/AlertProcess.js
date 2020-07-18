@@ -49,6 +49,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.AlertProcess = void 0;
 var sota_common_1 = require("sota-common");
 var uuid_1 = require("uuid");
 var typeorm_1 = require("typeorm");

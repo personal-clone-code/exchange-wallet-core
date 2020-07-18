@@ -48,6 +48,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.HotWallet = void 0;
 var sota_common_1 = require("sota-common");
 var typeorm_1 = require("typeorm");
 var Kms_1 = __importDefault(require("../encrypt/Kms"));

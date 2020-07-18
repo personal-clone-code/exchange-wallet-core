@@ -49,6 +49,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SeedingSigner = void 0;
 var BaseHotWalletSigner_1 = require("./BaseHotWalletSigner");
 var entities_1 = require("../../../entities");
 var Enums_1 = require("../../../Enums");

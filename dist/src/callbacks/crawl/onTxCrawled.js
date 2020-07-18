@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.onTxCrawled = void 0;
 var sota_common_1 = require("sota-common");
 var logger = sota_common_1.getLogger('Callback.onTxCrawled');
 function onTxCrawled(crawler, tx) {

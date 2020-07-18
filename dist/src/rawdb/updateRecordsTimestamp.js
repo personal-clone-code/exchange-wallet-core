@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.updateRecordsTimestamp = void 0;
 var sota_common_1 = require("sota-common");
 function updateRecordsTimestamp(manager, entityClass, ids) {
     return __awaiter(this, void 0, void 0, function () {

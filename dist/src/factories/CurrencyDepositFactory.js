@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.CurrencyDepositFactory = void 0;
 var registry = new Map();
 exports.CurrencyDepositFactory = {
     register: function (currency, callback) {

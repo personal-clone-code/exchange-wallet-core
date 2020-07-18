@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import 'sota-common';
 
 import * as callbacks from './src/callbacks';

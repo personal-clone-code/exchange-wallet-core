@@ -43,6 +43,7 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.prepareEnvironment = void 0;
 var typeorm_1 = require("typeorm");
 var sota_common_1 = require("sota-common");
 var entities_1 = require("./entities");

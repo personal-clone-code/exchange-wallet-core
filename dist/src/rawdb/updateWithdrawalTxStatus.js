@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.updateWithdrawalTxStatus = void 0;
 var entities_1 = require("../entities");
 function updateWithdrawalTxStatus(manager, id, status, transactionResult, fee) {
     return __awaiter(this, void 0, void 0, function () {

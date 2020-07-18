@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.updateByCollectTransaction = void 0;
 function updateByCollectTransaction(manager, deposits, event, tx, isExternal) {
     if (isExternal === void 0) { isExternal = false; }
     return __awaiter(this, void 0, void 0, function () {
