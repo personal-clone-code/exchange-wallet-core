@@ -285,7 +285,7 @@ function _constructUtxoBasedCollectTx(deposits, toAddress) {
                         throw new Error("Weird outputs were spent without collecting: " + JSON.stringify(weirdVouts));
                     }
                     depositAmount = deposits.reduce(function (memo, d) { return memo.plus(new sota_common_1.BigNumber(d.amount)); }, new sota_common_1.BigNumber(0));
-                    utxoAmount = utxos.reduce(function (memo, u) { return memo.plus(new sota_common_1.BigNumber(u.satoshis)); }, new sota_common_1.BigNumber(0));
+                    utxoAmount = utxos.reduce(function (memo, u) { return memo.plus(new sota_common_1.BigNumber(u.satoshis || 0)); }, new sota_common_1.BigNumber(0));
                     if (!depositAmount.eq(utxoAmount)) {
                         throw new Error("Mismatch collecting values: depositAmount=" + depositAmount + ", utxoAmount=" + utxoAmount);
                     }

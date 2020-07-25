@@ -394,7 +394,8 @@ async function _constructRawTransaction(
             // do nothing, maybe it's case collect to cold wallet, note is 'from machine'
           }
 
-          unsignedTx = await (gateway as CosmosBasedGateway).constructRawTransaction(paramConstructRawTx, {
+          const cosmosGateway = gateway as any as CosmosBasedGateway;
+          unsignedTx = await cosmosGateway.constructRawTransaction(paramConstructRawTx, {
             destinationTag: tag,
             isConsolidate: currency.isNative,
           });

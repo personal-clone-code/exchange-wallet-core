@@ -85,7 +85,7 @@ function findOneGroupOfCollectableDeposits(manager, currencies) {
                             }];
                     }
                     finalRecords = [];
-                    if (currency.isUTXOBased) {
+                    if (currency.isUTXOBased && currency.platform !== sota_common_1.BlockchainPlatform.NEO) {
                         finalRecords.push.apply(finalRecords, records);
                     }
                     else {

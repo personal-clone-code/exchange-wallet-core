@@ -62,9 +62,10 @@ var Enums_1 = require("../Enums");
 var entities_1 = require("../entities");
 var rawdb = __importStar(require("./index"));
 var sota_common_2 = require("sota-common");
+var logger = sota_common_1.getLogger("updateWithdrawalTxWallets");
 function updateWithdrawalTxWallets(manager, localTx, event, fee) {
     return __awaiter(this, void 0, void 0, function () {
-        var withdrawals, walletEvent, currency, feeCurrency, tasks, withdrawalFeeLog;
+        var withdrawals, walletEvent, currency, feeCurrency, minusFee, tasks, withdrawalFeeLog;
         var _this = this;
         return __generator(this, function (_a) {
             switch (_a.label) {
@@ -78,14 +79,29 @@ function updateWithdrawalTxWallets(manager, localTx, event, fee) {
                     if (!withdrawals.length) {
                         return [2, null];
                     }
+                    minusFee = false;
                     tasks = _.map(withdrawals, function (record) { return __awaiter(_this, void 0, void 0, function () {
-                        var balanceChange, walletBalance, balanceAfter, walletLog;
+                        var toAddress, fromAddress, toAddressRecord, fromAddressRecord, balanceChange, walletBalance, balanceAfter, balanceAfter, walletLog;
                         return __generator(this, function (_a) {
                             switch (_a.label) {
-                                case 0: return [4, manager.findOne(entities_1.WalletBalance, {
-                                        walletId: record.walletId,
-                                    })];
+                                case 0:
+                                    toAddress = record.toAddress;
+                                    fromAddress = record.fromAddress;
+                                    return [4, manager
+                                            .getRepository(entities_1.HotWallet)
+                                            .findOne({ address: toAddress, walletId: record.walletId })];
                                 case 1:
+                                    toAddressRecord = _a.sent();
+                                    return [4, manager
+                                            .getRepository(entities_1.HotWallet)
+                                            .findOne({ address: fromAddress, walletId: record.walletId })];
+                                case 2:
+                                    fromAddressRecord = _a.sent();
+                                    minusFee = fromAddressRecord ? true : false;
+                                    return [4, manager.findOne(entities_1.WalletBalance, {
+                                            walletId: record.walletId,
+                                        })];
+                                case 3:
                                     walletBalance = _a.sent();
                                     if (!walletBalance) {
                                         throw new Error('walletBalance is not existed');
@@ -96,12 +112,29 @@ function updateWithdrawalTxWallets(manager, localTx, event, fee) {
                                     }
                                     if (event === Enums_1.WithdrawalEvent.COMPLETED) {
                                         walletEvent = Enums_1.WalletEvent.WITHDRAW_COMPLETED;
-                                        if (currency.isNative) {
-                                            balanceAfter = new sota_common_1.BigNumber(record.amount).minus(fee);
-                                            balanceChange = "-" + (balanceAfter.lte(0) ? record.amount : balanceAfter.toString());
+                                        if (fromAddressRecord && !toAddressRecord) {
+                                            logger.debug("case hot wallet to normal address");
+                                            if (currency.isNative) {
+                                                balanceAfter = new sota_common_1.BigNumber(record.amount).minus(fee);
+                                                balanceChange = "-" + (balanceAfter.lte(0) ? record.amount : balanceAfter.toString());
+                                            }
+                                            else {
+                                                balanceChange = '-' + record.amount;
+                                            }
+                                        }
+                                        else if (!fromAddressRecord && toAddressRecord) {
+                                            logger.debug("case normal address to hot wallet");
+                                            if (currency.isNative) {
+                                                balanceAfter = new sota_common_1.BigNumber(record.amount).minus(fee);
+                                                balanceChange = "+" + (balanceAfter.lte(0) ? record.amount : balanceAfter.toString());
+                                            }
+                                            else {
+                                                balanceChange = '+' + record.amount;
+                                            }
                                         }
                                         else {
-                                            balanceChange = '-' + record.amount;
+                                            logger.debug("case normal address to normal address");
+                                            balanceChange = '0';
                                         }
                                     }
                                     walletLog = new entities_1.WalletLog();
@@ -118,11 +151,7 @@ function updateWithdrawalTxWallets(manager, localTx, event, fee) {
                                                 .set({
                                                 balance: function () {
                                                     if (event === Enums_1.WithdrawalEvent.COMPLETED) {
-                                                        if (currency.isNative) {
-                                                            var walletBalanceAfter = new sota_common_1.BigNumber(record.amount).minus(fee);
-                                                            return "balance - " + (walletBalanceAfter.lte(0) ? record.amount : walletBalanceAfter.toString());
-                                                        }
-                                                        return "balance - " + record.amount;
+                                                        return "balance + " + balanceChange;
                                                     }
                                                     return "balance";
                                                 },
@@ -135,13 +164,13 @@ function updateWithdrawalTxWallets(manager, localTx, event, fee) {
                                                 .execute(),
                                             rawdb.insertWalletLog(manager, walletLog),
                                         ])];
-                                case 2:
+                                case 4:
                                     _a.sent();
                                     return [2];
                             }
                         });
                     }); });
-                    if (event === Enums_1.WithdrawalEvent.COMPLETED) {
+                    if (event === Enums_1.WithdrawalEvent.COMPLETED && minusFee) {
                         withdrawalFeeLog = new entities_1.WalletLog();
                         withdrawalFeeLog.walletId = withdrawals[0].walletId;
                         withdrawalFeeLog.currency = feeCurrency;

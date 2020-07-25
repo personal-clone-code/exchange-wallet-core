@@ -121,27 +121,33 @@ function _verifierDoProcess(manager, verifier) {
                     resTx = _a.sent();
                     fee = resTx.getNetworkFee();
                     isTxSucceed = transactionStatus === sota_common_1.TransactionStatus.COMPLETED;
-                    if (!(sentRecord.isWithdrawal() || sentRecord.isWithdrawalCollect())) return [3, 7];
+                    if (!sentRecord.isWithdrawal()) return [3, 7];
                     return [4, verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block)];
                 case 6:
                     _a.sent();
-                    return [3, 12];
+                    return [3, 14];
                 case 7:
-                    if (!sentRecord.isCollectTx()) return [3, 9];
-                    return [4, verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx)];
+                    if (!sentRecord.isWithdrawalCollect()) return [3, 9];
+                    return [4, verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block)];
                 case 8:
                     _a.sent();
-                    return [3, 12];
+                    return [3, 14];
                 case 9:
-                    if (!sentRecord.isSeedTx()) return [3, 11];
-                    return [4, verifySeedDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block)];
+                    if (!sentRecord.isCollectTx()) return [3, 11];
+                    return [4, verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx)];
                 case 10:
                     _a.sent();
-                    return [3, 12];
+                    return [3, 14];
                 case 11:
-                    logger.error("verifierDoProcess not supported localTxType: " + sentRecord.type);
-                    _a.label = 12;
+                    if (!sentRecord.isSeedTx()) return [3, 13];
+                    return [4, verifySeedDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block)];
                 case 12:
+                    _a.sent();
+                    return [3, 14];
+                case 13:
+                    logger.error("verifierDoProcess not supported localTxType: " + sentRecord.type);
+                    _a.label = 14;
+                case 14:
                     processOneDepositTransaction_1.updateAddressBalance(manager, resTx);
                     return [2];
             }

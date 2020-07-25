@@ -124,7 +124,8 @@ function insertDeposit(manager, output, senderAddresses) {
                     return [4, rawdb.insertDepositLog(manager, depositId, Enums_1.DepositEvent.CREATED, depositId, wallet.userId)];
                 case 9:
                     _a.sent();
-                    if (!(deposit.collectedTxid === 'NO_COLLECT_HOT_WALLET_ADDRESS')) return [3, 11];
+                    if (!(deposit.collectedTxid === 'NO_COLLECT_HOT_WALLET_ADDRESS' ||
+                        currencyInfo.platform === sota_common_1.BlockchainPlatform.Cardano)) return [3, 11];
                     return [4, rawdb.updateWalletBalanceAfterDeposit(manager, depositId, new sota_common_1.BigNumber(deposit.amount))];
                 case 10:
                     _a.sent();

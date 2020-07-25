@@ -52,7 +52,7 @@ var OmniToken_1 = require("./entities/OmniToken");
 var logger = sota_common_1.getLogger('prepareEnvironment');
 function prepareEnvironment() {
     return __awaiter(this, void 0, void 0, function () {
-        var connection, _a, currencyConfigs, envConfigs, erc20Tokens, trc20Tokens, eosTokens, omniTokens, nemEnvConfigs, erc20Currencies, trc20Currencies, omniCurrencies, eosCurrencies, redisHost, redisPort, redisUrl, redisSubscriber;
+        var connection, _a, currencyConfigs, envConfigs, erc20Tokens, trc20Tokens, eosTokens, omniTokens, terraTokens, cosmosTokens, nemEnvConfigs, erc20Currencies, trc20Currencies, omniCurrencies, eosCurrencies, terraCurrencies, cosmosCurrencies, redisHost, redisPort, redisUrl, redisSubscriber;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -83,9 +83,11 @@ function prepareEnvironment() {
                             connection.getRepository(entities_1.Trc20Token).find({}),
                             connection.getRepository(entities_1.EosToken).find({}),
                             connection.getRepository(OmniToken_1.OmniToken).find({}),
+                            connection.getRepository(entities_1.TerraToken).find({}),
+                            connection.getRepository(entities_1.CosmosToken).find({}),
                         ])];
                 case 2:
-                    _a = _b.sent(), currencyConfigs = _a[0], envConfigs = _a[1], erc20Tokens = _a[2], trc20Tokens = _a[3], eosTokens = _a[4], omniTokens = _a[5];
+                    _a = _b.sent(), currencyConfigs = _a[0], envConfigs = _a[1], erc20Tokens = _a[2], trc20Tokens = _a[3], eosTokens = _a[4], omniTokens = _a[5], terraTokens = _a[6], cosmosTokens = _a[7];
                     envConfigs.forEach(function (config) {
                         sota_common_1.EnvConfigRegistry.setCustomEnvConfig(config.key, config.value);
                     });
@@ -115,6 +117,16 @@ function prepareEnvironment() {
                         sota_common_1.CurrencyRegistry.registerEosToken(token.code, token.symbol, token.scale);
                         eosCurrencies.push(sota_common_1.CurrencyRegistry.getOneCurrency("eos." + token.symbol));
                     });
+                    terraCurrencies = [];
+                    terraTokens.forEach(function (token) {
+                        sota_common_1.CurrencyRegistry.registerTerraToken(token.code, token.symbol, token.scale);
+                        terraCurrencies.push(sota_common_1.CurrencyRegistry.getOneCurrency("terra." + token.symbol));
+                    });
+                    cosmosCurrencies = [];
+                    cosmosTokens.forEach(function (token) {
+                        sota_common_1.CurrencyRegistry.registerCosmosToken(token.code, token.symbol, token.scale);
+                        cosmosCurrencies.push(sota_common_1.CurrencyRegistry.getOneCurrency("cosmos." + token.symbol));
+                    });
                     currencyConfigs.forEach(function (config) {
                         if (!sota_common_1.CurrencyRegistry.hasOneCurrency(config.currency)) {
                             throw new Error("There's config for unknown currency: " + config.currency);
@@ -140,6 +152,8 @@ function prepareEnvironment() {
                             callbacks_1.prepareWalletBalanceAll(__spreadArrays(trc20Currencies, [sota_common_1.CurrencyRegistry.Tomo])),
                             callbacks_1.prepareWalletBalanceAll(__spreadArrays(erc20Currencies, [sota_common_1.CurrencyRegistry.Ethereum])),
                             callbacks_1.prepareWalletBalanceAll(__spreadArrays(omniCurrencies, [sota_common_1.CurrencyRegistry.Bitcoin])),
+                            callbacks_1.prepareWalletBalanceAll(__spreadArrays(terraCurrencies, [sota_common_1.CurrencyRegistry.Terra])),
+                            callbacks_1.prepareWalletBalanceAll(__spreadArrays(cosmosCurrencies, [sota_common_1.CurrencyRegistry.Cosmos])),
                         ])];
                 case 5:
                     _b.sent();

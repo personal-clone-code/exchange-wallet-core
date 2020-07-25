@@ -83,15 +83,15 @@ function processOneDepositTransaction(manager, crawler, tx, watchingAddresses) {
                         logger.info("Tx " + tx.txid + " doesn't have enough confirmations: " + tx.confirmations);
                         return [2];
                     }
-                    return [4, updateAddressBalance(manager, tx)];
-                case 1:
-                    _a.sent();
                     return [4, isInternalTransfer(manager, tx)];
-                case 2:
+                case 1:
                     if (_a.sent()) {
                         logger.info("Tx " + tx.txid + " is a internal tx, will not write to deposit");
                         return [2];
                     }
+                    return [4, updateAddressBalance(manager, tx)];
+                case 2:
+                    _a.sent();
                     return [4, sota_common_1.Utils.PromiseAll(outputs.map(function (output) { return __awaiter(_this, void 0, void 0, function () { return __generator(this, function (_a) {
                             return [2, insertDeposit_1.default(manager, output, tx.extractSenderAddresses())];
                         }); }); }))];

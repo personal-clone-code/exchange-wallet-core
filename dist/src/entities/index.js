@@ -38,6 +38,8 @@ __exportStar(require("./KmsDataKey"), exports);
 __exportStar(require("./EnvConfig"), exports);
 __exportStar(require("./UserCurrency"), exports);
 __exportStar(require("./EosToken"), exports);
+__exportStar(require("./TerraToken"), exports);
+__exportStar(require("./CosmosToken"), exports);
 __exportStar(require("./LocalTx"), exports);
 __exportStar(require("./KmsCmk"), exports);
 __exportStar(require("./MailJob"), exports);
