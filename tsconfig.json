@@ -17,7 +17,7 @@
     "watch": false,
     "outDir": "./dist",
     "lib": ["es2015", "dom"],
-    "types": ["node"]
+    "types": []
   },
   "include": ["index.ts"],
   "exclude": ["node_modules", "**/*.spec.ts"]

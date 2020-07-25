@@ -21,7 +21,7 @@ import {
   LocalTxType,
   LocalTxStatus,
 } from '../../Enums';
-import { LocalTx, DepositLog, Deposit, Wallet } from '../../entities';
+import { LocalTx, DepositLog, Deposit, Wallet, Withdrawal, Address } from '../../entities';
 import { updateAddressBalance } from '../../rawdb/processOneDepositTransaction';
 
 const logger = getLogger('verifierDoProcess');
@@ -69,7 +69,9 @@ async function _verifierDoProcess(manager: EntityManager, verifier: BasePlatform
   const fee = resTx.getNetworkFee();
 
   const isTxSucceed = transactionStatus === TransactionStatus.COMPLETED;
-  if (sentRecord.isWithdrawal() || sentRecord.isWithdrawalCollect()) {
+  if (sentRecord.isWithdrawal()) {
+    await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
+  } else if (sentRecord.isWithdrawalCollect()) {
     await verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block);
   } else if (sentRecord.isCollectTx()) {
     await verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx);

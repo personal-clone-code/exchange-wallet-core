@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.insertMailLogRecord = exports.updateMailJobSent = exports.increaseMailJobRetryCount = exports.insertMailJob = exports.pickSomePendingMailJobs = void 0;
 var sota_common_1 = require("sota-common");
 var typeorm_1 = require("typeorm");
 var entities_1 = require("../entities");

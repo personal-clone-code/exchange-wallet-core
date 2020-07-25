@@ -1,4 +1,23 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -35,14 +54,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.verifierDoProcess = void 0;
 var sota_common_1 = require("sota-common");
 var rawdb = __importStar(require("../../rawdb"));
 var typeorm_1 = require("typeorm");
@@ -108,27 +121,33 @@ function _verifierDoProcess(manager, verifier) {
                     resTx = _a.sent();
                     fee = resTx.getNetworkFee();
                     isTxSucceed = transactionStatus === sota_common_1.TransactionStatus.COMPLETED;
-                    if (!(sentRecord.isWithdrawal() || sentRecord.isWithdrawalCollect())) return [3, 7];
+                    if (!sentRecord.isWithdrawal()) return [3, 7];
                     return [4, verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block)];
                 case 6:
                     _a.sent();
-                    return [3, 12];
+                    return [3, 14];
                 case 7:
-                    if (!sentRecord.isCollectTx()) return [3, 9];
-                    return [4, verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx)];
+                    if (!sentRecord.isWithdrawalCollect()) return [3, 9];
+                    return [4, verifierWithdrawalDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block)];
                 case 8:
                     _a.sent();
-                    return [3, 12];
+                    return [3, 14];
                 case 9:
-                    if (!sentRecord.isSeedTx()) return [3, 11];
-                    return [4, verifySeedDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block)];
+                    if (!sentRecord.isCollectTx()) return [3, 11];
+                    return [4, verifyCollectDoProcess(manager, sentRecord, isTxSucceed, resTx)];
                 case 10:
                     _a.sent();
-                    return [3, 12];
+                    return [3, 14];
                 case 11:
-                    logger.error("verifierDoProcess not supported localTxType: " + sentRecord.type);
-                    _a.label = 12;
+                    if (!sentRecord.isSeedTx()) return [3, 13];
+                    return [4, verifySeedDoProcess(manager, sentRecord, isTxSucceed, fee, resTx.block)];
                 case 12:
+                    _a.sent();
+                    return [3, 14];
+                case 13:
+                    logger.error("verifierDoProcess not supported localTxType: " + sentRecord.type);
+                    _a.label = 14;
+                case 14:
                     processOneDepositTransaction_1.updateAddressBalance(manager, resTx);
                     return [2];
             }

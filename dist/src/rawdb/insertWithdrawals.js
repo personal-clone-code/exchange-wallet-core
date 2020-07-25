@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.insertWithdrawals = void 0;
 var entities_1 = require("../entities");
 var Enums_1 = require("../Enums");
 var _1 = require(".");

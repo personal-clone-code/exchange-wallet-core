@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.insertWebhookLog = void 0;
 var entities_1 = require("../entities");
 var sota_common_1 = require("sota-common");
 function insertWebhookLog(manager, progressId, url, params, status, msg) {

@@ -1,4 +1,23 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -35,23 +54,18 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.updateWithdrawalTxWallets = void 0;
 var _ = __importStar(require("lodash"));
 var sota_common_1 = require("sota-common");
 var Enums_1 = require("../Enums");
 var entities_1 = require("../entities");
 var rawdb = __importStar(require("./index"));
 var sota_common_2 = require("sota-common");
+var logger = sota_common_1.getLogger("updateWithdrawalTxWallets");
 function updateWithdrawalTxWallets(manager, localTx, event, fee) {
     return __awaiter(this, void 0, void 0, function () {
-        var withdrawals, walletEvent, currency, feeCurrency, tasks, withdrawalFeeLog;
+        var withdrawals, walletEvent, currency, feeCurrency, minusFee, tasks, withdrawalFeeLog;
         var _this = this;
         return __generator(this, function (_a) {
             switch (_a.label) {
@@ -65,14 +79,29 @@ function updateWithdrawalTxWallets(manager, localTx, event, fee) {
                     if (!withdrawals.length) {
                         return [2, null];
                     }
+                    minusFee = false;
                     tasks = _.map(withdrawals, function (record) { return __awaiter(_this, void 0, void 0, function () {
-                        var balanceChange, walletBalance, balanceAfter, walletLog;
+                        var toAddress, fromAddress, toAddressRecord, fromAddressRecord, balanceChange, walletBalance, balanceAfter, balanceAfter, walletLog;
                         return __generator(this, function (_a) {
                             switch (_a.label) {
-                                case 0: return [4, manager.findOne(entities_1.WalletBalance, {
-                                        walletId: record.walletId,
-                                    })];
+                                case 0:
+                                    toAddress = record.toAddress;
+                                    fromAddress = record.fromAddress;
+                                    return [4, manager
+                                            .getRepository(entities_1.HotWallet)
+                                            .findOne({ address: toAddress, walletId: record.walletId })];
                                 case 1:
+                                    toAddressRecord = _a.sent();
+                                    return [4, manager
+                                            .getRepository(entities_1.HotWallet)
+                                            .findOne({ address: fromAddress, walletId: record.walletId })];
+                                case 2:
+                                    fromAddressRecord = _a.sent();
+                                    minusFee = fromAddressRecord ? true : false;
+                                    return [4, manager.findOne(entities_1.WalletBalance, {
+                                            walletId: record.walletId,
+                                        })];
+                                case 3:
                                     walletBalance = _a.sent();
                                     if (!walletBalance) {
                                         throw new Error('walletBalance is not existed');
@@ -83,12 +112,29 @@ function updateWithdrawalTxWallets(manager, localTx, event, fee) {
                                     }
                                     if (event === Enums_1.WithdrawalEvent.COMPLETED) {
                                         walletEvent = Enums_1.WalletEvent.WITHDRAW_COMPLETED;
-                                        if (currency.isNative) {
-                                            balanceAfter = new sota_common_1.BigNumber(record.amount).minus(fee);
-                                            balanceChange = "-" + (balanceAfter.lte(0) ? record.amount : balanceAfter.toString());
+                                        if (fromAddressRecord && !toAddressRecord) {
+                                            logger.debug("case hot wallet to normal address");
+                                            if (currency.isNative) {
+                                                balanceAfter = new sota_common_1.BigNumber(record.amount).minus(fee);
+                                                balanceChange = "-" + (balanceAfter.lte(0) ? record.amount : balanceAfter.toString());
+                                            }
+                                            else {
+                                                balanceChange = '-' + record.amount;
+                                            }
+                                        }
+                                        else if (!fromAddressRecord && toAddressRecord) {
+                                            logger.debug("case normal address to hot wallet");
+                                            if (currency.isNative) {
+                                                balanceAfter = new sota_common_1.BigNumber(record.amount).minus(fee);
+                                                balanceChange = "+" + (balanceAfter.lte(0) ? record.amount : balanceAfter.toString());
+                                            }
+                                            else {
+                                                balanceChange = '+' + record.amount;
+                                            }
                                         }
                                         else {
-                                            balanceChange = '-' + record.amount;
+                                            logger.debug("case normal address to normal address");
+                                            balanceChange = '0';
                                         }
                                     }
                                     walletLog = new entities_1.WalletLog();
@@ -105,11 +151,7 @@ function updateWithdrawalTxWallets(manager, localTx, event, fee) {
                                                 .set({
                                                 balance: function () {
                                                     if (event === Enums_1.WithdrawalEvent.COMPLETED) {
-                                                        if (currency.isNative) {
-                                                            var walletBalanceAfter = new sota_common_1.BigNumber(record.amount).minus(fee);
-                                                            return "balance - " + (walletBalanceAfter.lte(0) ? record.amount : walletBalanceAfter.toString());
-                                                        }
-                                                        return "balance - " + record.amount;
+                                                        return "balance + " + balanceChange;
                                                     }
                                                     return "balance";
                                                 },
@@ -122,13 +164,13 @@ function updateWithdrawalTxWallets(manager, localTx, event, fee) {
                                                 .execute(),
                                             rawdb.insertWalletLog(manager, walletLog),
                                         ])];
-                                case 2:
+                                case 4:
                                     _a.sent();
                                     return [2];
                             }
                         });
                     }); });
-                    if (event === Enums_1.WithdrawalEvent.COMPLETED) {
+                    if (event === Enums_1.WithdrawalEvent.COMPLETED && minusFee) {
                         withdrawalFeeLog = new entities_1.WalletLog();
                         withdrawalFeeLog.walletId = withdrawals[0].walletId;
                         withdrawalFeeLog.currency = feeCurrency;

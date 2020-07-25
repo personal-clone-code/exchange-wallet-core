@@ -1,4 +1,23 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -35,14 +54,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.pickerDoProcess = void 0;
 var typeorm_1 = require("typeorm");
 var sota_common_1 = require("sota-common");
 var entities_1 = require("../../entities");
@@ -369,9 +382,9 @@ function _pickerDoProcessAccountBase(candidateWithdrawals, manager) {
 }
 function _constructRawTransaction(currency, withdrawlParams, manager) {
     return __awaiter(this, void 0, void 0, function () {
-        var vouts, finalPickedWithdrawals, fromAddress, amount, unsignedTx, gateway, withdrawalIds, deposits, toAddress, tag, err_1;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
+        var vouts, finalPickedWithdrawals, fromAddress, amount, unsignedTx, gateway, withdrawalIds, _a, paramConstructRawTx, tag, cosmosGateway, deposits, toAddress, tag, err_1;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
                 case 0:
                     vouts = [];
                     finalPickedWithdrawals = withdrawlParams.finalPickedWithdrawals;
@@ -386,32 +399,66 @@ function _constructRawTransaction(currency, withdrawlParams, manager) {
                     unsignedTx = null;
                     gateway = sota_common_1.GatewayRegistry.getGatewayInstance(currency);
                     withdrawalIds = finalPickedWithdrawals.map(function (w) { return w.id; });
-                    _a.label = 1;
+                    _b.label = 1;
                 case 1:
-                    _a.trys.push([1, 12, , 14]);
-                    if (!currency.isUTXOBased) return [3, 7];
+                    _b.trys.push([1, 17, , 19]);
+                    if (!currency.type) return [3, 6];
+                    _a = currency.type;
+                    switch (_a) {
+                        case sota_common_1.TransactionBaseType.COSMOS: return [3, 2];
+                    }
+                    return [3, 4];
+                case 2:
+                    paramConstructRawTx = {
+                        fromAddress: fromAddress.address,
+                        toAddress: vouts[0].toAddress,
+                        entries: [
+                            {
+                                currency: currency,
+                                amount: amount,
+                            },
+                        ],
+                    };
+                    tag = void 0;
+                    try {
+                        tag = finalPickedWithdrawals[0].memo || '';
+                    }
+                    catch (e) {
+                    }
+                    cosmosGateway = gateway;
+                    return [4, cosmosGateway.constructRawTransaction(paramConstructRawTx, {
+                            destinationTag: tag,
+                            isConsolidate: currency.isNative,
+                        })];
+                case 3:
+                    unsignedTx = _b.sent();
+                    return [3, 5];
+                case 4: throw new Error("TODO: currency.type: " + currency.type);
+                case 5: return [3, 16];
+                case 6:
+                    if (!currency.isUTXOBased) return [3, 12];
                     if (!(finalPickedWithdrawals[0].type !== Enums_1.WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS &&
-                        finalPickedWithdrawals[0].type !== Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS)) return [3, 3];
+                        finalPickedWithdrawals[0].type !== Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS)) return [3, 8];
                     logger.info("picking withdrawal record case UTXO and withdraw from hot wallet");
                     return [4, gateway.constructRawTransaction(fromAddress.address, vouts)];
-                case 2:
-                    unsignedTx = _a.sent();
-                    return [3, 6];
-                case 3:
+                case 7:
+                    unsignedTx = _b.sent();
+                    return [3, 11];
+                case 8:
                     logger.info("picking withdrawal record case UTXO collect");
                     return [4, manager.getRepository(entities_1.Deposit).find({
                             where: {
                                 collectWithdrawalId: typeorm_1.In(finalPickedWithdrawals.map(function (w) { return w.id; })),
                             },
                         })];
-                case 4:
-                    deposits = _a.sent();
+                case 9:
+                    deposits = _b.sent();
                     return [4, __1._constructUtxoBasedCollectTx(deposits, finalPickedWithdrawals[0].toAddress)];
-                case 5:
-                    unsignedTx = _a.sent();
-                    _a.label = 6;
-                case 6: return [3, 11];
-                case 7:
+                case 10:
+                    unsignedTx = _b.sent();
+                    _b.label = 11;
+                case 11: return [3, 16];
+                case 12:
                     toAddress = vouts[0].toAddress;
                     tag = void 0;
                     try {
@@ -421,32 +468,32 @@ function _constructRawTransaction(currency, withdrawlParams, manager) {
                     }
                     if (!((finalPickedWithdrawals[0] &&
                         finalPickedWithdrawals[0].type === Enums_1.WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS) ||
-                        finalPickedWithdrawals[0].type === Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS)) return [3, 9];
+                        finalPickedWithdrawals[0].type === Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS)) return [3, 14];
                     logger.info("picking withdrawal record case Account Base collect");
                     return [4, gateway.constructRawTransaction(fromAddress.address, toAddress, amount, {
                             destinationTag: tag,
                             isConsolidate: currency.isNative,
                         })];
-                case 8:
-                    unsignedTx = _a.sent();
-                    return [3, 11];
-                case 9:
+                case 13:
+                    unsignedTx = _b.sent();
+                    return [3, 16];
+                case 14:
                     logger.info("picking withdrawal record case Account Base normal");
                     return [4, gateway.constructRawTransaction(fromAddress.address, toAddress, amount, {
                             destinationTag: tag,
                         })];
-                case 10:
-                    unsignedTx = _a.sent();
-                    _a.label = 11;
-                case 11: return [2, unsignedTx];
-                case 12:
-                    err_1 = _a.sent();
+                case 15:
+                    unsignedTx = _b.sent();
+                    _b.label = 16;
+                case 16: return [2, unsignedTx];
+                case 17:
+                    err_1 = _b.sent();
                     logger.error("Could not create raw tx address=" + fromAddress.address + ", vouts=" + util_1.inspect(vouts) + ", error=" + util_1.inspect(err_1));
                     return [4, rawdb.updateRecordsTimestamp(manager, entities_1.Withdrawal, withdrawalIds)];
-                case 13:
-                    _a.sent();
+                case 18:
+                    _b.sent();
                     return [2, null];
-                case 14: return [2];
+                case 19: return [2];
             }
         });
     });

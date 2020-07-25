@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.onBlockCrawled = void 0;
 var typeorm_1 = require("typeorm");
 var LatestBlock_1 = require("../../entities/LatestBlock");
 function onBlockCrawled(crawler, block) {

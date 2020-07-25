@@ -12,6 +12,8 @@ import {
   IInsightUtxoInfo,
   ISignedRawTransaction,
   ICurrency,
+  UTXOBasedGateway,
+  BlockchainPlatform,
 } from 'sota-common';
 import _ from 'lodash';
 import { EntityManager, getConnection } from 'typeorm';
@@ -159,11 +161,10 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
  */
 export async function _constructUtxoBasedCollectTx(deposits: Deposit[], toAddress: string): Promise<IRawTransaction> {
   const currency = CurrencyRegistry.getOneCurrency(deposits[0].currency);
-  const gateway = GatewayRegistry.getGatewayInstance(currency) as BitcoinBasedGateway;
+  const gateway = GatewayRegistry.getGatewayInstance(currency) as UTXOBasedGateway;
   const utxos: IInsightUtxoInfo[] = [];
   const weirdVouts: IBoiledVOut[] = [];
   const depositAddresses: string[] = [];
-
   await Utils.PromiseAll(
     deposits.map(async deposit => {
       const depositAddress = deposit.toAddress;
@@ -203,7 +204,7 @@ export async function _constructUtxoBasedCollectTx(deposits: Deposit[], toAddres
 
   // Final check. Guarding one more time, whether total value from utxos is equal to deposits' value
   const depositAmount = deposits.reduce((memo, d) => memo.plus(new BigNumber(d.amount)), new BigNumber(0));
-  const utxoAmount = utxos.reduce((memo, u) => memo.plus(new BigNumber(u.satoshis)), new BigNumber(0));
+  const utxoAmount = utxos.reduce((memo, u) => memo.plus(new BigNumber(u.satoshis || 0)), new BigNumber(0));
 
   if (!depositAmount.eq(utxoAmount)) {
     throw new Error(`Mismatch collecting values: depositAmount=${depositAmount}, utxoAmount=${utxoAmount}`);

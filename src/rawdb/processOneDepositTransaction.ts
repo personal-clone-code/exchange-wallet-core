@@ -36,13 +36,13 @@ export async function processOneDepositTransaction(
     return;
   }
 
-  await updateAddressBalance(manager, tx);
-
   // internal tx process
   if (await isInternalTransfer(manager, tx)) {
     logger.info(`Tx ${tx.txid} is a internal tx, will not write to deposit`);
     return;
   }
+
+  await updateAddressBalance(manager, tx);
 
   await Utils.PromiseAll(outputs.map(async output => insertDeposit(manager, output, tx.extractSenderAddresses())));
 }
