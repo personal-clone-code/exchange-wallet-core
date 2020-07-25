@@ -13,5 +13,3 @@ export * from './src/WebhookProcessor';
 export * from './src/MailServiceProcessor';
 export * from './src/AlertProcess';
 export * from './src/encrypt/Kms';
-
-export * from './src/prepareEnvironment';

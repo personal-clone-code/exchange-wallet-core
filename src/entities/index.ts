@@ -5,6 +5,7 @@ export * from './DepositLog';
 export * from './Erc20Token';
 export * from './Trc20Token';
 export * from './Nep5Token';
+export * from './OmniToken';
 export * from './LatestBlock';
 export * from './User';
 export * from './Address';

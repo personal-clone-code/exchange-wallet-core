@@ -39,5 +39,4 @@ __exportStar(require("./src/WebhookProcessor"), exports);
 __exportStar(require("./src/MailServiceProcessor"), exports);
 __exportStar(require("./src/AlertProcess"), exports);
 __exportStar(require("./src/encrypt/Kms"), exports);
-__exportStar(require("./src/prepareEnvironment"), exports);
 //# sourceMappingURL=index.js.map

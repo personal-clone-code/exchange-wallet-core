@@ -17,6 +17,7 @@ __exportStar(require("./DepositLog"), exports);
 __exportStar(require("./Erc20Token"), exports);
 __exportStar(require("./Trc20Token"), exports);
 __exportStar(require("./Nep5Token"), exports);
+__exportStar(require("./OmniToken"), exports);
 __exportStar(require("./LatestBlock"), exports);
 __exportStar(require("./User"), exports);
 __exportStar(require("./Address"), exports);
