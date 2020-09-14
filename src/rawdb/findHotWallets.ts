@@ -140,14 +140,21 @@ export async function findOneCurrency(manager: EntityManager, symbol: string, wa
 export async function findAnyRallyWallet(
   manager: EntityManager,
   walletId: number,
-  currency: string
+  currency: string,
+  symbol: string,
 ): Promise<RallyWallet> {
   const withdrawalMode = await getWithdrawalMode(manager, walletId);
-  let wallet = await manager.findOne(RallyWallet, { walletId, currency, withdrawalMode });
+  let wallet = await manager.findOne(RallyWallet, { walletId, currency: symbol, withdrawalMode});
+  if (!wallet) {
+    wallet = await manager.findOne(RallyWallet, { walletId, currency, withdrawalMode });
+  }
   if (wallet) {
     return wallet;
   }
-  wallet = await manager.findOne(RallyWallet, { walletId, currency });
+  wallet = await manager.findOne(RallyWallet, { walletId, currency: symbol });
+  if (!wallet) {
+    wallet = await manager.findOne(RallyWallet, { walletId, currency });
+  }
   return wallet;
 }
 
