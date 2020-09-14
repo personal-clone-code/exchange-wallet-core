@@ -55,7 +55,14 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     return;
   }
 
-  const rallyWallet = await rawdb.findAnyRallyWallet(manager, walletId, currency.platform, currency.symbol);
+  let rallyWallet = null;
+  if (currency.symbol) {
+    rallyWallet = await rawdb.findAnyRallyWallet(manager, walletId, currency.symbol);
+  }
+
+  if (!rallyWallet) {
+    rallyWallet = await rawdb.findAnyRallyWallet(manager, walletId, currency.platform);
+  }
 
   if (!rallyWallet) {
     throw new Error(`Rally wallet for symbol=${currency.symbol} and platform=${currency.platform} not found`);
