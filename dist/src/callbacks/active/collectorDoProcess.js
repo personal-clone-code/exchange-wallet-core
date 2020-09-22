@@ -48,6 +48,7 @@ var typeorm_1 = require("typeorm");
 var rawdb = __importStar(require("../../rawdb"));
 var Enums_1 = require("../../Enums");
 var entities_1 = require("../../entities");
+var rawdb_1 = require("../../rawdb");
 var logger = sota_common_1.getLogger('collectorDoProcess');
 function collectorDoProcess(collector) {
     return __awaiter(this, void 0, void 0, function () {
@@ -183,17 +184,15 @@ function _collectorDoProcess(manager, collector) {
                     pairs_1 = _c.sent();
                     return [4, Promise.all(records.map(function (r) { return __awaiter(_this, void 0, void 0, function () {
                             return __generator(this, function (_a) {
-                                switch (_a.label) {
-                                    case 0: return [4, manager.update(entities_1.Deposit, r.id, {
+                                return [2, Promise.all([
+                                        manager.update(entities_1.Deposit, r.id, {
                                             updatedAt: sota_common_1.Utils.nowInMillis(),
                                             collectStatus: Enums_1.CollectStatus.COLLECTING,
                                             collectWithdrawalId: pairs_1.get(r.id),
                                             collectType: Enums_1.CollectType.WITHDRAWAL,
-                                        })];
-                                    case 1:
-                                        _a.sent();
-                                        return [2];
-                                }
+                                        }),
+                                        rawdb_1.insertDepositLog(manager, r.id, Enums_1.DepositEvent.COLLECT_SENT, pairs_1.get(r.id), 0)
+                                    ])];
                             });
                         }); }))];
                 case 26:
