@@ -76,7 +76,12 @@ export async function updateDepositCollectStatusByWithdrawalTxId(
       }
     )
   );
-  const tx = await GatewayRegistry.getGatewayInstance(transaction.currency).getOneTransaction(transaction.txid);
-  tasks.push(updateAddressBalance(manager, tx));
+  if (
+    event === DepositEvent.COLLECTED &&
+    status === CollectStatus.COLLECTED
+  ) {
+    const tx = await GatewayRegistry.getGatewayInstance(transaction.currency).getOneTransaction(transaction.txid);
+    tasks.push(updateAddressBalance(manager, tx));
+  }  
   await Utils.PromiseAll(tasks);
 }

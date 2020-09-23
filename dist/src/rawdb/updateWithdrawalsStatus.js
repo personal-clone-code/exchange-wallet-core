@@ -72,22 +72,31 @@ function updateWithdrawalsStatus(manager, withdrawalTxId, status, event, transac
                                                 record.txid = transactionResult.txid;
                                             }
                                         }
+                                        return [4, manager.getRepository(entities_1.LocalTx).findOneOrFail(withdrawalTxId)];
+                                    case 1:
+                                        localTx = _a.sent();
                                         if (!(record.type === Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS &&
                                             event === Enums_1.WithdrawalEvent.COMPLETED &&
                                             status === Enums_1.WithdrawalStatus.COMPLETED)) return [3, 3];
                                         logger.info("case collect to external address completed, update status colleted for record deposit");
-                                        return [4, manager.getRepository(entities_1.LocalTx).findOneOrFail(withdrawalTxId)];
-                                    case 1:
-                                        localTx = _a.sent();
                                         return [4, _1.updateDepositCollectStatusByWithdrawalTxId(manager, localTx, record.id, Enums_1.CollectStatus.COLLECTED, Enums_1.DepositEvent.COLLECTED)];
                                     case 2:
                                         _a.sent();
                                         _a.label = 3;
-                                    case 3: return [4, sota_common_1.Utils.PromiseAll([
+                                    case 3:
+                                        if (!(record.type === Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS &&
+                                            event === Enums_1.WithdrawalEvent.SENT &&
+                                            status === Enums_1.WithdrawalStatus.SENT)) return [3, 5];
+                                        logger.info("case collect to external address sent, update status colleted for record deposit");
+                                        return [4, _1.updateDepositCollectStatusByWithdrawalTxId(manager, localTx, record.id, Enums_1.CollectStatus.COLLECT_SENT, Enums_1.DepositEvent.COLLECT_SENT)];
+                                    case 4:
+                                        _a.sent();
+                                        _a.label = 5;
+                                    case 5: return [4, sota_common_1.Utils.PromiseAll([
                                             manager.save(record),
                                             insertWebhookProgress_1.default(manager, record.userId, Enums_1.WebhookType.WITHDRAWAL, record.id, event),
                                         ])];
-                                    case 4:
+                                    case 6:
                                         newRecord = (_a.sent())[0];
                                         return [2, insertWithdrawalLog_1.default(manager, newRecord.txid, newRecord.id, event, data)];
                                 }

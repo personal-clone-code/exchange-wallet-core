@@ -18,7 +18,6 @@ import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
 import { CollectStatus, LocalTxType, RefTable, LocalTxStatus, CollectType, DepositEvent } from '../../Enums';
 import { Deposit } from '../../entities';
-import { insertDepositLog } from '../../rawdb';
 
 const logger = getLogger('collectorDoProcess');
 
@@ -130,7 +129,6 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
             collectWithdrawalId: pairs.get(r.id),
             collectType: CollectType.WITHDRAWAL,
           }),
-          insertDepositLog(manager, r.id, DepositEvent.COLLECT_SENT, pairs.get(r.id), 0)
         ]);
       })
     );
