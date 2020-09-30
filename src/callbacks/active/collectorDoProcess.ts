@@ -18,7 +18,7 @@ import {
 import _ from 'lodash';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
-import { CollectStatus, LocalTxType, RefTable, LocalTxStatus, CollectType } from '../../Enums';
+import { CollectStatus, LocalTxType, RefTable, LocalTxStatus, CollectType, DepositEvent } from '../../Enums';
 import { Deposit } from '../../entities';
 
 const logger = getLogger('collectorDoProcess');
@@ -124,12 +124,14 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     const pairs = await rawdb.insertWithdrawals(manager, records, rallyWallet.address, rallyWallet.userId);
     await Promise.all(
       records.map(async r => {
-        await manager.update(Deposit, r.id, {
-          updatedAt: Utils.nowInMillis(),
-          collectStatus: CollectStatus.COLLECTING,
-          collectWithdrawalId: pairs.get(r.id),
-          collectType: CollectType.WITHDRAWAL,
-        });
+        return Promise.all([
+          manager.update(Deposit, r.id, {
+            updatedAt: Utils.nowInMillis(),
+            collectStatus: CollectStatus.COLLECTING,
+            collectWithdrawalId: pairs.get(r.id),
+            collectType: CollectType.WITHDRAWAL,
+          }),
+        ]);
       })
     );
     logger.info(`Collect tx queued: address=${rallyWallet.address}, withdrawals=${records.map(r => r.id)}`);

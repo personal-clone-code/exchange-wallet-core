@@ -35,19 +35,35 @@ export async function updateWithdrawalsStatus(
         }
       }
 
+      const localTx = await manager.getRepository(LocalTx).findOneOrFail(withdrawalTxId);
+
       if (
         record.type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS &&
         event === WithdrawalEvent.COMPLETED &&
         status === WithdrawalStatus.COMPLETED
       ) {
         logger.info(`case collect to external address completed, update status colleted for record deposit`);
-        const localTx = await manager.getRepository(LocalTx).findOneOrFail(withdrawalTxId);
         await updateDepositCollectStatusByWithdrawalTxId(
           manager,
           localTx,
           record.id,
           CollectStatus.COLLECTED,
           DepositEvent.COLLECTED
+        );
+      }
+
+      if (
+        record.type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS &&
+        event === WithdrawalEvent.SENT &&
+        status === WithdrawalStatus.SENT
+      ) {
+        logger.info(`case collect to external address sent, update status colleted for record deposit`);
+        await updateDepositCollectStatusByWithdrawalTxId(
+          manager,
+          localTx,
+          record.id,
+          CollectStatus.COLLECT_SENT,
+          DepositEvent.COLLECT_SENT
         );
       }
 

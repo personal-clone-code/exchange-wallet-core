@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateDepositCollectStatusByWithdrawalTxId = exports.updateDepositCollectStatusByCollectTxId = exports.updateDepositCollectStatusBySeedTxId = void 0;
 var sota_common_1 = require("sota-common");
 var entities_1 = require("../entities");
+var Enums_1 = require("../Enums");
 var insertDepositLog_1 = require("./insertDepositLog");
 var _1 = require(".");
 function updateDepositCollectStatus(manager, transaction, status, event, type) {
@@ -115,12 +116,15 @@ function updateDepositCollectStatusByWithdrawalTxId(manager, transaction, withdr
                         collectLocalTxId: transaction.id,
                         collectedTxid: transaction.txid,
                     }));
+                    if (!(event === Enums_1.DepositEvent.COLLECTED &&
+                        status === Enums_1.CollectStatus.COLLECTED)) return [3, 3];
                     return [4, sota_common_1.GatewayRegistry.getGatewayInstance(transaction.currency).getOneTransaction(transaction.txid)];
                 case 2:
                     tx = _a.sent();
                     tasks.push(_1.updateAddressBalance(manager, tx));
-                    return [4, sota_common_1.Utils.PromiseAll(tasks)];
-                case 3:
+                    _a.label = 3;
+                case 3: return [4, sota_common_1.Utils.PromiseAll(tasks)];
+                case 4:
                     _a.sent();
                     return [2];
             }
