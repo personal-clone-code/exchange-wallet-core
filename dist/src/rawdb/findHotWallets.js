@@ -180,7 +180,8 @@ function getWithdrawalMode(manager, walletId) {
 exports.getWithdrawalMode = getWithdrawalMode;
 function findOneCurrency(manager, symbol, walletId) {
     return __awaiter(this, void 0, void 0, function () {
-        var currency, _a, _b, _c, _d;
+        var currency, _a, _b, _c;
+        var _d;
         return __generator(this, function (_e) {
             switch (_e.label) {
                 case 0:

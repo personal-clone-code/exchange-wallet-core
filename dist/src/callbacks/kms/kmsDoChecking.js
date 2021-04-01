@@ -14,7 +14,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -320,11 +320,11 @@ function _fixPrivateKeyIsUnencrypted(manager) {
                     allNativeCurrencies = _.filter(allCurrencies, function (currency) { return !!currency.isNative; });
                     _loop_1 = function (currency) {
                         var subAddresses, tasks;
-                        return __generator(this, function (_a) {
-                            switch (_a.label) {
+                        return __generator(this, function (_c) {
+                            switch (_c.label) {
                                 case 0: return [4, _getUnEncryptedAddressesFromSubTable(manager, currency.symbol)];
                                 case 1:
-                                    subAddresses = _a.sent();
+                                    subAddresses = _c.sent();
                                     if (!(subAddresses && subAddresses.length !== 0)) return [3, 3];
                                     tasks = _.map(subAddresses, function (address) { return __awaiter(_this, void 0, void 0, function () {
                                         var secret;
@@ -342,8 +342,8 @@ function _fixPrivateKeyIsUnencrypted(manager) {
                                     }); });
                                     return [4, Promise.all(tasks)];
                                 case 2:
-                                    _a.sent();
-                                    _a.label = 3;
+                                    _c.sent();
+                                    _c.label = 3;
                                 case 3: return [2];
                             }
                         });
