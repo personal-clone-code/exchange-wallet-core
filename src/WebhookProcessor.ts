@@ -1,8 +1,8 @@
 import fetch from 'node-fetch';
 import { EntityManager, getConnection } from 'typeorm';
 import { BaseIntervalWorker, getLogger, Utils, CurrencyRegistry, EnvConfigRegistry } from 'sota-common';
-import { WebhookType } from './Enums';
-import { Webhook, WebhookProgress, Deposit, Withdrawal, UserCurrency } from './entities';
+import { WebhookType, LocalTxStatus } from './Enums';
+import { Webhook, WebhookProgress, Deposit, Withdrawal, UserCurrency, LocalTx } from './entities';
 import * as rawdb from './rawdb';
 
 const logger = getLogger('WebhookProcessor');
@@ -125,6 +125,11 @@ export class WebhookProcessor extends BaseIntervalWorker {
           data.currency = currency.networkSymbol;
         }
 
+        const localTx = await manager.getRepository(LocalTx).findOne({ txid: data.txid, status: LocalTxStatus.COMPLETED })
+        if(localTx) {
+          data.transactionFee = localTx.feeAmount;
+        }
+
         return data;
       }
 
@@ -140,6 +145,11 @@ export class WebhookProcessor extends BaseIntervalWorker {
         } else {
           const currency = CurrencyRegistry.getOneCurrency(data.currency);
           data.currency = currency.networkSymbol;
+        }
+
+        const localTx = await manager.getRepository(LocalTx).findOne({ txid: data.txid, status: LocalTxStatus.COMPLETED })
+        if(localTx) {
+          data.transactionFee = localTx.feeAmount;
         }
 
         return data;
