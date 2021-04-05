@@ -5,6 +5,7 @@ export declare class WebhookProgress {
     refId: number;
     event: string;
     isProcessed: boolean;
+    retryCount: number;
     createdAt: number;
     updatedAt: number;
     updateCreateDates(): void;

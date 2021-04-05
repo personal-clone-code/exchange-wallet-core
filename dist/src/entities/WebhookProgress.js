@@ -47,6 +47,10 @@ var WebhookProgress = (function () {
         __metadata("design:type", Boolean)
     ], WebhookProgress.prototype, "isProcessed", void 0);
     __decorate([
+        typeorm_1.Column({ name: 'retry_count', type: 'int', nullable: false }),
+        __metadata("design:type", Number)
+    ], WebhookProgress.prototype, "retryCount", void 0);
+    __decorate([
         typeorm_1.Column({ name: 'created_at', type: 'bigint' }),
         __metadata("design:type", Number)
     ], WebhookProgress.prototype, "createdAt", void 0);

@@ -3,7 +3,7 @@ var __extends = (this && this.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
         return extendStatics(d, b);
     };
     return function (d, b) {
@@ -27,7 +27,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -121,21 +121,42 @@ var WebhookProcessor = (function (_super) {
     };
     WebhookProcessor.prototype._doProcess = function (manager) {
         return __awaiter(this, void 0, void 0, function () {
-            var progressRecord, webhookId, webhookRecord, url, now, type, refId, event, data, method, body, username, password, basicAuth, headers, timeout, status, msg, resp, err_1;
+            var maxRetryCount, progressRecords;
+            var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4, manager.getRepository(entities_1.WebhookProgress).findOne({ isProcessed: false }, {
-                            order: { updatedAt: 'ASC' },
-                        })];
+                    case 0:
+                        maxRetryCount = 5;
+                        return [4, manager.getRepository(entities_1.WebhookProgress).find({
+                                where: { isProcessed: false, retryCount: typeorm_1.LessThanOrEqual(maxRetryCount) },
+                                order: { updatedAt: 'ASC' },
+                                take: 100,
+                            })];
                     case 1:
-                        progressRecord = _a.sent();
-                        if (!progressRecord) {
+                        progressRecords = _a.sent();
+                        if (!progressRecords.length) {
                             logger.debug("No pending webhook to call. Let's wait for the next tick...");
                             return [2];
                         }
+                        return [4, Promise.all(progressRecords.map(function (record) { return __awaiter(_this, void 0, void 0, function () { return __generator(this, function (_a) {
+                                return [2, this._processRecord(record, manager)];
+                            }); }); }))];
+                    case 2:
+                        _a.sent();
+                        return [2];
+                }
+            });
+        });
+    };
+    WebhookProcessor.prototype._processRecord = function (progressRecord, manager) {
+        return __awaiter(this, void 0, void 0, function () {
+            var webhookId, webhookRecord, url, now, type, refId, event, data, method, body, username, password, basicAuth, headers, timeout, status, msg, resp, err_1;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
                         webhookId = progressRecord.webhookId;
                         return [4, manager.getRepository(entities_1.Webhook).findOne(webhookId)];
-                    case 2:
+                    case 1:
                         webhookRecord = _a.sent();
                         if (!webhookRecord) {
                             throw new Error("Progress <" + progressRecord.id + "> has invalid webhook id: " + webhookId);
@@ -150,7 +171,7 @@ var WebhookProcessor = (function (_super) {
                         refId = progressRecord.refId;
                         event = progressRecord.event;
                         return [4, this._getRefData(manager, type, refId, webhookRecord.userId)];
-                    case 3:
+                    case 2:
                         data = _a.sent();
                         method = 'POST';
                         body = JSON.stringify({ type: type, event: event, data: data });
@@ -165,11 +186,11 @@ var WebhookProcessor = (function (_super) {
                             Authorization: "Basic " + basicAuth,
                         };
                         timeout = 5000;
-                        _a.label = 4;
-                    case 4:
-                        _a.trys.push([4, 6, , 7]);
+                        _a.label = 3;
+                    case 3:
+                        _a.trys.push([3, 5, , 6]);
                         return [4, node_fetch_1.default(url, { method: method, body: body, headers: headers, timeout: timeout })];
-                    case 5:
+                    case 4:
                         resp = _a.sent();
                         status = resp.status;
                         msg = resp.statusText || JSON.stringify(resp.json());
@@ -177,22 +198,24 @@ var WebhookProcessor = (function (_super) {
                             progressRecord.isProcessed = true;
                         }
                         else {
+                            progressRecord.retryCount += 1;
                             progressRecord.isProcessed = false;
                         }
-                        return [3, 7];
-                    case 6:
+                        return [3, 6];
+                    case 5:
                         err_1 = _a.sent();
                         status = 0;
                         msg = err_1.toString();
+                        progressRecord.retryCount += 1;
                         progressRecord.isProcessed = false;
-                        return [3, 7];
-                    case 7:
+                        return [3, 6];
+                    case 6:
                         progressRecord.updatedAt = now;
                         return [4, sota_common_1.Utils.PromiseAll([
                                 rawdb.insertWebhookLog(manager, progressRecord.id, url, body, status, msg),
                                 manager.getRepository(entities_1.WebhookProgress).save(progressRecord),
                             ])];
-                    case 8:
+                    case 7:
                         _a.sent();
                         return [2];
                 }
@@ -201,16 +224,16 @@ var WebhookProcessor = (function (_super) {
     };
     WebhookProcessor.prototype._getRefData = function (manager, type, refId, userId) {
         return __awaiter(this, void 0, void 0, function () {
-            var data, _a, userCurrency, currency, userCurrency, currency;
+            var data, _a, userCurrency, currency, localTx, userCurrency, currency, localTx;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
                         _a = type;
                         switch (_a) {
                             case Enums_1.WebhookType.DEPOSIT: return [3, 1];
-                            case Enums_1.WebhookType.WITHDRAWAL: return [3, 4];
+                            case Enums_1.WebhookType.WITHDRAWAL: return [3, 6];
                         }
-                        return [3, 7];
+                        return [3, 11];
                     case 1: return [4, manager.getRepository(entities_1.Deposit).findOne(refId)];
                     case 2:
                         data = _b.sent();
@@ -227,15 +250,21 @@ var WebhookProcessor = (function (_super) {
                             currency = sota_common_1.CurrencyRegistry.getOneCurrency(data.currency);
                             data.currency = currency.networkSymbol;
                         }
-                        return [2, data];
-                    case 4: return [4, manager.getRepository(entities_1.Withdrawal).findOne(refId)];
-                    case 5:
+                        if (!(data.status === Enums_1.CollectStatus.COLLECTED)) return [3, 5];
+                        return [4, manager.getRepository(entities_1.LocalTx).findOne({ txid: data.txid, status: Enums_1.LocalTxStatus.COMPLETED })];
+                    case 4:
+                        localTx = _b.sent();
+                        data.transactionFee = localTx === null || localTx === void 0 ? void 0 : localTx.feeAmount;
+                        _b.label = 5;
+                    case 5: return [2, data];
+                    case 6: return [4, manager.getRepository(entities_1.Withdrawal).findOne(refId)];
+                    case 7:
                         data = _b.sent();
                         if (!data) {
                             throw new Error("Could not find withdrawal id=" + refId);
                         }
                         return [4, manager.getRepository(entities_1.UserCurrency).findOne({ userId: userId, systemSymbol: data.currency })];
-                    case 6:
+                    case 8:
                         userCurrency = _b.sent();
                         if (userCurrency) {
                             data.currency = userCurrency.customSymbol;
@@ -244,8 +273,14 @@ var WebhookProcessor = (function (_super) {
                             currency = sota_common_1.CurrencyRegistry.getOneCurrency(data.currency);
                             data.currency = currency.networkSymbol;
                         }
-                        return [2, data];
-                    case 7: throw new Error("Could not build webhook data for invalid type: " + type);
+                        if (!(data.status === Enums_1.WithdrawalStatus.COMPLETED)) return [3, 10];
+                        return [4, manager.getRepository(entities_1.LocalTx).findOne({ txid: data.txid, status: Enums_1.LocalTxStatus.COMPLETED })];
+                    case 9:
+                        localTx = _b.sent();
+                        data.transactionFee = localTx === null || localTx === void 0 ? void 0 : localTx.feeAmount;
+                        _b.label = 10;
+                    case 10: return [2, data];
+                    case 11: throw new Error("Could not build webhook data for invalid type: " + type);
                 }
             });
         });
