@@ -35,3 +35,4 @@ export * from './MailJob';
 export * from './MailLog';
 export * from './NemEnvConfig';
 export * from './AddressBalance';
+export * from './Bep20Token';

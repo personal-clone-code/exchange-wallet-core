@@ -47,4 +47,5 @@ __exportStar(require("./MailJob"), exports);
 __exportStar(require("./MailLog"), exports);
 __exportStar(require("./NemEnvConfig"), exports);
 __exportStar(require("./AddressBalance"), exports);
+__exportStar(require("./Bep20Token"), exports);
 //# sourceMappingURL=index.js.map
