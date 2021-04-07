@@ -7,8 +7,6 @@ var __extends = (this && this.__extends) || (function () {
         return extendStatics(d, b);
     };
     return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
         extendStatics(d, b);
         function __() { this.constructor = d; }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
@@ -123,16 +121,17 @@ var WebhookProcessor = (function (_super) {
     };
     WebhookProcessor.prototype._doProcess = function (manager) {
         return __awaiter(this, void 0, void 0, function () {
-            var maxRetryCount, progressRecords;
+            var maxRetryCount, maxRecordsToProcess, progressRecords;
             var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        maxRetryCount = 5;
+                        maxRetryCount = parseInt(sota_common_1.EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_PROGRESS_RETRY_COUNT')) || 5;
+                        maxRecordsToProcess = parseInt(sota_common_1.EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_RECORDS_TO_PROCESS')) || 100;
                         return [4, manager.getRepository(entities_1.WebhookProgress).find({
                                 where: { isProcessed: false, retryCount: typeorm_1.LessThanOrEqual(maxRetryCount) },
                                 order: { updatedAt: 'ASC' },
-                                take: 100,
+                                take: maxRecordsToProcess,
                             })];
                     case 1:
                         progressRecords = _a.sent();

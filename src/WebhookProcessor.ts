@@ -27,11 +27,13 @@ export class WebhookProcessor extends BaseIntervalWorker {
 
   private async _doProcess(manager: EntityManager): Promise<void> {
     // If a record has retryCount > maxRetryCount we consider it as FAILED, FAILED record will not need to be processed
-    const maxRetryCount = 5;
+    const maxRetryCount = parseInt(EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_PROGRESS_RETRY_COUNT')) || 5; 
+    const maxRecordsToProcess = parseInt(EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_RECORDS_TO_PROCESS')) || 100;
+
     const progressRecords = await manager.getRepository(WebhookProgress).find({
         where: { isProcessed: false, retryCount: LessThanOrEqual(maxRetryCount)},
         order: { updatedAt: 'ASC' },
-        take: 100,
+        take: maxRecordsToProcess,
       });
     if (!progressRecords.length) {
       logger.debug(`No pending webhook to call. Let's wait for the next tick...`);
