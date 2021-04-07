@@ -21,6 +21,9 @@ export class WebhookProgress {
   @Column({ name: 'is_processed' })
   public isProcessed: boolean;
 
+  @Column({ name: 'retry_count', type: 'int', nullable: false })
+  public retryCount: number;
+
   @Column({ name: 'created_at', type: 'bigint' })
   public createdAt: number;
 

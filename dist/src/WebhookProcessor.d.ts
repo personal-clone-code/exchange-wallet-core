@@ -4,5 +4,6 @@ export declare class WebhookProcessor extends BaseIntervalWorker {
     protected prepare(): Promise<void>;
     protected doProcess(): Promise<void>;
     private _doProcess;
+    private _processRecord;
     private _getRefData;
 }

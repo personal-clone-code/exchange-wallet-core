@@ -1,8 +1,8 @@
 import fetch from 'node-fetch';
-import { EntityManager, getConnection } from 'typeorm';
+import { EntityManager, getConnection, LessThanOrEqual } from 'typeorm';
 import { BaseIntervalWorker, getLogger, Utils, CurrencyRegistry, EnvConfigRegistry } from 'sota-common';
-import { WebhookType } from './Enums';
-import { Webhook, WebhookProgress, Deposit, Withdrawal, UserCurrency } from './entities';
+import { WebhookType, LocalTxStatus, WithdrawalStatus, CollectStatus } from './Enums';
+import { Webhook, WebhookProgress, Deposit, Withdrawal, UserCurrency, LocalTx } from './entities';
 import * as rawdb from './rawdb';
 
 const logger = getLogger('WebhookProcessor');
@@ -21,22 +21,37 @@ export class WebhookProcessor extends BaseIntervalWorker {
       } catch (e) {
         logger.error(`WebhookProcessor do process failed with error`);
         logger.error(e);
-      }
+      } 
     });
   }
 
   private async _doProcess(manager: EntityManager): Promise<void> {
-    const progressRecord = await manager.getRepository(WebhookProgress).findOne(
-      { isProcessed: false },
-      {
+    // If a record has retryCount > maxRetryCount we consider it as FAILED, FAILED record will not need to be processed
+    const maxRetryCount = parseInt(EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_PROGRESS_RETRY_COUNT')) || 5; 
+    const maxRecordsToProcess = parseInt(EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_RECORDS_TO_PROCESS')) || 100;
+
+    const progressRecords = await manager.getRepository(WebhookProgress).find({
+        where: { isProcessed: false, retryCount: LessThanOrEqual(maxRetryCount)},
         order: { updatedAt: 'ASC' },
-      }
-    );
-    if (!progressRecord) {
+        take: maxRecordsToProcess,
+      });
+    if (!progressRecords.length) {
       logger.debug(`No pending webhook to call. Let's wait for the next tick...`);
       return;
     }
 
+    await Promise.all(progressRecords.map(async record => this._processRecord(record, manager)));
+
+    return;
+  }
+
+  /**
+   * Get related data, fire the webhook and update webhook progress
+   * @param progressRecord 
+   * @param manager 
+   * @returns 
+   */
+  private async _processRecord(progressRecord: WebhookProgress,manager: EntityManager) {
     const webhookId = progressRecord.webhookId;
     const webhookRecord = await manager.getRepository(Webhook).findOne(webhookId);
     if (!webhookRecord) {
@@ -81,11 +96,13 @@ export class WebhookProcessor extends BaseIntervalWorker {
       if (status === 200) {
         progressRecord.isProcessed = true;
       } else {
+        progressRecord.retryCount += 1;
         progressRecord.isProcessed = false;
       }
     } catch (err) {
       status = 0;
       msg = err.toString();
+      progressRecord.retryCount += 1;
       progressRecord.isProcessed = false;
     }
 
@@ -96,8 +113,6 @@ export class WebhookProcessor extends BaseIntervalWorker {
       rawdb.insertWebhookLog(manager, progressRecord.id, url, body, status, msg),
       manager.getRepository(WebhookProgress).save(progressRecord),
     ]);
-
-    return;
   }
 
   /**
@@ -125,6 +140,12 @@ export class WebhookProcessor extends BaseIntervalWorker {
           data.currency = currency.networkSymbol;
         }
 
+        // Only return fee amount when the transaction was verified on the network
+        if (data.status === CollectStatus.COLLECTED) {
+          const localTx = await manager.getRepository(LocalTx).findOne({ txid: data.txid, status: LocalTxStatus.COMPLETED })
+          data.transactionFee = localTx?.feeAmount;
+        }
+
         return data;
       }
 
@@ -140,6 +161,12 @@ export class WebhookProcessor extends BaseIntervalWorker {
         } else {
           const currency = CurrencyRegistry.getOneCurrency(data.currency);
           data.currency = currency.networkSymbol;
+        }
+        
+        // Only return fee amount when the transaction was verified on the network
+        if (data.status === WithdrawalStatus.COMPLETED) {
+          const localTx = await manager.getRepository(LocalTx).findOne({ txid: data.txid, status: LocalTxStatus.COMPLETED })
+          data.transactionFee = localTx?.feeAmount;
         }
 
         return data;
