@@ -41,3 +41,4 @@ export * from './updateAddressBalanceFromNetwork';
 export * from './handlePendingWithdrawalBalance';
 export * from './isExternalAddress';
 export * from './insertWithdrawals';
+export * from './reconstructLocalTx';
