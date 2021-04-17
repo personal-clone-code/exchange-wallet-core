@@ -1,17 +1,4 @@
 "use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -49,29 +36,38 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SeedingSigner = void 0;
-var BaseHotWalletSigner_1 = require("./BaseHotWalletSigner");
-var entities_1 = require("../../../entities");
-var Enums_1 = require("../../../Enums");
-var SeedingSigner = (function (_super) {
-    __extends(SeedingSigner, _super);
-    function SeedingSigner() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    SeedingSigner.prototype.updateRelatedTables = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            return __generator(this, function (_a) {
-                this.manager.getRepository(entities_1.Deposit).update({
-                    seedLocalTxId: this.localTx.id,
-                }, {
-                    collectStatus: Enums_1.CollectStatus.SEED_SIGNED,
-                    seededTxid: this.signedTx.txid,
-                });
-                return [2];
-            });
+exports.reconstructLocalTx = void 0;
+var _1 = require(".");
+var Enums_1 = require("../Enums");
+function reconstructLocalTx(manager, localTx, txResult) {
+    return __awaiter(this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4, _1.updateLocalTxStatus(manager, localTx.id, Enums_1.LocalTxStatus.FAILED)];
+                case 1:
+                    _a.sent();
+                    if (!(localTx.isWithdrawal() || localTx.isWithdrawalCollect())) return [3, 3];
+                    return [4, _1.updateWithdrawalsStatus(manager, localTx.id, Enums_1.WithdrawalStatus.UNSIGNED, Enums_1.WithdrawalEvent.TXID_CHANGED, txResult)];
+                case 2:
+                    _a.sent();
+                    return [3, 8];
+                case 3:
+                    if (!localTx.isCollectTx()) return [3, 5];
+                    return [4, _1.updateDepositCollectStatusByCollectTxId(manager, localTx, Enums_1.CollectStatus.UNCOLLECTED, Enums_1.DepositEvent.COLLECT_TXID_CHANGED)];
+                case 4:
+                    _a.sent();
+                    return [3, 8];
+                case 5:
+                    if (!localTx.isSeedTx()) return [3, 7];
+                    return [4, _1.updateDepositCollectStatusBySeedTxId(manager, localTx, Enums_1.CollectStatus.SEED_REQUESTED, Enums_1.DepositEvent.SEED_TXID_CHANGED)];
+                case 6:
+                    _a.sent();
+                    return [3, 8];
+                case 7: throw new Error("Not support localTxType: " + localTx.type);
+                case 8: return [2];
+            }
         });
-    };
-    return SeedingSigner;
-}(BaseHotWalletSigner_1.BaseHotWalletSigner));
-exports.SeedingSigner = SeedingSigner;
-//# sourceMappingURL=SeedingSigner.js.map
+    });
+}
+exports.reconstructLocalTx = reconstructLocalTx;
+//# sourceMappingURL=reconstructLocalTx.js.map

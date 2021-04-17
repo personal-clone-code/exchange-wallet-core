@@ -66,7 +66,20 @@ export abstract class BaseSigner {
     this.localTx.status = LocalTxStatus.SIGNED;
     this.localTx.txid = this.signedTx.txid;
     this.localTx.signedRaw = this.signedTx.signedRaw;
-    await this.manager.getRepository(LocalTx).save(this.localTx);
+
+    try {
+      await this.manager.getRepository(LocalTx).save(this.localTx);
+    } catch (err) {
+      // reconstruct localtx when two transaction have the same txid
+      if (err.code === 'ER_DUP_ENTRY') {
+        logger.error(`Failed to update record with txid ${this.localTx.txid} to local tx. Error code: ${err.code}`)
+        logger.debug('Try to reconstruct new local tx');
+        await rawdb.reconstructLocalTx(this.manager, this.localTx);
+        return;
+      }
+      
+      throw err;
+    }
 
     await this.updateRelatedTables();
   }
