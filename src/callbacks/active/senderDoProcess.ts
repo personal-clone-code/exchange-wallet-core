@@ -102,7 +102,7 @@ async function _senderDoProcess(manager: EntityManager, sender: BasePlatformWork
 
     // The localTx record is created wrongly. It must be reconstructed
     if ((errInfo.toString() as string).includes('nonce too low')) {
-      await reconstructLocalTx(manager, signedRecord);
+      await rawdb.reconstructLocalTx(manager, signedRecord);
     }
 
     return;
@@ -125,7 +125,7 @@ async function updateLocalTxAndRelatedTables(
   status: LocalTxStatus.SENT | LocalTxStatus.FAILED
 ): Promise<void> {
   if (status === LocalTxStatus.FAILED) {
-    await reconstructLocalTx(manager, localTx, { txid });
+    await rawdb.reconstructLocalTx(manager, localTx, { txid });
     return;
   }
 
@@ -146,46 +146,6 @@ async function updateLocalTxAndRelatedTables(
     );
   } else if (localTx.isSeedTx()) {
     await rawdb.updateDepositCollectStatusBySeedTxId(manager, localTx, CollectStatus.SEED_SENT, DepositEvent.SEED_SENT);
-  } else {
-    throw new Error(`Not support localTxType: ${localTx.type}`);
-  }
-}
-
-/**
- * The localTx record is constructed wrongly
- * This correction will:
- * - Mark the localTx status to `failed`
- * - Reset related tables status in order to create a new local tx again
- * And the picker and signer will do the signing flow again
- */
-async function reconstructLocalTx(
-  manager: EntityManager,
-  localTx: LocalTx,
-  txResult?: ISubmittedTransaction
-): Promise<void> {
-  await rawdb.updateLocalTxStatus(manager, localTx.id, LocalTxStatus.FAILED);
-  if (localTx.isWithdrawal() || localTx.isWithdrawalCollect()) {
-    await rawdb.updateWithdrawalsStatus(
-      manager,
-      localTx.id,
-      WithdrawalStatus.UNSIGNED,
-      WithdrawalEvent.TXID_CHANGED,
-      txResult
-    );
-  } else if (localTx.isCollectTx()) {
-    await rawdb.updateDepositCollectStatusByCollectTxId(
-      manager,
-      localTx,
-      CollectStatus.UNCOLLECTED,
-      DepositEvent.COLLECT_TXID_CHANGED
-    );
-  } else if (localTx.isSeedTx()) {
-    await rawdb.updateDepositCollectStatusBySeedTxId(
-      manager,
-      localTx,
-      CollectStatus.SEED_REQUESTED,
-      DepositEvent.SEED_TXID_CHANGED
-    );
   } else {
     throw new Error(`Not support localTxType: ${localTx.type}`);
   }

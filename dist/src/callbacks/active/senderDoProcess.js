@@ -156,7 +156,7 @@ function _senderDoProcess(manager, sender) {
                     }
                     logger.error("Cannot broadcast localTxId=" + signedRecord.id + " due to error        errInfo=" + util_1.default.inspect(errInfo) + "         extraInfo=" + util_1.default.inspect(extraInfo));
                     if (!errInfo.toString().includes('nonce too low')) return [3, 13];
-                    return [4, reconstructLocalTx(manager, signedRecord)];
+                    return [4, rawdb.reconstructLocalTx(manager, signedRecord)];
                 case 12:
                     _a.sent();
                     _a.label = 13;
@@ -181,7 +181,7 @@ function updateLocalTxAndRelatedTables(manager, localTx, txid, status) {
             switch (_a.label) {
                 case 0:
                     if (!(status === Enums_1.LocalTxStatus.FAILED)) return [3, 2];
-                    return [4, reconstructLocalTx(manager, localTx, { txid: txid })];
+                    return [4, rawdb.reconstructLocalTx(manager, localTx, { txid: txid })];
                 case 1:
                     _a.sent();
                     return [2];
@@ -211,36 +211,6 @@ function updateLocalTxAndRelatedTables(manager, localTx, txid, status) {
                     return [3, 10];
                 case 9: throw new Error("Not support localTxType: " + localTx.type);
                 case 10: return [2];
-            }
-        });
-    });
-}
-function reconstructLocalTx(manager, localTx, txResult) {
-    return __awaiter(this, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4, rawdb.updateLocalTxStatus(manager, localTx.id, Enums_1.LocalTxStatus.FAILED)];
-                case 1:
-                    _a.sent();
-                    if (!(localTx.isWithdrawal() || localTx.isWithdrawalCollect())) return [3, 3];
-                    return [4, rawdb.updateWithdrawalsStatus(manager, localTx.id, Enums_1.WithdrawalStatus.UNSIGNED, Enums_1.WithdrawalEvent.TXID_CHANGED, txResult)];
-                case 2:
-                    _a.sent();
-                    return [3, 8];
-                case 3:
-                    if (!localTx.isCollectTx()) return [3, 5];
-                    return [4, rawdb.updateDepositCollectStatusByCollectTxId(manager, localTx, Enums_1.CollectStatus.UNCOLLECTED, Enums_1.DepositEvent.COLLECT_TXID_CHANGED)];
-                case 4:
-                    _a.sent();
-                    return [3, 8];
-                case 5:
-                    if (!localTx.isSeedTx()) return [3, 7];
-                    return [4, rawdb.updateDepositCollectStatusBySeedTxId(manager, localTx, Enums_1.CollectStatus.SEED_REQUESTED, Enums_1.DepositEvent.SEED_TXID_CHANGED)];
-                case 6:
-                    _a.sent();
-                    return [3, 8];
-                case 7: throw new Error("Not support localTxType: " + localTx.type);
-                case 8: return [2];
             }
         });
     });

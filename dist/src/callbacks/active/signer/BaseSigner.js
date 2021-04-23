@@ -105,17 +105,32 @@ var BaseSigner = (function () {
     };
     BaseSigner.prototype.saveSignedTx = function () {
         return __awaiter(this, void 0, void 0, function () {
+            var err_1;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.localTx.status = Enums_1.LocalTxStatus.SIGNED;
                         this.localTx.txid = this.signedTx.txid;
                         this.localTx.signedRaw = this.signedTx.signedRaw;
-                        return [4, this.manager.getRepository(entities_1.LocalTx).save(this.localTx)];
+                        _a.label = 1;
                     case 1:
-                        _a.sent();
-                        return [4, this.updateRelatedTables()];
+                        _a.trys.push([1, 3, , 6]);
+                        return [4, this.manager.getRepository(entities_1.LocalTx).save(this.localTx)];
                     case 2:
+                        _a.sent();
+                        return [3, 6];
+                    case 3:
+                        err_1 = _a.sent();
+                        if (!(err_1.code === 'ER_DUP_ENTRY')) return [3, 5];
+                        logger.error("Failed to update record with txid " + this.localTx.txid + " to local tx. Error code: " + err_1.code);
+                        logger.debug('Try to reconstruct new local tx');
+                        return [4, rawdb.reconstructLocalTx(this.manager, this.localTx)];
+                    case 4:
+                        _a.sent();
+                        return [2];
+                    case 5: throw err_1;
+                    case 6: return [4, this.updateRelatedTables()];
+                    case 7:
                         _a.sent();
                         return [2];
                 }
