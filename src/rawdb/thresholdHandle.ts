@@ -21,6 +21,9 @@ const logger = getLogger('ThresholdHandle');
 
 export async function checkUpperThreshold(manager: EntityManager, platform: BlockchainPlatform) {
   const allCurrencies = CurrencyRegistry.getCurrenciesOfPlatform(platform);
+  if (platform === BlockchainPlatform.BinanceSmartChain) {
+    platform = BlockchainPlatform.Ethereum;
+  }
   const wallets = await manager.getRepository(Wallet).find({
     where: {
       currency: platform,

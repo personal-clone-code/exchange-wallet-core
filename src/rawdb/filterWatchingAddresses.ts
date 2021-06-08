@@ -17,8 +17,8 @@ export async function filterWatchingAddresses(
   if (addresses.length === 0) {
     return [];
   }
-
-  const watchingAddresses = await manager.getRepository(Address).find({ currency: c.symbol, address: In(addresses) });
+  const currency = c.family || c.symbol;
+  const watchingAddresses = await manager.getRepository(Address).find({ currency: currency, address: In(addresses) });
   const result = watchingAddresses.map(a => a.address);
   return _.compact(_.uniq(result));
 }

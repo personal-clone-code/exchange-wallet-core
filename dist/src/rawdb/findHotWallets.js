@@ -49,11 +49,13 @@ var logger = sota_common_1.getLogger('rawdb::findHotWallets');
 var DEFAULT_WITHDRAWAL_MODE = 'normal';
 function findSufficientHotWallet(manager, walletId, currency, amount, type) {
     return __awaiter(this, void 0, void 0, function () {
-        var hotWallets, foundHotWallet, gateway;
+        var platform, hotWallets, foundHotWallet, gateway;
         var _this = this;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4, findFreeHotWallets(manager, walletId, currency.platform)];
+                case 0:
+                    platform = currency.family || currency.platform;
+                    return [4, findFreeHotWallets(manager, walletId, platform)];
                 case 1:
                     hotWallets = _a.sent();
                     if (!hotWallets.length) {

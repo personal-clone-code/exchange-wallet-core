@@ -115,31 +115,37 @@ function _collectorDoProcess(manager, collector) {
                     rallyWallet = _c.sent();
                     _c.label = 5;
                 case 5:
+                    if (!(!rallyWallet && currency.family)) return [3, 7];
+                    return [4, rawdb.findAnyRallyWallet(manager, walletId, currency.family)];
+                case 6:
+                    rallyWallet = _c.sent();
+                    _c.label = 7;
+                case 7:
                     if (!rallyWallet) {
                         throw new Error("Rally wallet for symbol=" + currency.symbol + " and platform=" + currency.platform + " not found");
                     }
-                    _c.label = 6;
-                case 6:
-                    _c.trys.push([6, 18, , 23]);
-                    if (!!currency.isNative) return [3, 13];
+                    _c.label = 8;
+                case 8:
+                    _c.trys.push([8, 20, , 25]);
+                    if (!!currency.isNative) return [3, 15];
                     return [4, sota_common_1.GatewayRegistry.getGatewayInstance(currency.platform)];
-                case 7:
+                case 9:
                     gateway = _c.sent();
                     minAmount = void 0;
                     return [4, rawdb.findOneCurrency(manager, currency.platform, walletId)];
-                case 8:
-                    currencyConfig = _c.sent();
-                    if (!(currencyConfig && currencyConfig.minimumCollectAmount)) return [3, 9];
-                    minAmount = new sota_common_1.BigNumber(currencyConfig.minimumCollectAmount);
-                    return [3, 11];
-                case 9: return [4, gateway.getAverageSeedingFee()];
                 case 10:
+                    currencyConfig = _c.sent();
+                    if (!(currencyConfig && currencyConfig.minimumCollectAmount)) return [3, 11];
+                    minAmount = new sota_common_1.BigNumber(currencyConfig.minimumCollectAmount);
+                    return [3, 13];
+                case 11: return [4, gateway.getAverageSeedingFee()];
+                case 12:
                     minAmount = (_c.sent()).multipliedBy(new sota_common_1.BigNumber(3));
-                    _c.label = 11;
-                case 11:
+                    _c.label = 13;
+                case 13:
                     record = records[0];
                     return [4, gateway.getAddressBalance(record.toAddress)];
-                case 12:
+                case 14:
                     balance = _c.sent();
                     if (balance.gte(minAmount)) {
                         logger.error("deposit id=" + record.id + " is pending, if it last for long, collect manually");
@@ -148,30 +154,30 @@ function _collectorDoProcess(manager, collector) {
                         });
                         return [2];
                     }
-                    _c.label = 13;
-                case 13:
-                    if (!currency.isUTXOBased) return [3, 15];
+                    _c.label = 15;
+                case 15:
+                    if (!currency.isUTXOBased) return [3, 17];
                     return [4, _constructUtxoBasedCollectTx(records, rallyWallet.address)];
-                case 14:
-                    _b = _c.sent();
-                    return [3, 17];
-                case 15: return [4, _constructAccountBasedCollectTx(records, rallyWallet.address)];
                 case 16:
                     _b = _c.sent();
-                    _c.label = 17;
-                case 17:
-                    rawTx = _b;
-                    return [3, 23];
+                    return [3, 19];
+                case 17: return [4, _constructAccountBasedCollectTx(records, rallyWallet.address)];
                 case 18:
+                    _b = _c.sent();
+                    _c.label = 19;
+                case 19:
+                    rawTx = _b;
+                    return [3, 25];
+                case 20:
                     err_1 = _c.sent();
                     logger.error("Cannot create raw transaction, may need fee seeder err=" + err_1);
                     return [4, rawdb.updateRecordsTimestamp(manager, entities_1.Deposit, records.map(function (r) { return r.id; }))];
-                case 19:
+                case 21:
                     _c.sent();
-                    if (!!currency.isNative) return [3, 22];
+                    if (!!currency.isNative) return [3, 24];
                     record = records[0];
                     return [4, rawdb.hasAnySeedRequestedToAddress(manager, record.toAddress)];
-                case 20:
+                case 22:
                     seedRequested = _c.sent();
                     if (!!seedRequested) {
                         logger.warn("Address " + record.toAddress + " has seed requested or seeding. So, don't need more seed requests at this time.");
@@ -179,20 +185,20 @@ function _collectorDoProcess(manager, collector) {
                     }
                     record.collectStatus = Enums_1.CollectStatus.SEED_REQUESTED;
                     return [4, manager.save(record)];
-                case 21:
-                    _c.sent();
-                    _c.label = 22;
-                case 22: return [2];
                 case 23:
+                    _c.sent();
+                    _c.label = 24;
+                case 24: return [2];
+                case 25:
                     if (!rawTx) {
                         throw new Error('rawTx is undefined because of unknown problem');
                     }
                     return [4, rawdb.isExternalAddress(manager, rallyWallet.address)];
-                case 24:
-                    if (!_c.sent()) return [3, 27];
+                case 26:
+                    if (!_c.sent()) return [3, 29];
                     logger.info(rallyWallet.address + " is external, create withdrawal record to withdraw out");
                     return [4, rawdb.insertWithdrawals(manager, records, rallyWallet.address, rallyWallet.userId)];
-                case 25:
+                case 27:
                     pairs_1 = _c.sent();
                     return [4, Promise.all(records.map(function (r) { return __awaiter(_this, void 0, void 0, function () {
                             return __generator(this, function (_a) {
@@ -206,11 +212,11 @@ function _collectorDoProcess(manager, collector) {
                                     ])];
                             });
                         }); }))];
-                case 26:
+                case 28:
                     _c.sent();
                     logger.info("Collect tx queued: address=" + rallyWallet.address + ", withdrawals=" + records.map(function (r) { return r.id; }));
                     return [2];
-                case 27: return [4, rawdb.insertLocalTx(manager, {
+                case 29: return [4, rawdb.insertLocalTx(manager, {
                         fromAddress: 'FIND_IN_DEPOSIT',
                         toAddress: rallyWallet.address,
                         userId: rallyWallet.userId,
@@ -225,14 +231,14 @@ function _collectorDoProcess(manager, collector) {
                         unsignedTxid: rawTx.txid,
                         amount: amount.toString(),
                     })];
-                case 28:
+                case 30:
                     localTx = _c.sent();
                     return [4, manager.update(entities_1.Deposit, records.map(function (r) { return r.id; }), {
                             updatedAt: sota_common_1.Utils.nowInMillis(),
                             collectLocalTxId: localTx.id,
                             collectStatus: Enums_1.CollectStatus.COLLECTING,
                         })];
-                case 29:
+                case 31:
                     _c.sent();
                     logger.info("Collect tx queued: address=" + rallyWallet.address + ", txid=" + rawTx.txid + ", localTxId=" + localTx.id);
                     return [2];

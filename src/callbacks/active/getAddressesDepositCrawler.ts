@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 import { Address } from '../../entities';
-import { BaseCrawler } from 'sota-common';
+import { BaseCrawler, CurrencyRegistry } from 'sota-common';
 import { getConnection } from 'typeorm';
 
 /**
@@ -8,7 +8,7 @@ import { getConnection } from 'typeorm';
  * @param typeCurrency
  */
 export default async function getAddressesDepositCrawler(crawler: BaseCrawler): Promise<string[]> {
-  const currency = crawler.getNativeCurrency().symbol;
+  const currency =  crawler.getNativeCurrency().family || crawler.getNativeCurrency().symbol;
 
   // Look up in database
   const connection = await getConnection();
