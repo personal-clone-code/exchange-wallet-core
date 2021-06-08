@@ -382,7 +382,7 @@ function _pickerDoProcessAccountBase(candidateWithdrawals, manager) {
 }
 function _constructRawTransaction(currency, withdrawlParams, manager) {
     return __awaiter(this, void 0, void 0, function () {
-        var vouts, finalPickedWithdrawals, fromAddress, amount, unsignedTx, gateway, withdrawalIds, _a, paramConstructRawTx, tag, cosmosGateway, deposits, toAddress, tag, err_1;
+        var vouts, finalPickedWithdrawals, fromAddress, amount, unsignedTx, gateway, withdrawalIds, _a, paramConstructRawTx, tag, cosmosGateway, deposits, toAddress, tag, useLowerNetworkFee, unsignedTx_1, err_1;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -470,12 +470,14 @@ function _constructRawTransaction(currency, withdrawlParams, manager) {
                         finalPickedWithdrawals[0].type === Enums_1.WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS) ||
                         finalPickedWithdrawals[0].type === Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS)) return [3, 14];
                     logger.info("picking withdrawal record case Account Base collect");
+                    useLowerNetworkFee = finalPickedWithdrawals[0].type === Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS ? true : false;
                     return [4, gateway.constructRawTransaction(fromAddress.address, toAddress, amount, {
                             destinationTag: tag,
                             isConsolidate: currency.isNative,
+                            useLowerNetworkFee: useLowerNetworkFee,
                         })];
                 case 13:
-                    unsignedTx = _b.sent();
+                    unsignedTx_1 = _b.sent();
                     return [3, 16];
                 case 14:
                     logger.info("picking withdrawal record case Account Base normal");
