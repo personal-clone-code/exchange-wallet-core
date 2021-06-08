@@ -434,6 +434,8 @@ async function _constructRawTransaction(
           finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS
         ) {
           logger.info(`picking withdrawal record case Account Base collect`);
+          //Using lower network fee for colling tx
+          const useLowerNetworkFee = finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS ? true : false,
           unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
             fromAddress.address,
             toAddress,
@@ -441,6 +443,7 @@ async function _constructRawTransaction(
             {
               destinationTag: tag,
               isConsolidate: currency.isNative,
+              useLowerNetworkFee: useLowerNetworkFee,
             }
           );
         } else {
