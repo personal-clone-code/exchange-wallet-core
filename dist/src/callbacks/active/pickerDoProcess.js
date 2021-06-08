@@ -382,7 +382,7 @@ function _pickerDoProcessAccountBase(candidateWithdrawals, manager) {
 }
 function _constructRawTransaction(currency, withdrawlParams, manager) {
     return __awaiter(this, void 0, void 0, function () {
-        var vouts, finalPickedWithdrawals, fromAddress, amount, unsignedTx, gateway, withdrawalIds, _a, paramConstructRawTx, tag, cosmosGateway, deposits, toAddress, tag, useLowerNetworkFee, unsignedTx_1, err_1;
+        var vouts, finalPickedWithdrawals, fromAddress, amount, unsignedTx, gateway, withdrawalIds, _a, paramConstructRawTx, tag, cosmosGateway, deposits, toAddress, tag, useLowerNetworkFee, err_1;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -477,7 +477,7 @@ function _constructRawTransaction(currency, withdrawlParams, manager) {
                             useLowerNetworkFee: useLowerNetworkFee,
                         })];
                 case 13:
-                    unsignedTx_1 = _b.sent();
+                    unsignedTx = _b.sent();
                     return [3, 16];
                 case 14:
                     logger.info("picking withdrawal record case Account Base normal");

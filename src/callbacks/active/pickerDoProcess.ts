@@ -435,7 +435,7 @@ async function _constructRawTransaction(
         ) {
           logger.info(`picking withdrawal record case Account Base collect`);
           //Using lower network fee for colling tx
-          const useLowerNetworkFee = finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS ? true : false,
+          const useLowerNetworkFee = finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS ? true : false;
           unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
             fromAddress.address,
             toAddress,
