@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 import { EntityManager, getConnection } from 'typeorm';
-import { getLogger } from 'sota-common';
+import { CurrencyRegistry, getLogger } from 'sota-common';
 import { User, CurrencyConfig, Wallet } from '../entities';
 
 const logger = getLogger('DBTools::# UserWallet::');
@@ -26,10 +26,17 @@ async function _doCheckUserWallet(manager: EntityManager): Promise<void> {
     return;
   }
   const tasks = _.map(users, async user => {
+    const uniquePlatform = new Set();
     const subTasks = _.map(currencyConfigs, async config => {
+      const currency = CurrencyRegistry.getOneCurrency(config.currency);
+      const platfrom = currency.family || currency.platform;
+      if(uniquePlatform.has(platfrom)){
+        return;
+      }
+      uniquePlatform.add(platfrom);
       const wallet = await manager.getRepository(Wallet).findOne({
         userId: user.id,
-        currency: config.currency,
+        currency: platfrom,
       });
       if (!wallet) {
         userWalletErrors.push(`There\'s no wallet for user ${user.id} (${config.currency})`);

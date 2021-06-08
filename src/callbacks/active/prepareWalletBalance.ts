@@ -9,7 +9,7 @@ export async function prepareWalletBalanceAll(currencies: ICurrency[]): Promise<
     return;
   }
 
-  const platform = currencies[0].platform;
+  const platform = currencies[0].family || currencies[0].platform;
   const wallets = await connection.getRepository(Wallet).find({ currency: platform });
 
   const values: any[] = [];

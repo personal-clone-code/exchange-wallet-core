@@ -24,6 +24,9 @@ async function _doCheckWalletBalance(manager: EntityManager): Promise<void> {
   }
   const tasks = _.map(wallets, async wallet => {
     const currenciesOfPlatform = CurrencyRegistry.getCurrenciesOfPlatform(wallet.currency as BlockchainPlatform);
+    if (wallet.currency === BlockchainPlatform.Ethereum){
+      currenciesOfPlatform.push(...CurrencyRegistry.getCurrenciesOfPlatform(BlockchainPlatform.BinanceSmartChain));
+    }
     const balanceTasks = _.map(currenciesOfPlatform, async currency => {
       const walletBalance = await manager.getRepository(WalletBalance).findOne({
         walletId: wallet.id,

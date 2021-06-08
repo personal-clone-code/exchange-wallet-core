@@ -8,7 +8,8 @@ export abstract class BaseHotWalletSigner extends BaseSigner {
   protected hotWallet: HotWallet;
 
   protected async prepare(): Promise<void> {
-    this.hotWallet = await rawdb.getOneHotWallet(this.manager, this.currency.platform, this.localTx.fromAddress);
+    const platform = this.currency.family || this.currency.platform;
+    this.hotWallet = await rawdb.getOneHotWallet(this.manager, platform, this.localTx.fromAddress);
     if (this.hotWallet.type !== HotWalletType.Normal && this.hotWallet.type !== HotWalletType.Seed) {
       throw new Error('Only support normal or seed hotWallet, but current type: ' + this.hotWallet.type);
     }

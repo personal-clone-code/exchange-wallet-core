@@ -21,7 +21,8 @@ export async function findSufficientHotWallet(
   amount: BigNumber,
   type: HotWalletType
 ): Promise<HotWallet> {
-  const hotWallets = await findFreeHotWallets(manager, walletId, currency.platform);
+  const platform = currency.family || currency.platform;
+  const hotWallets = await findFreeHotWallets(manager, walletId, platform);
   if (!hotWallets.length) {
     return null;
   }

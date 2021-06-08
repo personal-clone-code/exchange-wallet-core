@@ -64,6 +64,10 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     rallyWallet = await rawdb.findAnyRallyWallet(manager, walletId, currency.platform);
   }
 
+  if (!rallyWallet && currency.family) {
+    rallyWallet = await rawdb.findAnyRallyWallet(manager, walletId, currency.family);
+  }
+
   if (!rallyWallet) {
     throw new Error(`Rally wallet for symbol=${currency.symbol} and platform=${currency.platform} not found`);
   }

@@ -3,12 +3,14 @@ import { Withdrawal, Address } from '../../../entities';
 import { LocalTxStatus, WithdrawalEvent } from '../../../Enums';
 import * as rawdb from '../../../rawdb';
 import { BaseSigner } from './BaseSigner';
+import { BlockchainPlatform } from 'sota-common';
 
 export class WithdrawalCollectSigner extends BaseSigner {
   protected address: Address;
 
   protected async prepare(): Promise<void> {
-    this.address = await rawdb.getOneAddress(this.manager, this.currency.platform, this.localTx.fromAddress);
+    const currency = this.currency.family || this.currency.platform;
+    this.address = await rawdb.getOneAddress(this.manager, currency , this.localTx.fromAddress);
   }
 
   protected async isBusy(): Promise<boolean> {
