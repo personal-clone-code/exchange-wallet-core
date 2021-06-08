@@ -7,6 +7,8 @@ var __extends = (this && this.__extends) || (function () {
         return extendStatics(d, b);
     };
     return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
         extendStatics(d, b);
         function __() { this.constructor = d; }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
@@ -80,12 +82,13 @@ var WithdrawalCollectSigner = (function (_super) {
     }
     WithdrawalCollectSigner.prototype.prepare = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var _a;
+            var currency, _a;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
+                        currency = this.currency.family || this.currency.platform;
                         _a = this;
-                        return [4, rawdb.getOneAddress(this.manager, this.currency.platform, this.localTx.fromAddress)];
+                        return [4, rawdb.getOneAddress(this.manager, currency, this.localTx.fromAddress)];
                     case 1:
                         _a.address = _b.sent();
                         return [2];

@@ -109,19 +109,27 @@ function _doCheckUserWallet(manager) {
                         return [2];
                     }
                     tasks = _.map(users, function (user) { return __awaiter(_this, void 0, void 0, function () {
-                        var subTasks;
+                        var uniquePlatform, subTasks;
                         var _this = this;
                         return __generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
+                                    uniquePlatform = new Set();
                                     subTasks = _.map(currencyConfigs, function (config) { return __awaiter(_this, void 0, void 0, function () {
-                                        var wallet;
+                                        var currency, platfrom, wallet;
                                         return __generator(this, function (_a) {
                                             switch (_a.label) {
-                                                case 0: return [4, manager.getRepository(entities_1.Wallet).findOne({
-                                                        userId: user.id,
-                                                        currency: config.currency,
-                                                    })];
+                                                case 0:
+                                                    currency = sota_common_1.CurrencyRegistry.getOneCurrency(config.currency);
+                                                    platfrom = currency.family || currency.platform;
+                                                    if (uniquePlatform.has(platfrom)) {
+                                                        return [2];
+                                                    }
+                                                    uniquePlatform.add(platfrom);
+                                                    return [4, manager.getRepository(entities_1.Wallet).findOne({
+                                                            userId: user.id,
+                                                            currency: platfrom,
+                                                        })];
                                                 case 1:
                                                     wallet = _a.sent();
                                                     if (!wallet) {

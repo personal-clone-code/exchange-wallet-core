@@ -50,7 +50,7 @@ function prepareWalletBalanceAll(currencies) {
                     if (!currencies || currencies.length === 0) {
                         return [2];
                     }
-                    platform = currencies[0].platform;
+                    platform = currencies[0].family || currencies[0].platform;
                     return [4, connection.getRepository(entities_1.Wallet).find({ currency: platform })];
                 case 1:
                     wallets = _a.sent();

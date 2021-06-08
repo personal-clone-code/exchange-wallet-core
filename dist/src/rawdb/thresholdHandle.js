@@ -71,6 +71,9 @@ function checkUpperThreshold(manager, platform) {
             switch (_a.label) {
                 case 0:
                     allCurrencies = sota_common_1.CurrencyRegistry.getCurrenciesOfPlatform(platform);
+                    if (platform === sota_common_1.BlockchainPlatform.BinanceSmartChain) {
+                        platform = sota_common_1.BlockchainPlatform.Ethereum;
+                    }
                     return [4, manager.getRepository(entities_1.Wallet).find({
                             where: {
                                 currency: platform,

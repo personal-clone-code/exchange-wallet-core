@@ -65,7 +65,7 @@ function getAddressesDepositCrawler(crawler) {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    currency = crawler.getNativeCurrency().symbol;
+                    currency = crawler.getNativeCurrency().family || crawler.getNativeCurrency().symbol;
                     return [4, typeorm_1.getConnection()];
                 case 1:
                     connection = _a.sent();

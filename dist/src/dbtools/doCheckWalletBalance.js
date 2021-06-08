@@ -110,6 +110,9 @@ function _doCheckWalletBalance(manager) {
                             switch (_a.label) {
                                 case 0:
                                     currenciesOfPlatform = sota_common_1.CurrencyRegistry.getCurrenciesOfPlatform(wallet.currency);
+                                    if (wallet.currency === sota_common_1.BlockchainPlatform.Ethereum) {
+                                        currenciesOfPlatform.push.apply(currenciesOfPlatform, sota_common_1.CurrencyRegistry.getCurrenciesOfPlatform(sota_common_1.BlockchainPlatform.BinanceSmartChain));
+                                    }
                                     balanceTasks = _.map(currenciesOfPlatform, function (currency) { return __awaiter(_this, void 0, void 0, function () {
                                         var walletBalance, totalWalletLogs, totalBalanceLogs_1, totlaRound, round, _i, round_1, r, walletLogs;
                                         return __generator(this, function (_a) {

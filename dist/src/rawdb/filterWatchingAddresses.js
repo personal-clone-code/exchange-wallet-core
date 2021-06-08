@@ -45,14 +45,15 @@ var typeorm_1 = require("typeorm");
 var entities_1 = require("../entities");
 function filterWatchingAddresses(manager, c, addresses) {
     return __awaiter(this, void 0, void 0, function () {
-        var watchingAddresses, result;
+        var currency, watchingAddresses, result;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     if (addresses.length === 0) {
                         return [2, []];
                     }
-                    return [4, manager.getRepository(entities_1.Address).find({ currency: c.symbol, address: typeorm_1.In(addresses) })];
+                    currency = c.family || c.symbol;
+                    return [4, manager.getRepository(entities_1.Address).find({ currency: currency, address: typeorm_1.In(addresses) })];
                 case 1:
                     watchingAddresses = _a.sent();
                     result = watchingAddresses.map(function (a) { return a.address; });
