@@ -1,8 +1,8 @@
-import { EntityManager } from 'typeorm';
-import { Deposit, RallyWallet, Withdrawal } from '../entities';
-import { WithdrawalStatus, WithdrawOutType } from '../Enums';
-import { handlePendingWithdrawalBalance } from '.';
-import { BigNumber, CurrencyRegistry } from 'sota-common';
+import { EntityManager } from "typeorm";
+import { Deposit, RallyWallet, Withdrawal } from "../entities";
+import { WithdrawalStatus, WithdrawOutType } from "../Enums";
+import { handlePendingWithdrawalBalance } from ".";
+import { BigNumber, CurrencyRegistry } from "sota-common";
 
 export async function insertWithdrawals(
   manager: EntityManager,
@@ -17,11 +17,11 @@ export async function insertWithdrawals(
   const tasks: Array<Promise<any>> = [];
   const pairs: Map<number, number> = new Map();
   tasks.push(
-    ...records.map(async record => {
+    ...records.map(async (record) => {
       const withdrawal = new Withdrawal();
       withdrawal.currency = record.currency;
       withdrawal.fromAddress = record.toAddress;
-      withdrawal.memo = 'FROM_MACHINE';
+      withdrawal.memo = "FROM_MACHINE";
       withdrawal.amount = record.amount;
       withdrawal.userId = userId;
       withdrawal.type = WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS;
@@ -46,6 +46,45 @@ export async function insertWithdrawals(
     )
   );
   await Promise.all(tasks);
+
+  return pairs;
+}
+
+export async function insertWithdrawal(
+  manager: EntityManager,
+  records: Deposit[],
+  toAddress: string,
+  userId: number,
+  amount: BigNumber
+): Promise<Map<number, number>> {
+  if (!records.length) {
+    return null;
+  }
+  const pairs: Map<number, number> = new Map();
+
+  const record = records[0];
+  const withdrawal = new Withdrawal();
+  withdrawal.currency = record.currency;
+  withdrawal.fromAddress = record.toAddress;
+  withdrawal.memo = "FROM_MACHINE";
+  withdrawal.amount = amount.toFixed();
+  withdrawal.userId = userId;
+  withdrawal.type = WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS;
+  withdrawal.walletId = record.walletId;
+  withdrawal.toAddress = toAddress;
+  withdrawal.status = WithdrawalStatus.UNSIGNED;
+  const withdrawalId = await saveAndGetPair(manager, withdrawal);
+  
+  records.map(async (record) => {
+    pairs.set(record.id, withdrawalId);
+  });
+
+  await handlePendingWithdrawalBalance(
+    manager,
+    amount.toString(),
+    records[0].walletId,
+    CurrencyRegistry.getOneCurrency(records[0].currency)
+  );
 
   return pairs;
 }
