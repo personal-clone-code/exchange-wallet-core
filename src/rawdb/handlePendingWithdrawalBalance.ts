@@ -12,7 +12,7 @@ export async function handlePendingWithdrawalBalance(
     .createQueryBuilder()
     .update(WalletBalance)
     .set({
-      balance: () => {
+      withdrawalPending: () => {
         return `withdrawal_pending + ${amount}`;
       },
       updatedAt: Utils.nowInMillis(),
