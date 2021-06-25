@@ -54,13 +54,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.findDepositsInCollectingTx = exports.findOneGroupOfDeposits = exports.findOneGroupOfDepositsNeedSeedingFee = exports.findOneGroupOfCollectableDeposits = void 0;
 var typeorm_1 = require("typeorm");
-var lodash_1 = __importDefault(require("lodash"));
 var entities_1 = require("../entities");
 var Enums_1 = require("../Enums");
 var sota_common_1 = require("sota-common");
@@ -172,35 +168,22 @@ function findOneGroupOfDepositsNeedSeedingFee(manager, currencies) {
 exports.findOneGroupOfDepositsNeedSeedingFee = findOneGroupOfDepositsNeedSeedingFee;
 function findOneGroupOfDeposits(manager, currencies, collectStatuses) {
     return __awaiter(this, void 0, void 0, function () {
-        var now, uncollectedDeposits, selected, currencyInfo, platformSelected, selectedWalletId, selectedCurrency, currency, records;
+        var uncollectedDeposits, selectedWalletId, selectedCurrency, currency, records;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0:
-                    now = sota_common_1.Utils.nowInMillis();
-                    return [4, manager.getRepository(entities_1.Deposit).find({
-                            order: {
-                                updatedAt: 'ASC',
-                            },
-                            where: {
-                                currency: typeorm_1.In(currencies),
-                                collectStatus: typeorm_1.In(collectStatuses),
-                            },
-                        })];
+                case 0: return [4, manager.getRepository(entities_1.Deposit).find({
+                        order: {
+                            updatedAt: 'ASC',
+                        },
+                        where: {
+                            currency: typeorm_1.In(currencies),
+                            collectStatus: typeorm_1.In(collectStatuses),
+                        },
+                    })];
                 case 1:
                     uncollectedDeposits = _a.sent();
                     if (!uncollectedDeposits.length) {
                         return [2, { walletId: 0, currency: null, records: [] }];
-                    }
-                    selected = uncollectedDeposits[0];
-                    currencyInfo = sota_common_1.CurrencyRegistry.getOneCurrency(selected.currency);
-                    if (!currencyInfo.isNative) {
-                        platformSelected = lodash_1.default.find(uncollectedDeposits, {
-                            toAddress: selected.toAddress,
-                            currency: currencyInfo.platform,
-                        });
-                        if (platformSelected) {
-                            selected = platformSelected;
-                        }
                     }
                     selectedWalletId = uncollectedDeposits[0].walletId;
                     selectedCurrency = uncollectedDeposits[0].currency;

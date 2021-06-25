@@ -47,7 +47,7 @@ function handlePendingWithdrawalBalance(manager, amount, walletId, iCurrency) {
                         .createQueryBuilder()
                         .update(entities_1.WalletBalance)
                         .set({
-                        balance: function () {
+                        withdrawalPending: function () {
                             return "withdrawal_pending + " + amount;
                         },
                         updatedAt: sota_common_1.Utils.nowInMillis(),

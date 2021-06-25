@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.insertWithdrawals = void 0;
+exports.insertWithdrawal = exports.insertWithdrawals = void 0;
 var entities_1 = require("../entities");
 var Enums_1 = require("../Enums");
 var _1 = require(".");
@@ -62,7 +62,7 @@ function insertWithdrawals(manager, records, toAddress, userId) {
                                     withdrawal = new entities_1.Withdrawal();
                                     withdrawal.currency = record.currency;
                                     withdrawal.fromAddress = record.toAddress;
-                                    withdrawal.memo = 'FROM_MACHINE';
+                                    withdrawal.memo = "FROM_MACHINE";
                                     withdrawal.amount = record.amount;
                                     withdrawal.userId = userId;
                                     withdrawal.type = Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS;
@@ -91,6 +91,46 @@ function insertWithdrawals(manager, records, toAddress, userId) {
     });
 }
 exports.insertWithdrawals = insertWithdrawals;
+function insertWithdrawal(manager, records, toAddress, userId, amount) {
+    return __awaiter(this, void 0, void 0, function () {
+        var pairs, record, withdrawal, withdrawalId;
+        var _this = this;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!records.length) {
+                        return [2, null];
+                    }
+                    pairs = new Map();
+                    record = records[0];
+                    withdrawal = new entities_1.Withdrawal();
+                    withdrawal.currency = record.currency;
+                    withdrawal.fromAddress = record.toAddress;
+                    withdrawal.memo = "FROM_MACHINE";
+                    withdrawal.amount = amount.toFixed();
+                    withdrawal.userId = userId;
+                    withdrawal.type = Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS;
+                    withdrawal.walletId = record.walletId;
+                    withdrawal.toAddress = toAddress;
+                    withdrawal.status = Enums_1.WithdrawalStatus.UNSIGNED;
+                    return [4, saveAndGetPair(manager, withdrawal)];
+                case 1:
+                    withdrawalId = _a.sent();
+                    records.map(function (record) { return __awaiter(_this, void 0, void 0, function () {
+                        return __generator(this, function (_a) {
+                            pairs.set(record.id, withdrawalId);
+                            return [2];
+                        });
+                    }); });
+                    return [4, _1.handlePendingWithdrawalBalance(manager, amount.toString(), records[0].walletId, sota_common_1.CurrencyRegistry.getOneCurrency(records[0].currency))];
+                case 2:
+                    _a.sent();
+                    return [2, pairs];
+            }
+        });
+    });
+}
+exports.insertWithdrawal = insertWithdrawal;
 function saveAndGetPair(manager, withdrawal) {
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
