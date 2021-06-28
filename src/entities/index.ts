@@ -37,3 +37,4 @@ export * from './NemEnvConfig';
 export * from './AddressBalance';
 export * from './Bep20Token';
 export * from './TronTrc20Token';
+export * from './SplToken';

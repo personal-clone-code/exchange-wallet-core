@@ -14,11 +14,12 @@ import {
   ICurrency,
   UTXOBasedGateway,
   BlockchainPlatform,
+  SolanaBasedGateway,
 } from 'sota-common';
 import _ from 'lodash';
 import { EntityManager, getConnection } from 'typeorm';
 import * as rawdb from '../../rawdb';
-import { CollectStatus, LocalTxType, RefTable, LocalTxStatus, CollectType, DepositEvent } from '../../Enums';
+import { CollectStatus, LocalTxType, RefTable, LocalTxStatus, CollectType, DepositEvent, WithdrawalStatus } from '../../Enums';
 import { Deposit } from '../../entities';
 
 const logger = getLogger('collectorDoProcess');
@@ -55,6 +56,18 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     return;
   }
 
+  //In Solana, accounts which maintain a minimum balance equivalent to 2 years of rent payments are exempt
+  //we will maintain a minimum balance to get free rent
+  if (currency.symbol === CurrencyRegistry.Solana.symbol){
+    const gateway = GatewayRegistry.getGatewayInstance(currency) as SolanaBasedGateway;
+    const balance = await gateway.getAddressBalance(records[0].toAddress);
+    const minimumBalance = await gateway.getMinimumBalanceForRentExemption();
+    if (balance.minus(minimumBalance).lte(0)){
+      logger.info(`${currency.symbol} does not have a enough collect amount, minimumBalance=${minimumBalance}, totalAmount=${amount}. Will try to process later...`);
+      return;
+    }
+  }
+
   let rallyWallet = null;
   if (currency.symbol) {
     rallyWallet = await rawdb.findAnyRallyWallet(manager, walletId, currency.symbol);
@@ -77,12 +90,24 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
     // check balance in network to prevent misseeding error
     if (!currency.isNative) {
       const gateway = await GatewayRegistry.getGatewayInstance(currency.platform);
-      let minAmount;
+      let minAmount = new BigNumber(0);
       const currencyConfig = await rawdb.findOneCurrency(manager, currency.platform, walletId);
       if (currencyConfig && currencyConfig.minimumCollectAmount) {
         minAmount = new BigNumber(currencyConfig.minimumCollectAmount);
-      } else {
-        minAmount = (await gateway.getAverageSeedingFee()).multipliedBy(new BigNumber(3));
+      } else {     
+        //In Solana, accounts which maintain a minimum balance equivalent to 2 years of rent payments are exempt
+        //we will maintain a minimum balance = solana_account_cost on rally_wallet to get free rental
+        //so the maximum balance of a seeded address may be equal to = solana_account_cost + token_account_cost + 3 * transaction fee
+        if (currency.platform === BlockchainPlatform.Solana){
+          minAmount = new BigNumber(await (gateway as SolanaBasedGateway).getMinimumBalanceForRentExemption());
+          const withdrawalStatuses = [WithdrawalStatus.UNSIGNED, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING, WithdrawalStatus.SENT, WithdrawalStatus.COMPLETED];
+          if (!(await rawdb.hasAnyCollectFromAddressToAddress(manager, currency.symbol, withdrawalStatuses, rallyWallet.addresss, records[0].toAddress))){
+            const tokenGateway = GatewayRegistry.getGatewayInstance(currency.symbol) as SolanaBasedGateway;
+            minAmount = minAmount.plus((await tokenGateway.getMinimumBalanceForRentExemption()).plus((await gateway.getAverageSeedingFee()).multipliedBy(new BigNumber(3))));
+          }
+        } else {
+          minAmount = minAmount.plus((await gateway.getAverageSeedingFee()).multipliedBy(new BigNumber(3)));
+        }
       }
       // if (records.length > 1) {
       //   throw new Error('multiple tx seeding is not supported now');
@@ -98,10 +123,13 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
       }
     }
 
-    rawTx = currency.isUTXOBased
+    rawTx = currency.platform === BlockchainPlatform.Solana ? await _constructSolanaBasedCollectTx(records, rallyWallet.address, amount) : (currency.isUTXOBased
       ? await _constructUtxoBasedCollectTx(records, rallyWallet.address)
-      : await _constructAccountBasedCollectTx(records, rallyWallet.address);
+      : await _constructAccountBasedCollectTx(records, rallyWallet.address));
   } catch (err) {
+    if (currency.platform === BlockchainPlatform.Solana && !err.toString().includes('has insufficient funds for fee')){
+      throw err
+    }
     logger.error(`Cannot create raw transaction, may need fee seeder err=${err}`);
     await rawdb.updateRecordsTimestamp(manager, Deposit, records.map(r => r.id));
     if (!currency.isNative) {
@@ -236,5 +264,16 @@ async function _constructAccountBasedCollectTx(deposits: Deposit[], toAddress: s
   return gateway.constructRawTransaction(deposits[0].toAddress, toAddress, amount, {
     isConsolidate: currency.isNative,
     useLowerNetworkFee: true,
+  });
+}
+
+async function _constructSolanaBasedCollectTx(deposits: Deposit[], toAddress: string, amount: BigNumber): Promise<IRawTransaction> {
+  const currency = CurrencyRegistry.getOneCurrency(deposits[0].currency);
+  const gateway = GatewayRegistry.getGatewayInstance(currency) as SolanaBasedGateway;
+ 
+  return gateway.constructRawTransaction(deposits[0].toAddress, toAddress, amount, {
+    isConsolidate: currency.isNative,
+    needFunding: !currency.isNative,
+    maintainRent: true,
   });
 }

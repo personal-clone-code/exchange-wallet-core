@@ -36,70 +36,49 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.seedRecordToAddressIsExist = exports.hasAnySeedRequestedToAddress = void 0;
+exports.hasAnyCollectFromAddressToAddress = void 0;
 var typeorm_1 = require("typeorm");
 var entities_1 = require("../entities");
 var Enums_1 = require("../Enums");
-function hasAnySeedRequestedToAddress(manager, address) {
+function hasAnyCollectFromAddressToAddress(manager, currency, withdrawalStatuses, toAddress, fromAddress) {
     return __awaiter(this, void 0, void 0, function () {
-        var pendingSeedRecord, seedRequestedRecord;
+        var collectlRecord, withdrawlRecord;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4, manager.getRepository(entities_1.LocalTx).findOne({
-                        where: {
-                            toAddress: address,
-                            type: Enums_1.LocalTxType.SEED,
-                            status: typeorm_1.In([Enums_1.LocalTxStatus.SIGNING, Enums_1.LocalTxStatus.SIGNED, Enums_1.LocalTxStatus.SENT]),
-                        },
-                    })];
-                case 1:
-                    pendingSeedRecord = _a.sent();
-                    if (pendingSeedRecord) {
-                        return [2, true];
-                    }
-                    return [4, manager.getRepository(entities_1.Deposit).findOne({
-                            where: {
-                                toAddress: address,
-                                collectStatus: typeorm_1.In([Enums_1.CollectStatus.SEED_REQUESTED]),
-                            },
-                        })];
-                case 2:
-                    seedRequestedRecord = _a.sent();
-                    if (seedRequestedRecord) {
-                        return [2, true];
-                    }
-                    return [2, false];
-            }
-        });
-    });
-}
-exports.hasAnySeedRequestedToAddress = hasAnySeedRequestedToAddress;
-function seedRecordToAddressIsExist(manager, address) {
-    return __awaiter(this, void 0, void 0, function () {
-        var seedTxRecord, seedRequestRecord;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4, manager.getRepository(entities_1.LocalTx).findOne({
-                        where: {
-                            toAddress: address,
-                            type: Enums_1.LocalTxType.SEED,
+                        where: !!fromAddress ? {
+                            fromAddress: fromAddress,
+                            toAddress: toAddress,
+                            type: typeorm_1.In([Enums_1.LocalTxType.WITHDRAWAL_COLLECT, Enums_1.LocalTxType.COLLECT]),
+                            status: typeorm_1.In([Enums_1.LocalTxStatus.SIGNING, Enums_1.LocalTxStatus.SIGNED, Enums_1.LocalTxStatus.SENT, Enums_1.LocalTxStatus.COMPLETED]),
+                        } : {
+                            toAddress: toAddress,
+                            type: typeorm_1.In([Enums_1.LocalTxType.WITHDRAWAL_COLLECT, Enums_1.LocalTxType.COLLECT]),
                             status: typeorm_1.In([Enums_1.LocalTxStatus.SIGNING, Enums_1.LocalTxStatus.SIGNED, Enums_1.LocalTxStatus.SENT, Enums_1.LocalTxStatus.COMPLETED]),
                         },
                     })];
                 case 1:
-                    seedTxRecord = _a.sent();
-                    if (seedTxRecord) {
+                    collectlRecord = _a.sent();
+                    if (!!collectlRecord) {
                         return [2, true];
                     }
-                    return [4, manager.getRepository(entities_1.Deposit).findOne({
-                            where: {
-                                toAddress: address,
-                                collectStatus: typeorm_1.In([Enums_1.CollectStatus.SEEDING, Enums_1.CollectStatus.SEED_SIGNED, Enums_1.CollectStatus.SEED_SENT,]),
+                    return [4, manager.getRepository(entities_1.Withdrawal).findOne({
+                            where: !!fromAddress ? {
+                                currency: currency,
+                                fromAddress: fromAddress,
+                                toAddress: toAddress,
+                                type: Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS,
+                                status: typeorm_1.In(withdrawalStatuses),
+                            } : {
+                                currency: currency,
+                                toAddress: toAddress,
+                                type: Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS,
+                                status: typeorm_1.In(withdrawalStatuses),
                             },
                         })];
                 case 2:
-                    seedRequestRecord = _a.sent();
-                    if (seedRequestRecord) {
+                    withdrawlRecord = _a.sent();
+                    if (!!withdrawlRecord) {
                         return [2, true];
                     }
                     return [2, false];
@@ -107,5 +86,5 @@ function seedRecordToAddressIsExist(manager, address) {
         });
     });
 }
-exports.seedRecordToAddressIsExist = seedRecordToAddressIsExist;
-//# sourceMappingURL=hasAnySeedRequestedToAddress.js.map
+exports.hasAnyCollectFromAddressToAddress = hasAnyCollectFromAddressToAddress;
+//# sourceMappingURL=hasAnyCollectToAddress.js.map

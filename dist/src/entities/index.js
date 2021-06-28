@@ -49,4 +49,5 @@ __exportStar(require("./NemEnvConfig"), exports);
 __exportStar(require("./AddressBalance"), exports);
 __exportStar(require("./Bep20Token"), exports);
 __exportStar(require("./TronTrc20Token"), exports);
+__exportStar(require("./SplToken"), exports);
 //# sourceMappingURL=index.js.map

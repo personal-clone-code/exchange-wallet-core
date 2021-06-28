@@ -54,4 +54,5 @@ __exportStar(require("./handlePendingWithdrawalBalance"), exports);
 __exportStar(require("./isExternalAddress"), exports);
 __exportStar(require("./insertWithdrawals"), exports);
 __exportStar(require("./reconstructLocalTx"), exports);
+__exportStar(require("./hasAnyCollectToAddress"), exports);
 //# sourceMappingURL=index.js.map
