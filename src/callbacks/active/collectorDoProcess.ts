@@ -125,7 +125,7 @@ async function _collectorDoProcess(manager: EntityManager, collector: BasePlatfo
 
   if (await rawdb.isExternalAddress(manager, rallyWallet.address)) {
     logger.info(`${rallyWallet.address} is external, create withdrawal record to withdraw out`);
-    const pairs = await rawdb.insertWithdrawals(manager, records, rallyWallet.address, rallyWallet.userId);
+    const pairs = (currency.isUTXOBased && currency.platform !== BlockchainPlatform.NEO) ? await rawdb.insertWithdrawals(manager, records, rallyWallet.address, rallyWallet.userId) : await rawdb.insertWithdrawal(manager, records, rallyWallet.address, rallyWallet.userId, amount);
     await Promise.all(
       records.map(async r => {
         return Promise.all([

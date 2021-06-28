@@ -4,6 +4,7 @@ export declare class WalletBalance {
     createdAt: number;
     updatedAt: number;
     balance: string;
+    withdrawalPending: number;
     updateCreateDates(): void;
     updateUpdateDates(): void;
 }

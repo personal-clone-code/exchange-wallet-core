@@ -43,6 +43,16 @@ var WalletBalance = (function () {
         __metadata("design:type", String)
     ], WalletBalance.prototype, "balance", void 0);
     __decorate([
+        typeorm_1.Column({
+            name: 'withdrawal_pending',
+            type: 'decimal',
+            precision: 40,
+            scale: 8,
+            nullable: false,
+        }),
+        __metadata("design:type", Number)
+    ], WalletBalance.prototype, "withdrawalPending", void 0);
+    __decorate([
         typeorm_1.BeforeInsert(),
         __metadata("design:type", Function),
         __metadata("design:paramtypes", []),

@@ -18,6 +18,15 @@ export class WalletBalance {
   @Column({ name: 'balance', nullable: false })
   public balance: string;
 
+  @Column({
+    name: 'withdrawal_pending',
+    type: 'decimal',
+    precision: 40,
+    scale: 8,
+    nullable: false,
+  })
+  public withdrawalPending: number;
+
   @BeforeInsert()
   public updateCreateDates() {
     this.createdAt = Utils.nowInMillis();

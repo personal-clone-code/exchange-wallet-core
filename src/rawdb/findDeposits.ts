@@ -166,7 +166,6 @@ export async function findOneGroupOfDeposits(
   collectStatuses: CollectStatus[]
 ): Promise<{ walletId: number; currency: ICurrency; records: Deposit[] }> {
   // find and filter first group
-  const now = Utils.nowInMillis();
   const uncollectedDeposits = await manager.getRepository(Deposit).find({
     order: {
       updatedAt: 'ASC',
@@ -179,19 +178,6 @@ export async function findOneGroupOfDeposits(
 
   if (!uncollectedDeposits.length) {
     return { walletId: 0, currency: null, records: [] };
-  }
-
-  // prefer collect platform deposit
-  let selected = uncollectedDeposits[0];
-  const currencyInfo = CurrencyRegistry.getOneCurrency(selected.currency);
-  if (!currencyInfo.isNative) {
-    const platformSelected = _.find(uncollectedDeposits, {
-      toAddress: selected.toAddress,
-      currency: currencyInfo.platform,
-    });
-    if (platformSelected) {
-      selected = platformSelected;
-    }
   }
 
   const selectedWalletId = uncollectedDeposits[0].walletId;
