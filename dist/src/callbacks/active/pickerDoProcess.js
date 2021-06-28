@@ -401,7 +401,7 @@ function _constructRawTransaction(currency, withdrawlParams, manager) {
                     withdrawalIds = finalPickedWithdrawals.map(function (w) { return w.id; });
                     _b.label = 1;
                 case 1:
-                    _b.trys.push([1, 17, , 19]);
+                    _b.trys.push([1, 22, , 24]);
                     if (!currency.type) return [3, 6];
                     _a = currency.type;
                     switch (_a) {
@@ -434,7 +434,7 @@ function _constructRawTransaction(currency, withdrawlParams, manager) {
                     unsignedTx = _b.sent();
                     return [3, 5];
                 case 4: throw new Error("TODO: currency.type: " + currency.type);
-                case 5: return [3, 16];
+                case 5: return [3, 21];
                 case 6:
                     if (!currency.isUTXOBased) return [3, 12];
                     if (!(finalPickedWithdrawals[0].type !== Enums_1.WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS &&
@@ -457,7 +457,7 @@ function _constructRawTransaction(currency, withdrawlParams, manager) {
                 case 10:
                     unsignedTx = _b.sent();
                     _b.label = 11;
-                case 11: return [3, 16];
+                case 11: return [3, 21];
                 case 12:
                     toAddress = vouts[0].toAddress;
                     tag = void 0;
@@ -468,34 +468,52 @@ function _constructRawTransaction(currency, withdrawlParams, manager) {
                     }
                     if (!((finalPickedWithdrawals[0] &&
                         finalPickedWithdrawals[0].type === Enums_1.WithdrawOutType.EXPLICIT_FROM_DEPOSIT_ADDRESS) ||
-                        finalPickedWithdrawals[0].type === Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS)) return [3, 14];
+                        finalPickedWithdrawals[0].type === Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS)) return [3, 17];
                     logger.info("picking withdrawal record case Account Base collect");
+                    if (!(currency.platform === sota_common_1.BlockchainPlatform.Solana && finalPickedWithdrawals[0].type === Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS)) return [3, 14];
+                    return [4, gateway.constructRawTransaction(fromAddress.address, toAddress, amount, {
+                            isConsolidate: currency.isNative,
+                            needFunding: !currency.isNative,
+                            maintainRent: true,
+                        })];
+                case 13:
+                    unsignedTx = _b.sent();
+                    return [3, 16];
+                case 14:
                     useLowerNetworkFee = finalPickedWithdrawals[0].type === Enums_1.WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS ? true : false;
                     return [4, gateway.constructRawTransaction(fromAddress.address, toAddress, amount, {
                             destinationTag: tag,
                             isConsolidate: currency.isNative,
                             useLowerNetworkFee: useLowerNetworkFee,
                         })];
-                case 13:
-                    unsignedTx = _b.sent();
-                    return [3, 16];
-                case 14:
-                    logger.info("picking withdrawal record case Account Base normal");
-                    return [4, gateway.constructRawTransaction(fromAddress.address, toAddress, amount, {
-                            destinationTag: tag,
-                        })];
                 case 15:
                     unsignedTx = _b.sent();
                     _b.label = 16;
-                case 16: return [2, unsignedTx];
+                case 16: return [3, 21];
                 case 17:
+                    logger.info("picking withdrawal record case Account Base normal");
+                    if (!(currency.platform === sota_common_1.BlockchainPlatform.Solana)) return [3, 19];
+                    return [4, gateway.constructRawTransaction(fromAddress.address, toAddress, amount, {
+                            needFunding: !currency.isNative,
+                        })];
+                case 18:
+                    unsignedTx = _b.sent();
+                    return [3, 21];
+                case 19: return [4, gateway.constructRawTransaction(fromAddress.address, toAddress, amount, {
+                        destinationTag: tag,
+                    })];
+                case 20:
+                    unsignedTx = _b.sent();
+                    _b.label = 21;
+                case 21: return [2, unsignedTx];
+                case 22:
                     err_1 = _b.sent();
                     logger.error("Could not create raw tx address=" + fromAddress.address + ", vouts=" + util_1.inspect(vouts) + ", error=" + util_1.inspect(err_1));
                     return [4, rawdb.updateRecordsTimestamp(manager, entities_1.Withdrawal, withdrawalIds)];
-                case 18:
+                case 23:
                     _b.sent();
                     return [2, null];
-                case 19: return [2];
+                case 24: return [2];
             }
         });
     });

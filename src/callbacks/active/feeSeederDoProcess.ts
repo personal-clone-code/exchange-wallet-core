@@ -8,11 +8,14 @@ import {
   BitcoinBasedGateway,
   AccountBasedGateway,
   HotWalletType,
+  BigNumber,
+  SolanaBasedGateway,
+  BlockchainPlatform,
 } from 'sota-common';
 import { EntityManager, getConnection, In, Not } from 'typeorm';
 import _ from 'lodash';
 import * as rawdb from '../../rawdb';
-import { CollectStatus, DepositEvent, LocalTxType, LocalTxStatus, RefTable } from '../../Enums';
+import { CollectStatus, DepositEvent, LocalTxType, LocalTxStatus, RefTable, WithdrawalStatus } from '../../Enums';
 import { Deposit, DepositLog, LocalTx } from '../../entities';
 
 const logger = getLogger('feeSeederDoProcess');
@@ -41,7 +44,12 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
 
   const currency = platformCurrency;
   const gateway = GatewayRegistry.getGatewayInstance(currency);
-  const seedAmount = await gateway.getAverageSeedingFee();
+  let seedAmount = await gateway.getAverageSeedingFee();
+  if (platformCurrency.platform === BlockchainPlatform.Solana){
+    seedAmount = await getAverageSeedingFeeForSolana(manager, seedDeposit)
+  } else {
+    seedAmount = await gateway.getAverageSeedingFee();
+  }
   const hotWallet = await rawdb.findSufficientHotWallet(
     manager,
     seedDeposit.walletId,
@@ -107,4 +115,35 @@ async function _feeSeederDoProcess(manager: EntityManager, seeder: BasePlatformW
   });
 
   logger.info(`Seed queued address=${seedDeposit.toAddress}`);
+}
+
+async function getAverageSeedingFeeForSolana(manager: EntityManager, deposit: Deposit): Promise<BigNumber> {
+  let rallyWallet = null;
+  const { walletId, currency} = deposit;
+
+  const iCurrency = CurrencyRegistry.getOneCurrency(currency);
+  if (iCurrency.symbol) {
+    rallyWallet = await rawdb.findAnyRallyWallet(manager, walletId, iCurrency.symbol);
+  }
+
+  if (!rallyWallet) {
+    rallyWallet = await rawdb.findAnyRallyWallet(manager, walletId, iCurrency.platform);
+  }
+
+  if (!rallyWallet) {
+    throw new Error(`Rally wallet for wallet=${walletId} symbol=${iCurrency.symbol} and platform=${iCurrency.platform} not found`);
+  }
+ 
+  //In Solana, accounts which maintain a minimum balance equivalent to 2 years of rent payments are exempt
+  //We will maintain minimum balance on deposit address
+  const withdrawalStatuses = [WithdrawalStatus.UNSIGNED, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING, WithdrawalStatus.SENT, WithdrawalStatus.COMPLETED];
+  const platformCurrencyCollected = await rawdb.hasAnyCollectFromAddressToAddress(manager, iCurrency.platform, withdrawalStatuses, rallyWallet.address, deposit.toAddress);
+  const seedRecord = await rawdb.seedRecordToAddressIsExist(manager, deposit.toAddress);
+  let seedAmount = new BigNumber(0);
+  if (!platformCurrencyCollected && !seedRecord){
+    seedAmount = await (GatewayRegistry.getGatewayInstance(iCurrency.platform) as SolanaBasedGateway).getMinimumBalanceForRentExemption();
+  }
+  const currencyCollected = await rawdb.hasAnyCollectFromAddressToAddress(manager, iCurrency.symbol, withdrawalStatuses, rallyWallet.address);
+  seedAmount = seedAmount.plus(await (GatewayRegistry.getGatewayInstance(iCurrency) as SolanaBasedGateway).getAverageSeedingFee(!currencyCollected));
+  return seedAmount;
 }

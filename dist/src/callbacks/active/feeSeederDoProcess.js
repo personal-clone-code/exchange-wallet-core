@@ -110,38 +110,47 @@ function _feeSeederDoProcess(manager, seeder) {
                     return [4, gateway.getAverageSeedingFee()];
                 case 2:
                     seedAmount = _b.sent();
-                    return [4, rawdb.findSufficientHotWallet(manager, seedDeposit.walletId, currency, seedAmount, sota_common_1.HotWalletType.Seed)];
+                    if (!(platformCurrency.platform === sota_common_1.BlockchainPlatform.Solana)) return [3, 4];
+                    return [4, getAverageSeedingFeeForSolana(manager, seedDeposit)];
                 case 3:
+                    seedAmount = _b.sent();
+                    return [3, 6];
+                case 4: return [4, gateway.getAverageSeedingFee()];
+                case 5:
+                    seedAmount = _b.sent();
+                    _b.label = 6;
+                case 6: return [4, rawdb.findSufficientHotWallet(manager, seedDeposit.walletId, currency, seedAmount, sota_common_1.HotWalletType.Seed)];
+                case 7:
                     hotWallet = _b.sent();
                     if (!hotWallet) {
                         logger.info("Hot wallet for seeding depositId=" + seedDeposit.id + " symbol=" + currency.platform + " not found");
                         return [2];
                     }
-                    _b.label = 4;
-                case 4:
-                    _b.trys.push([4, 9, , 11]);
-                    if (!currency.isUTXOBased) return [3, 6];
+                    _b.label = 8;
+                case 8:
+                    _b.trys.push([8, 13, , 15]);
+                    if (!currency.isUTXOBased) return [3, 10];
                     return [4, gateway.constructRawTransaction(hotWallet.address, [
                             { toAddress: seedDeposit.toAddress, amount: seedAmount },
                         ])];
-                case 5:
-                    _a = _b.sent();
-                    return [3, 8];
-                case 6: return [4, gateway.constructRawTransaction(hotWallet.address, seedDeposit.toAddress, seedAmount, {})];
-                case 7:
-                    _a = _b.sent();
-                    _b.label = 8;
-                case 8:
-                    rawTx = _a;
-                    return [3, 11];
                 case 9:
+                    _a = _b.sent();
+                    return [3, 12];
+                case 10: return [4, gateway.constructRawTransaction(hotWallet.address, seedDeposit.toAddress, seedAmount, {})];
+                case 11:
+                    _a = _b.sent();
+                    _b.label = 12;
+                case 12:
+                    rawTx = _a;
+                    return [3, 15];
+                case 13:
                     err_1 = _b.sent();
                     logger.error("Cannot create raw transaction, hot wallet balance may be not enough");
                     return [4, rawdb.updateRecordsTimestamp(manager, entities_1.Deposit, [seedDeposit.id])];
-                case 10:
+                case 14:
                     _b.sent();
                     throw err_1;
-                case 11:
+                case 15:
                     if (!rawTx) {
                         throw new Error('rawTx is undefined because of unknown problem');
                     }
@@ -160,14 +169,14 @@ function _feeSeederDoProcess(manager, seeder) {
                             unsignedTxid: rawTx.txid,
                             amount: seedAmount.toString(),
                         })];
-                case 12:
+                case 16:
                     localTx = _b.sent();
                     return [4, manager.update(entities_1.Deposit, seedDeposit.id, {
                             updatedAt: sota_common_1.Utils.nowInMillis(),
                             seedLocalTxId: localTx.id,
                             collectStatus: Enums_1.CollectStatus.SEEDING,
                         })];
-                case 13:
+                case 17:
                     _b.sent();
                     return [4, manager.insert(entities_1.DepositLog, {
                             depositId: seedDeposit.id,
@@ -176,10 +185,59 @@ function _feeSeederDoProcess(manager, seeder) {
                             data: rawTx.txid,
                             createdAt: sota_common_1.Utils.nowInMillis(),
                         })];
-                case 14:
+                case 18:
                     _b.sent();
                     logger.info("Seed queued address=" + seedDeposit.toAddress);
                     return [2];
+            }
+        });
+    });
+}
+function getAverageSeedingFeeForSolana(manager, deposit) {
+    return __awaiter(this, void 0, void 0, function () {
+        var rallyWallet, walletId, currency, iCurrency, withdrawalStatuses, platformCurrencyCollected, seedRecord, seedAmount, currencyCollected, _a, _b;
+        return __generator(this, function (_c) {
+            switch (_c.label) {
+                case 0:
+                    rallyWallet = null;
+                    walletId = deposit.walletId, currency = deposit.currency;
+                    iCurrency = sota_common_1.CurrencyRegistry.getOneCurrency(currency);
+                    if (!iCurrency.symbol) return [3, 2];
+                    return [4, rawdb.findAnyRallyWallet(manager, walletId, iCurrency.symbol)];
+                case 1:
+                    rallyWallet = _c.sent();
+                    _c.label = 2;
+                case 2:
+                    if (!!rallyWallet) return [3, 4];
+                    return [4, rawdb.findAnyRallyWallet(manager, walletId, iCurrency.platform)];
+                case 3:
+                    rallyWallet = _c.sent();
+                    _c.label = 4;
+                case 4:
+                    if (!rallyWallet) {
+                        throw new Error("Rally wallet for wallet=" + walletId + " symbol=" + iCurrency.symbol + " and platform=" + iCurrency.platform + " not found");
+                    }
+                    withdrawalStatuses = [Enums_1.WithdrawalStatus.UNSIGNED, Enums_1.WithdrawalStatus.SIGNED, Enums_1.WithdrawalStatus.SIGNING, Enums_1.WithdrawalStatus.SENT, Enums_1.WithdrawalStatus.COMPLETED];
+                    return [4, rawdb.hasAnyCollectFromAddressToAddress(manager, iCurrency.platform, withdrawalStatuses, rallyWallet.address, deposit.toAddress)];
+                case 5:
+                    platformCurrencyCollected = _c.sent();
+                    return [4, rawdb.seedRecordToAddressIsExist(manager, deposit.toAddress)];
+                case 6:
+                    seedRecord = _c.sent();
+                    seedAmount = new sota_common_1.BigNumber(0);
+                    if (!(!platformCurrencyCollected && !seedRecord)) return [3, 8];
+                    return [4, sota_common_1.GatewayRegistry.getGatewayInstance(iCurrency.platform).getMinimumBalanceForRentExemption()];
+                case 7:
+                    seedAmount = _c.sent();
+                    _c.label = 8;
+                case 8: return [4, rawdb.hasAnyCollectFromAddressToAddress(manager, iCurrency.symbol, withdrawalStatuses, rallyWallet.address)];
+                case 9:
+                    currencyCollected = _c.sent();
+                    _b = (_a = seedAmount).plus;
+                    return [4, sota_common_1.GatewayRegistry.getGatewayInstance(iCurrency).getAverageSeedingFee(!currencyCollected)];
+                case 10:
+                    seedAmount = _b.apply(_a, [_c.sent()]);
+                    return [2, seedAmount];
             }
         });
     });

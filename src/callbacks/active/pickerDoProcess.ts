@@ -17,6 +17,8 @@ import {
   IInsightUtxoInfo,
   IBoiledVOut,
   TransactionBaseType,
+  BlockchainPlatform,
+  SolanaBasedGateway,
 } from 'sota-common';
 import { Withdrawal, HotWallet, Address, Deposit } from '../../entities';
 import { inspect } from 'util';
@@ -434,28 +436,42 @@ async function _constructRawTransaction(
           finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS
         ) {
           logger.info(`picking withdrawal record case Account Base collect`);
-          //Using lower network fee for colling tx
-          const useLowerNetworkFee = finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS ? true : false;
-          unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
-            fromAddress.address,
-            toAddress,
-            amount,
-            {
-              destinationTag: tag,
+          if (currency.platform === BlockchainPlatform.Solana && finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS) {
+            unsignedTx = await (gateway as SolanaBasedGateway).constructRawTransaction(fromAddress.address, toAddress, amount, {
               isConsolidate: currency.isNative,
-              useLowerNetworkFee: useLowerNetworkFee,
-            }
-          );
+              needFunding: !currency.isNative,
+              maintainRent: true,
+            })
+          } else {
+            //Using lower network fee for colling tx
+            const useLowerNetworkFee = finalPickedWithdrawals[0].type === WithdrawOutType.AUTO_COLLECTED_FROM_DEPOSIT_ADDRESS ? true : false;
+            unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
+              fromAddress.address,
+              toAddress,
+              amount,
+              {
+                destinationTag: tag,
+                isConsolidate: currency.isNative,
+                useLowerNetworkFee: useLowerNetworkFee,
+              }
+            );
+          }
         } else {
           logger.info(`picking withdrawal record case Account Base normal`);
-          unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
-            fromAddress.address,
-            toAddress,
-            amount,
-            {
-              destinationTag: tag,
-            }
-          );
+          if (currency.platform === BlockchainPlatform.Solana) {
+            unsignedTx = await (gateway as SolanaBasedGateway).constructRawTransaction(fromAddress.address, toAddress, amount, {
+              needFunding: !currency.isNative,
+            })
+          } else {
+            unsignedTx = await (gateway as AccountBasedGateway).constructRawTransaction(
+              fromAddress.address,
+              toAddress,
+              amount,
+              {
+                destinationTag: tag,
+              }
+            );
+          }
         }
       }
     }
