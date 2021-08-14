@@ -76,13 +76,14 @@ export class WebhookProcessor extends BaseIntervalWorker {
     const body = JSON.stringify({ type, event, data });
     const username = EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_REQUEST_USER');
     const password = EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_REQUEST_PASSWORD');
+    let isAuthIgnored = false;
     if (!username || !password) {
-      throw new Error(`Webhook authorization is missing. Please check your config.`);
+      isAuthIgnored = true;
     }
     const basicAuth = Buffer.from(`${username}:${password}`).toString('base64');
     const headers = {
       'Content-Type': 'application/json',
-      Authorization: `Basic ${basicAuth}`,
+      Authorization: isAuthIgnored ? undefined : `Basic ${basicAuth}`,
     };
     const timeout = 5000;
     let status: number;
@@ -99,7 +100,10 @@ export class WebhookProcessor extends BaseIntervalWorker {
         progressRecord.retryCount += 1;
         progressRecord.isProcessed = false;
       }
+
+      logger.info(`Webhook called: url=${url} method=${method} body=${body} headers=${JSON.stringify(headers)} response=${msg} status=${status}`);
     } catch (err) {
+      logger.error(`Webhook called failed: url=${url} method=${method} body=${body} headers=${JSON.stringify(headers)} error=${err}`);
       status = 0;
       msg = err.toString();
       progressRecord.retryCount += 1;
