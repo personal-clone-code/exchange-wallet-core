@@ -72,7 +72,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebhookProcessor = void 0;
-var node_fetch_1 = __importDefault(require("node-fetch"));
+var axios_1 = __importDefault(require("axios"));
 var typeorm_1 = require("typeorm");
 var sota_common_1 = require("sota-common");
 var Enums_1 = require("./Enums");
@@ -151,7 +151,7 @@ var WebhookProcessor = (function (_super) {
     };
     WebhookProcessor.prototype._processRecord = function (progressRecord, manager) {
         return __awaiter(this, void 0, void 0, function () {
-            var webhookId, webhookRecord, url, now, type, refId, event, data, method, body, username, password, isAuthIgnored, basicAuth, headers, timeout, status, msg, resp, err_1;
+            var webhookId, webhookRecord, url, now, type, refId, event, data, body, username, password, isAuthIgnored, basicAuth, headers, timeout, status, msg, resp, err_1;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -174,7 +174,6 @@ var WebhookProcessor = (function (_super) {
                         return [4, this._getRefData(manager, type, refId, webhookRecord.userId)];
                     case 2:
                         data = _a.sent();
-                        method = 'POST';
                         body = JSON.stringify({ type: type, event: event, data: data });
                         username = sota_common_1.EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_REQUEST_USER');
                         password = sota_common_1.EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_REQUEST_PASSWORD');
@@ -191,11 +190,11 @@ var WebhookProcessor = (function (_super) {
                         _a.label = 3;
                     case 3:
                         _a.trys.push([3, 5, , 6]);
-                        return [4, node_fetch_1.default(url, { method: method, body: body, headers: headers, timeout: timeout })];
+                        return [4, axios_1.default.post(url, { type: type, event: event, data: data }, { headers: headers, timeout: timeout })];
                     case 4:
                         resp = _a.sent();
                         status = resp.status;
-                        msg = resp.statusText || JSON.stringify(resp.json());
+                        msg = resp.statusText || JSON.stringify(resp.data);
                         if (status === 200) {
                             progressRecord.isProcessed = true;
                         }
@@ -203,11 +202,11 @@ var WebhookProcessor = (function (_super) {
                             progressRecord.retryCount += 1;
                             progressRecord.isProcessed = false;
                         }
-                        logger.info("Webhook called: url=" + url + " method=" + method + " body=" + body + " headers=" + JSON.stringify(headers) + " response=" + msg + " status=" + status);
+                        logger.info("Webhook called: url=" + url + " method=POST body=" + body + " headers=" + JSON.stringify(headers) + " response=" + msg + " status=" + status);
                         return [3, 6];
                     case 5:
                         err_1 = _a.sent();
-                        logger.error("Webhook called failed: url=" + url + " method=" + method + " body=" + body + " headers=" + JSON.stringify(headers) + " error=" + err_1);
+                        logger.error("Webhook called failed: url=" + url + " method=POST body=" + body + " headers=" + JSON.stringify(headers) + " error=" + err_1);
                         status = 0;
                         msg = err_1.toString();
                         progressRecord.retryCount += 1;
