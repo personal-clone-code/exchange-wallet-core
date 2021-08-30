@@ -227,7 +227,7 @@ var WebhookProcessor = (function (_super) {
     };
     WebhookProcessor.prototype._getRefData = function (manager, type, refId, userId) {
         return __awaiter(this, void 0, void 0, function () {
-            var data, _a, userCurrency, currency, localTx, userCurrency, currency, localTx;
+            var data, _a, currency, userCurrency, localTx, currency, userCurrency, localTx;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
@@ -243,6 +243,8 @@ var WebhookProcessor = (function (_super) {
                         if (!data) {
                             throw new Error("Could not find deposit id=" + refId);
                         }
+                        currency = sota_common_1.CurrencyRegistry.getOneCurrency(data.currency);
+                        data.platform = currency.platform;
                         return [4, manager.getRepository(entities_1.UserCurrency).findOne({ userId: userId, systemSymbol: data.currency })];
                     case 3:
                         userCurrency = _b.sent();
@@ -250,7 +252,6 @@ var WebhookProcessor = (function (_super) {
                             data.currency = userCurrency.customSymbol;
                         }
                         else {
-                            currency = sota_common_1.CurrencyRegistry.getOneCurrency(data.currency);
                             data.currency = currency.networkSymbol;
                         }
                         if (!(data.status === Enums_1.CollectStatus.COLLECTED)) return [3, 5];
@@ -266,6 +267,8 @@ var WebhookProcessor = (function (_super) {
                         if (!data) {
                             throw new Error("Could not find withdrawal id=" + refId);
                         }
+                        currency = sota_common_1.CurrencyRegistry.getOneCurrency(data.currency);
+                        data.platform = currency.platform;
                         return [4, manager.getRepository(entities_1.UserCurrency).findOne({ userId: userId, systemSymbol: data.currency })];
                     case 8:
                         userCurrency = _b.sent();
@@ -273,7 +276,6 @@ var WebhookProcessor = (function (_super) {
                             data.currency = userCurrency.customSymbol;
                         }
                         else {
-                            currency = sota_common_1.CurrencyRegistry.getOneCurrency(data.currency);
                             data.currency = currency.networkSymbol;
                         }
                         if (!(data.status === Enums_1.WithdrawalStatus.COMPLETED)) return [3, 10];

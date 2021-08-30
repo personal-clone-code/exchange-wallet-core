@@ -131,12 +131,13 @@ export class WebhookProcessor extends BaseIntervalWorker {
         if (!data) {
           throw new Error(`Could not find deposit id=${refId}`);
         }
+        const currency = CurrencyRegistry.getOneCurrency(data.currency); 
+        data.platform = currency.platform;
 
         const userCurrency = await manager.getRepository(UserCurrency).findOne({ userId, systemSymbol: data.currency });
         if (userCurrency) {
           data.currency = userCurrency.customSymbol;
         } else {
-          const currency = CurrencyRegistry.getOneCurrency(data.currency);
           data.currency = currency.networkSymbol;
         }
 
@@ -154,12 +155,13 @@ export class WebhookProcessor extends BaseIntervalWorker {
         if (!data) {
           throw new Error(`Could not find withdrawal id=${refId}`);
         }
+        const currency = CurrencyRegistry.getOneCurrency(data.currency);
+        data.platform = currency.platform;
 
         const userCurrency = await manager.getRepository(UserCurrency).findOne({ userId, systemSymbol: data.currency });
         if (userCurrency) {
           data.currency = userCurrency.customSymbol;
         } else {
-          const currency = CurrencyRegistry.getOneCurrency(data.currency);
           data.currency = currency.networkSymbol;
         }
         
