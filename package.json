@@ -1,6 +1,6 @@
 {
   "name": "@sotatek/exchange-wallet-core",
-  "version": "0.1.27",
+  "version": "0.1.29",
   "description": "Core modules of wallet service for Crypto Exchanges",
   "main": "dist/index.js",
   "directories": {
@@ -20,19 +20,18 @@
     "@types/hbs": "^4.0.1",
     "@types/lodash": "4.14.119",
     "@types/mysql": "2.15.5",
-    "@types/node-fetch": "2.3.3",
     "@types/uuid": "3.4.4",
     "aws-sdk": "2.384.0",
     "bcryptjs": "2.4.3",
     "hbs": "^4.0.6",
     "lodash": "4.17.11",
     "mysql": "2.16.0",
-    "node-fetch": "2.5.0",
     "nodemailer": "^6.2.1",
     "sota-common": "npm:@sotatek/crypto-currency-common@^0.*",
     "typeorm": "^0.2.11"
   },
   "peerDependencies": {
+    "axios": "*",
     "sota-common": "npm:@sotatek/crypto-currency-common@^0.*",
     "typeorm": "^0.2.11"
   },

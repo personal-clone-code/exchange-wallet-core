@@ -3,12 +3,10 @@ var __extends = (this && this.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
     };
     return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
         extendStatics(d, b);
         function __() { this.constructor = d; }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
@@ -29,7 +27,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -74,7 +72,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebhookProcessor = void 0;
-var node_fetch_1 = __importDefault(require("node-fetch"));
+var axios_1 = __importDefault(require("axios"));
 var typeorm_1 = require("typeorm");
 var sota_common_1 = require("sota-common");
 var Enums_1 = require("./Enums");
@@ -153,7 +151,7 @@ var WebhookProcessor = (function (_super) {
     };
     WebhookProcessor.prototype._processRecord = function (progressRecord, manager) {
         return __awaiter(this, void 0, void 0, function () {
-            var webhookId, webhookRecord, url, now, type, refId, event, data, method, body, username, password, basicAuth, headers, timeout, status, msg, resp, err_1;
+            var webhookId, webhookRecord, url, now, type, refId, event, data, body, username, password, isAuthIgnored, basicAuth, headers, timeout, status, msg, resp, err_1;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -176,27 +174,27 @@ var WebhookProcessor = (function (_super) {
                         return [4, this._getRefData(manager, type, refId, webhookRecord.userId)];
                     case 2:
                         data = _a.sent();
-                        method = 'POST';
                         body = JSON.stringify({ type: type, event: event, data: data });
                         username = sota_common_1.EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_REQUEST_USER');
                         password = sota_common_1.EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_REQUEST_PASSWORD');
+                        isAuthIgnored = false;
                         if (!username || !password) {
-                            throw new Error("Webhook authorization is missing. Please check your config.");
+                            isAuthIgnored = true;
                         }
                         basicAuth = Buffer.from(username + ":" + password).toString('base64');
                         headers = {
                             'Content-Type': 'application/json',
-                            Authorization: "Basic " + basicAuth,
+                            Authorization: isAuthIgnored ? undefined : "Basic " + basicAuth,
                         };
                         timeout = 5000;
                         _a.label = 3;
                     case 3:
                         _a.trys.push([3, 5, , 6]);
-                        return [4, node_fetch_1.default(url, { method: method, body: body, headers: headers, timeout: timeout })];
+                        return [4, axios_1.default.post(url, { type: type, event: event, data: data }, { headers: headers, timeout: timeout })];
                     case 4:
                         resp = _a.sent();
                         status = resp.status;
-                        msg = resp.statusText || JSON.stringify(resp.json());
+                        msg = resp.statusText || JSON.stringify(resp.data);
                         if (status === 200) {
                             progressRecord.isProcessed = true;
                         }
@@ -204,9 +202,11 @@ var WebhookProcessor = (function (_super) {
                             progressRecord.retryCount += 1;
                             progressRecord.isProcessed = false;
                         }
+                        logger.info("Webhook called: url=" + url + " method=POST body=" + body + " headers=" + JSON.stringify(headers) + " response=" + msg + " status=" + status);
                         return [3, 6];
                     case 5:
                         err_1 = _a.sent();
+                        logger.error("Webhook called failed: url=" + url + " method=POST body=" + body + " headers=" + JSON.stringify(headers) + " error=" + err_1);
                         status = 0;
                         msg = err_1.toString();
                         progressRecord.retryCount += 1;
