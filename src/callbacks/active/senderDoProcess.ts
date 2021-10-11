@@ -100,11 +100,6 @@ async function _senderDoProcess(manager: EntityManager, sender: BasePlatformWork
         extraInfo=${util.inspect(extraInfo)}`
     );
 
-    // The localTx record is created wrongly. It must be reconstructed
-    if ((errInfo.toString() as string).includes('nonce too low')) {
-      await rawdb.reconstructLocalTx(manager, signedRecord);
-    }
-
     return;
   }
 

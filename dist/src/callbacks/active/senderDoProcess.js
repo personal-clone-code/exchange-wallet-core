@@ -133,11 +133,11 @@ function _senderDoProcess(manager, sender) {
                     status_2 = sota_common_1.TransactionStatus.UNKNOWN;
                     return [3, 9];
                 case 9:
-                    _a.trys.push([9, 11, , 14]);
+                    _a.trys.push([9, 11, , 12]);
                     return [4, gateway.sendRawTransaction(signedRecord.signedRaw)];
                 case 10:
                     sentResultObj = _a.sent();
-                    return [3, 14];
+                    return [3, 12];
                 case 11:
                     e_2 = _a.sent();
                     errInfo = e_2;
@@ -155,22 +155,17 @@ function _senderDoProcess(manager, sender) {
                         errInfo = JSON.stringify(e_2.response.data);
                     }
                     logger.error("Cannot broadcast localTxId=" + signedRecord.id + " due to error        errInfo=" + util_1.default.inspect(errInfo) + "         extraInfo=" + util_1.default.inspect(extraInfo));
-                    if (!errInfo.toString().includes('nonce too low')) return [3, 13];
-                    return [4, rawdb.reconstructLocalTx(manager, signedRecord)];
+                    return [2];
                 case 12:
-                    _a.sent();
-                    _a.label = 13;
-                case 13: return [2];
-                case 14:
-                    if (!sentResultObj) return [3, 16];
+                    if (!sentResultObj) return [3, 14];
                     return [4, updateLocalTxAndRelatedTables(manager, signedRecord, sentResultObj.txid, Enums_1.LocalTxStatus.SENT)];
-                case 15:
+                case 13:
                     _a.sent();
                     return [2];
-                case 16:
+                case 14:
                     logger.error("Could not send raw transaction localTxId=" + signedRecord.id + ". Result is empty, please check...");
-                    _a.label = 17;
-                case 17: return [2];
+                    _a.label = 15;
+                case 15: return [2];
             }
         });
     });
