@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import axios from 'axios';
 import { EntityManager, getConnection, LessThanOrEqual } from 'typeorm';
 import { BaseIntervalWorker, getLogger, Utils, CurrencyRegistry, EnvConfigRegistry } from 'sota-common';
 import { WebhookType, LocalTxStatus, WithdrawalStatus, CollectStatus } from './Enums';
@@ -72,26 +72,26 @@ export class WebhookProcessor extends BaseIntervalWorker {
     const data = await this._getRefData(manager, type, refId, webhookRecord.userId);
 
     // Call webhook
-    const method = 'POST';
     const body = JSON.stringify({ type, event, data });
     const username = EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_REQUEST_USER');
     const password = EnvConfigRegistry.getCustomEnvConfig('WEBHOOK_REQUEST_PASSWORD');
+    let isAuthIgnored = false;
     if (!username || !password) {
-      throw new Error(`Webhook authorization is missing. Please check your config.`);
+      isAuthIgnored = true;
     }
     const basicAuth = Buffer.from(`${username}:${password}`).toString('base64');
     const headers = {
       'Content-Type': 'application/json',
-      Authorization: `Basic ${basicAuth}`,
+      Authorization: isAuthIgnored ? undefined : `Basic ${basicAuth}`,
     };
     const timeout = 5000;
     let status: number;
     let msg: string;
 
     try {
-      const resp = await fetch(url, { method, body, headers, timeout });
+      const resp = await axios.post(url, { type, event, data }, { headers, timeout });
       status = resp.status;
-      msg = resp.statusText || JSON.stringify(resp.json());
+      msg = resp.statusText || JSON.stringify(resp.data);
 
       if (status === 200) {
         progressRecord.isProcessed = true;
@@ -99,7 +99,10 @@ export class WebhookProcessor extends BaseIntervalWorker {
         progressRecord.retryCount += 1;
         progressRecord.isProcessed = false;
       }
+
+      logger.info(`Webhook called: url=${url} method=POST body=${body} headers=${JSON.stringify(headers)} response=${msg} status=${status}`);
     } catch (err) {
+      logger.error(`Webhook called failed: url=${url} method=POST body=${body} headers=${JSON.stringify(headers)} error=${err}`);
       status = 0;
       msg = err.toString();
       progressRecord.retryCount += 1;
