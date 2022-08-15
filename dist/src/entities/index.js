@@ -15,6 +15,7 @@ __exportStar(require("./abstracts/XWithdrawalTx"), exports);
 __exportStar(require("./Deposit"), exports);
 __exportStar(require("./DepositLog"), exports);
 __exportStar(require("./Erc20Token"), exports);
+__exportStar(require("./PolErc20Token"), exports);
 __exportStar(require("./Trc20Token"), exports);
 __exportStar(require("./Nep5Token"), exports);
 __exportStar(require("./OmniToken"), exports);
