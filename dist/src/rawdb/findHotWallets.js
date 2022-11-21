@@ -58,6 +58,7 @@ function findSufficientHotWallet(manager, walletId, currency, amount, type) {
                     return [4, findFreeHotWallets(manager, walletId, platform)];
                 case 1:
                     hotWallets = _a.sent();
+                    logger.info("Free hot wallets are " + hotWallets.map(function (hotWallet) { return hotWallet.address; }));
                     if (!hotWallets.length) {
                         return [2, null];
                     }
@@ -279,6 +280,7 @@ function getAllBusyHotWallets(manager, walletId) {
                         })];
                 case 1:
                     seedTransactions = _a.sent();
+                    logger.info("Pending transactions are " + seedTransactions.map(function (seedTransaction) { return seedTransaction.id; }));
                     if (!seedTransactions.length) {
                         return [2, []];
                     }

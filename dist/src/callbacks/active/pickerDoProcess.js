@@ -109,6 +109,7 @@ function _pickerDoProcess(manager, picker) {
                     walletId = candidateWithdrawals[0].walletId;
                     symbol = candidateWithdrawals[0].currency;
                     currency = sota_common_1.CurrencyRegistry.getOneCurrency(symbol);
+                    logger.info("Start building Withdrawal param for txs " + candidateWithdrawals.map(function (x) { return x.id; }));
                     if (!currency.isUTXOBased) return [3, 5];
                     return [4, _pickerDoProcessUTXO(candidateWithdrawals, currency, manager)];
                 case 4:
@@ -128,6 +129,7 @@ function _pickerDoProcess(manager, picker) {
                         logger.info("Dont have suitable withdrawl record to pick, finalPickedWithdrawals is emty");
                         return [2];
                     }
+                    logger.info("Built Withdrawal param success, result is " + JSON.stringify(withdrawlParams));
                     senderWallet = withdrawlParams.senderWallet;
                     withdrawalIds = finalPickedWithdrawals.map(function (w) { return w.id; });
                     if (!!senderWallet) return [3, 9];

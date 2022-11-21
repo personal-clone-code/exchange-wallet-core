@@ -43,24 +43,11 @@ var Enums_1 = require("../Enums");
 var sota_common_1 = require("sota-common");
 function getNextPickedWithdrawals(manager, platform) {
     return __awaiter(this, void 0, void 0, function () {
-        var pendingStatuses, platformCurrencies, pendingCount, firstRecord, records;
+        var platformCurrencies, firstRecord, records;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    pendingStatuses = [Enums_1.WithdrawalStatus.SENT, Enums_1.WithdrawalStatus.SIGNED, Enums_1.WithdrawalStatus.SIGNING];
                     platformCurrencies = sota_common_1.CurrencyRegistry.getCurrenciesOfPlatform(platform).map(function (c) { return c.symbol; });
-                    return [4, manager
-                            .getRepository(entities_1.Withdrawal)
-                            .createQueryBuilder()
-                            .where('currency', typeorm_1.In(platformCurrencies))
-                            .andWhere('status', typeorm_1.In(pendingStatuses))
-                            .select('DISTINCT currency')
-                            .getCount()];
-                case 1:
-                    pendingCount = _a.sent();
-                    if (pendingCount > 0) {
-                        return [2, []];
-                    }
                     return [4, manager.getRepository(entities_1.Withdrawal).findOne({
                             order: { updatedAt: 'ASC' },
                             where: {
@@ -68,7 +55,7 @@ function getNextPickedWithdrawals(manager, platform) {
                                 status: Enums_1.WithdrawalStatus.UNSIGNED,
                             },
                         })];
-                case 2:
+                case 1:
                     firstRecord = _a.sent();
                     if (!firstRecord) {
                         return [2, []];
@@ -82,7 +69,7 @@ function getNextPickedWithdrawals(manager, platform) {
                                 status: Enums_1.WithdrawalStatus.UNSIGNED,
                             },
                         })];
-                case 3:
+                case 2:
                     records = _a.sent();
                     return [2, records];
             }
