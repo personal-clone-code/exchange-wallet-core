@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@types/bcryptjs": "2.4.2",
+    "@types/express-serve-static-core": "4.17.30",
     "@types/hbs": "^4.0.1",
     "@types/lodash": "4.14.119",
     "@types/mysql": "2.15.5",
