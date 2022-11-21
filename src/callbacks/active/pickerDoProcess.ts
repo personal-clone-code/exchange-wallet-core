@@ -71,6 +71,9 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
   const walletId = candidateWithdrawals[0].walletId;
   const symbol = candidateWithdrawals[0].currency;
   const currency = CurrencyRegistry.getOneCurrency(symbol);
+
+  logger.info(`Start building Withdrawal param for txs ${candidateWithdrawals.map(x => x.id)}`);
+
   let withdrawlParams: IWithdrawlParams;
   if (currency.isUTXOBased) {
     withdrawlParams = await _pickerDoProcessUTXO(candidateWithdrawals, currency, manager);
@@ -86,6 +89,8 @@ async function _pickerDoProcess(manager: EntityManager, picker: BaseCurrencyWork
     logger.info(`Dont have suitable withdrawl record to pick, finalPickedWithdrawals is emty`);
     return;
   }
+  
+  logger.info(`Built Withdrawal param success, result is ${JSON.stringify(withdrawlParams)}`);
   const senderWallet = withdrawlParams.senderWallet;
   const withdrawalIds = finalPickedWithdrawals.map(w => w.id);
   if (!senderWallet) {

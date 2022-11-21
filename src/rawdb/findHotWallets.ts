@@ -23,6 +23,7 @@ export async function findSufficientHotWallet(
 ): Promise<HotWallet> {
   const platform = currency.family || currency.platform;
   const hotWallets = await findFreeHotWallets(manager, walletId, platform);
+  logger.info(`Free hot wallets are ${hotWallets.map(hotWallet => hotWallet.address)}`);
   if (!hotWallets.length) {
     return null;
   }
@@ -181,6 +182,8 @@ export async function getAllBusyHotWallets(manager: EntityManager, walletId: num
     type: In([LocalTxType.SEED, LocalTxType.WITHDRAWAL_NORMAL, LocalTxType.WITHDRAWAL_COLD]),
     status: In(pendingStatuses),
   });
+
+  logger.info(`Pending transactions are ${seedTransactions.map((seedTransaction) => seedTransaction.id)}`);
 
   if (!seedTransactions.length) {
     return [];
