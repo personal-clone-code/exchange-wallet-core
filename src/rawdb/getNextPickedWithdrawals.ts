@@ -20,18 +20,6 @@ import { BlockchainPlatform as Platform, CurrencyRegistry } from 'sota-common';
 export async function getNextPickedWithdrawals(manager: EntityManager, platform: Platform): Promise<Withdrawal[]> {
   const pendingStatuses = [WithdrawalStatus.SENT, WithdrawalStatus.SIGNED, WithdrawalStatus.SIGNING];
   const platformCurrencies = CurrencyRegistry.getCurrenciesOfPlatform(platform).map(c => c.symbol);
-  const pendingCount = await manager
-    .getRepository(Withdrawal)
-    .createQueryBuilder()
-    .where('currency', In(platformCurrencies))
-    .andWhere('status', In(pendingStatuses))
-    .select('DISTINCT currency')
-    .getCount();
-
-  // If there're pending records, just skip this turn and wait until they're all completed
-  if (pendingCount > 0) {
-    return [];
-  }
 
   const firstRecord = await manager.getRepository(Withdrawal).findOne({
     order: { updatedAt: 'ASC' },
